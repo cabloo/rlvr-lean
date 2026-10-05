@@ -53,11 +53,15 @@ def stand_in_parameters(samples: int, seed: int, max_tokens: int) -> StandInPara
 
 
 class StandInEngine:
-    """`generate` with vLLM's shape: one output per prompt, `n` samples each, the same for the same seed."""
+    """`generate` with vLLM's shape: one output per prompt, `n` samples each, the same for the same seed.
+    `parameters` is one set for every prompt or, as vLLM also takes it, a list with one set for each prompt."""
 
-    def generate(self, prompts: list[str], parameters: StandInParameters, lora_request=None) -> list[StandInOutput]:
+    def generate(self, prompts: list[str], parameters: StandInParameters | list[StandInParameters], lora_request=None) -> list[StandInOutput]:
+        each = list(parameters) if isinstance(parameters, (list, tuple)) else [parameters] * len(prompts)
+        if len(each) != len(prompts):
+            raise ValueError(f"{len(each)} sets of sampling parameters for {len(prompts)} prompts")
         outputs = []
-        for prompt in prompts:
+        for prompt, parameters in zip(prompts, each):
             samples = []
             for index in range(parameters.n):
                 draw = int(hashlib.sha256(f"{parameters.seed}:{index}:{prompt}".encode()).hexdigest()[:8], 16)

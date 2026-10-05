@@ -199,6 +199,47 @@ _LADDER_L2_SMOKE = {"environment": {"RLVR_LEAN_LADDER_DATA": str(PACKAGE_DIR / "
                                     "RLVR_LEAN_LADDER_L2_SOURCE": "ladder_l1_smoke", "RLVR_LEAN_LADDER_L2_RUN": "ladder_l2_smoke",
                                     "RLVR_LEAN_LADDER_L2_PROBLEMS": "4", "RLVR_LEAN_LADDER_L2_BATCHES": "2"}}
 STAGES["ladder_l2_smoke"] = [(environment, step, _LADDER_L2_SMOKE) for environment, step in _LADDER_L2]
+# L2t, the lower target (spec ladder-loop, "L2t: the lower target"): the SAME steps as an ARM of the stage. The arm's
+# one changed setting is in the config (`ladder_loop.l2_arms.t010`: the challenger's target rate, 0.10 for 0.25); the
+# run directory is the arm's own (`ladder_l2_t010_seed<N>`); the candidates, batches, seeds, sampling seeds and the
+# held-out rungs (L1's stored groups) are the ones `ladder_l2` has, and the stored statement embeddings are reused.
+_LADDER_L2_T010 = {"environment": {"RLVR_LEAN_LADDER_L2_ARM": "t010"}}
+STAGES["ladder_l2_t010"] = [(environment, step, _LADDER_L2_T010) for environment, step in _LADDER_L2]
+
+# The ladder loop's L3a, the repair check, no training (spec ladder-loop, "L3a: the repair check, no training";
+# `gpu/ladder_l3a.py`): the base model's blind first attempts on G and on the three rungs, then every one that failed
+# continued in three arms from that same attempt, each to at most four more: blind (whole proofs), resume with the state
+# (the arm's latest failed proof cut at its first error, Lean's proof state there as a comment), resume without the
+# state. ONE sampling step, one engine: its loops alternate generation and Lean checks. It READS the L1 run directory of
+# its seed in the box's store (G and the rungs with their negations and groups) and writes a run directory of its own.
+# One seed per task (`--seeds 0`: it is the sampling seed). No parts: a failure, or a soundness alarm, ends the stage;
+# a rerun resumes at the first loop that is not done.
+_LADDER_L3A = [("sync", "gpu"), ("gpu", "fix_tokenizers"), ("gpu", "ladder_l3a_prepare"),
+               ("guard", None), ("gpu", "ladder_l3a_attempts"), ("guard", None), ("gpu", "ladder_l3a_report")]
+STAGES["ladder_l3a"] = list(_LADDER_L3A)
+# The same steps on what the L1 SMOKE run left in the box's store (`ladder_l1_smoke`: the fixture's one goal problem and
+# five rung problems), in a run directory of its own.
+_LADDER_L3A_SMOKE = {"environment": {"RLVR_LEAN_LADDER_L3A_SOURCE": "ladder_l1_smoke", "RLVR_LEAN_LADDER_L3A_RUN": "ladder_l3a_smoke"}}
+STAGES["ladder_l3a_smoke"] = [(environment, step, _LADDER_L3A_SMOKE) for environment, step in _LADDER_L3A]
+
+# The ladder loop's L3a2, one repair step after each fresh failure, then start over (spec ladder-loop, "L3a2: one repair
+# step after each fresh failure, then start over (no training)"; `gpu/ladder_l3a2.py`, on L3a's loops): the base model's
+# blind first attempts on G and on the three rungs, then every one that failed continued in two arms from that same
+# attempt, each to at most four more: blind (whole proofs), and alternate (attempts 2 and 4 are one repair step each, from
+# the fresh attempt just before; attempts 3 and 5 are whole proofs). In both arms a proof Lean already rejected in the
+# same episode is not sent to Lean again. ONE sampling step, one engine. It READS the L1 run directory of its seed in the
+# box's store and writes a run directory of its own. One seed per task (`--seeds 0`: it is the sampling seed, and no
+# draw is one of L3a's). No parts: a failure, or a soundness alarm, ends the stage; a rerun resumes at the first loop
+# that is not done.
+_LADDER_L3A2 = [("sync", "gpu"), ("gpu", "fix_tokenizers"), ("gpu", "ladder_l3a2_prepare"),
+                ("guard", None), ("gpu", "ladder_l3a2_attempts"), ("guard", None), ("gpu", "ladder_l3a2_report")]
+STAGES["ladder_l3a2"] = list(_LADDER_L3A2)
+# The same steps on what the L1 SMOKE run left in the box's store (`ladder_l1_smoke`), in a run directory of its own,
+# with the episodes L3a's smoke run has (`ladder_loop.repair`: 4 on the fixture's goal problem, 2 on each of its five rung
+# problems) and not the 12 of the real run.
+_LADDER_L3A2_SMOKE = {"environment": {"RLVR_LEAN_LADDER_L3A2_SOURCE": "ladder_l1_smoke", "RLVR_LEAN_LADDER_L3A2_RUN": "ladder_l3a2_smoke",
+                                      "RLVR_LEAN_LADDER_L3A2_EPISODES": "repair"}}
+STAGES["ladder_l3a2_smoke"] = [(environment, step, _LADDER_L3A2_SMOKE) for environment, step in _LADDER_L3A2]
 SOUNDNESS_ALARM_EXIT = 3        # `gpu.__main__`'s code for a proof of both sides of one statement (it cannot be imported here)
 
 

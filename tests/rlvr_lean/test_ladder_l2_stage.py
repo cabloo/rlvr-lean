@@ -16,7 +16,8 @@ import yaml
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from test_ladder_round import KNOWN_FALSE, L0_FIXTURE, L1_FIXTURE, ScriptedLean, _run_stage, stage  # noqa: E402, F401 - the L1 stage on the fixtures, with stand-ins
 
-from rlvr_lean.domain.ladder_round.read import STOP_AND_DIAGNOSE, VOID  # noqa: E402
+from rlvr_lean.domain.ladder_round.challenger import expected_reward  # noqa: E402
+from rlvr_lean.domain.ladder_round.read import STOP_AND_DIAGNOSE, VOID, arm_reward  # noqa: E402
 from rlvr_lean.domain.problem_pool import SoundnessAlarm  # noqa: E402
 from rlvr_lean.runner import entry  # noqa: E402
 from rlvr_lean.gpu import ladder_dose, ladder_l2, ladder_loop, ladder_round, pipeline  # noqa: E402
@@ -25,7 +26,8 @@ PACKAGE = Path(__file__).resolve().parents[2] / "src" / "rlvr_lean"
 CONFIG = yaml.safe_load((PACKAGE / "config" / "experiment.yaml").read_text())
 SETTINGS = CONFIG["ladder_loop"]
 ROUNDS = (1, 2, 3)
-L2_VARIABLES = (ladder_l2.L2_RUN_VARIABLE, ladder_l2.L2_SOURCE_VARIABLE, ladder_l2.L2_PROBLEMS_VARIABLE, ladder_l2.L2_BATCHES_VARIABLE)
+ARM = ladder_l2.L2_ARM_VARIABLE
+L2_VARIABLES = (ladder_l2.L2_RUN_VARIABLE, ladder_l2.L2_SOURCE_VARIABLE, ladder_l2.L2_PROBLEMS_VARIABLE, ladder_l2.L2_BATCHES_VARIABLE, ARM)
 BATCHES = [(number, batch) for number in ROUNDS for batch in (1, 2)]
 
 
@@ -407,6 +409,131 @@ def test_the_rounds_and_the_control_sample_with_seeds_of_their_own_and_the_rungs
         monkeypatch.delenv(name)
     assert ladder_l2.loop_sizes(CONFIG) == {"problems": 1000, "batches": 4, "batch_sizes": [250] * 4, "solvers": 8}
     assert ladder_l2.data_directory() == PACKAGE / "data" / "ladder_l2"
+
+
+# ------------------------------------------------------------------------------ L2t: an arm of the stage
+def test_an_arm_changes_the_target_rate_wherever_it_is_read_and_the_run_directory_and_nothing_else(loop, monkeypatch):
+    """Spec, "L2t: the lower target": L2 again with ONE setting changed, `challenger.target_rate` 0.10 for 0.25, in a
+    run directory of its own. Same candidates, batches, seeds and sampling seeds; the held-out rungs stay L1's."""
+    config = loop.config
+    assert CONFIG["ladder_loop"]["l2_arms"] == {"t010": {"target_rate": 0.10}} and config["ladder_loop"]["challenger"]["target_rate"] == 0.25
+    statements = (["a", "b"], ["prompt a", "prompt b"], False)
+    of_the_run = lambda: {"seeds": ladder_l2.sampling_seeds(config), "sizes": ladder_l2.loop_sizes(config), "source": ladder_l2.source_directory(config),      # noqa: E731
+                          "data": ladder_l2.data_directory(), "embedding_key": ladder_l2.embedding_key(ladder_l2.arm_config(config), *statements)}
+    # No arm: the config itself, and the run directory the stage has always had.
+    assert ladder_l2.arm_name() is None and ladder_l2.arm_config(config) is config and ladder_l2._store(config).root.name == "ladder_l2_seed0"
+    plain = of_the_run()
+    _run_stage(config)
+    without = _run_loop(config)
+    plain_root = ladder_l2._store(config).root
+    held = _files(plain_root)
+
+    monkeypatch.setenv(ARM, "t010")
+    armed = ladder_l2.arm_config(config)
+    assert armed["ladder_loop"]["challenger"]["target_rate"] == 0.10 and config["ladder_loop"]["challenger"]["target_rate"] == 0.25     # the config given is not touched
+    assert {**armed, "ladder_loop": {**armed["ladder_loop"], "challenger": {**armed["ladder_loop"]["challenger"], "target_rate": 0.25}}} == config
+    assert ladder_l2.arm_config(armed) == armed and of_the_run() == plain                 # the seeds, the sizes, L1's run, the data and the embeddings' key do not move
+    store = ladder_l2._store(config)
+    assert store.root.name == "ladder_l2_t010_seed0" and store.root.parent == plain_root.parent
+    summaries = _run_loop(config)
+    assert _files(plain_root) == held                                                     # the run with no arm was not touched
+
+    # ---- prepare records the arm and its target rate; everything else it recorded is what the run with no arm recorded
+    prepare = summaries["ladder_l2_prepare"]
+    assert (prepare["arm"], prepare["target_rate"]) == ("t010", 0.10) and "arm" not in without["ladder_l2_prepare"] and "target_rate" not in without["ladder_l2_prepare"]
+    assert {key: value for key, value in prepare.items() if key not in ("arm", "target_rate", "the_heldout_rungs_are")} == without["ladder_l2_prepare"]
+    # ---- the held-out sets are L1's stored groups, byte for byte the ones the run with no arm read: they do not move with t
+    after = _files(store.root)
+    for name in ("heldout_groups.jsonl", "base_rungs.jsonl", "base_reach.jsonl"):
+        assert after[name] == held[name], name
+    assert summaries["ladder_l2_embed"]["embeddings_reused"] is True and summaries["ladder_l2_embed"]["key"] == without["ladder_l2_embed"]["key"]
+    # ---- the challenger scores by the expected reward AT THE ARM'S TARGET RATE: the proposals are chosen by it
+    for arm_store, target, other in ((store, 0.10, 0.25), (ladder_l2.ArtifactStore(plain_root), 0.25, 0.10)):
+        for number, batch in BATCHES:
+            fit = arm_store.done_summary(f"ladder_l2_propose_r{number}_b{batch}")
+            picks = arm_store.read_rows(f"proposals_r{number}_b{batch}.jsonl")
+            at = lambda rate: [expected_reward(row["predicted_rate"], 8, rate, fit["fit"]["dispersion"]) for row in picks]      # noqa: E731
+            assert [row["score"] for row in picks] == pytest.approx(at(target), abs=1e-5) and [row["score"] for row in picks] != pytest.approx(at(other), abs=1e-5)
+    # The first refit of round 1 saw the same observations and is the same predictor: only what it is asked to maximise moved.
+    first, first_plain = store.done_summary("ladder_l2_propose_r1_b1"), ladder_l2.ArtifactStore(plain_root).done_summary("ladder_l2_propose_r1_b1")
+    assert first["fit"] == first_plain["fit"] and first["observations_by_the_round_that_gave_them"] == first_plain["observations_by_the_round_that_gave_them"]
+    assert first["candidates_not_yet_proposed"]["mean_predicted_rate"] == first_plain["candidates_not_yet_proposed"]["mean_predicted_rate"]
+    # ---- the reward recorded for a round and a batch is the arm's
+    for number in ROUNDS:
+        results = [row for batch in (1, 2) for row in store.read_rows(f"episodes_round_r{number}_b{batch}_problems.jsonl")]
+        assert summaries[f"ladder_l2_round_{number}"]["reward"] == arm_reward(results, 0.10, CONFIG["ladder_loop"]["challenger"]["band_reward"])
+        assert summaries[f"ladder_l2_round_{number}"]["reward"] != arm_reward(results, 0.25, CONFIG["ladder_loop"]["challenger"]["band_reward"])
+        # The same sampling seeds as the run with no arm, for the round's attempts and for the measurements.
+        assert summaries[f"ladder_l2_round_{number}"]["sampling_seed"] == without[f"ladder_l2_round_{number}"]["sampling_seed"]
+        for name in (f"episodes_rungs_m{number}_problems.jsonl", f"episodes_reach_m{number}_problems.jsonl"):
+            assert after[name] == held[name], name                  # the stand-in's models are the base in both runs: the same seeds give the same episodes
+    assert summaries["ladder_l2_control"]["sampling_seed"] == without["ladder_l2_control"]["sampling_seed"] and after["episodes_control_problems.jsonl"] == held["episodes_control_problems.jsonl"]
+    assert summaries["ladder_l2_control_trained"]["episodes"]["sampling_seed"] == without["ladder_l2_control_trained"]["episodes"]["sampling_seed"]
+    # ---- the report: the arm and its target rate at the top, every reward figure at that rate, the held-out read where it was
+    report, plain_report = summaries["ladder_l2_report"], without["ladder_l2_report"]
+    assert list(report)[:5] == ["spec", "headline", "ok", "seed", "arm"] and report["arm"]["name"] == "t010" and report["target_rate"] == 0.10 and "arm" not in plain_report
+    assert report["headline"].startswith("L2 arm t010 (target rate 0.1) seed 0: ") and plain_report["headline"].startswith("L2 seed 0: ") and plain_report["target_rate"] == 0.25
+    assert report["band"] == {"low": 0.0485, "high": 0.1749} and report["challenger"]["trajectory"]["target_rate"] == 0.10
+    for key in ("heldout", "primary", "climb", "reach_on_g", "branch", "void_conditions", "stop_rule", "rounds_measured", "distinct_attempts_on_the_rungs"):
+        assert report[key] == plain_report[key], key
+    assert report["control"]["read"] == plain_report["control"]["read"] and report["control"]["equal_attempts"]["read"] == plain_report["control"]["equal_attempts"]["read"]
+    scored = report["challenger"]["by_round"]["1"]["all"]
+    assert {"share_at_k_0", "share_at_k_1_to_3", "share_at_k_4_or_more"} <= set(scored) and scored["share_at_k_0"] + scored["share_at_k_1_to_3"] + scored["share_at_k_4_or_more"] == pytest.approx(1)
+    # A rerun of the arm returns what is stored; so does a rerun of the run with no arm.
+    sent = ScriptedLean.submitted
+    assert _run_loop(config) == summaries and ScriptedLean.submitted == sent
+    monkeypatch.delenv(ARM)
+    assert _run_loop(config) == without and ScriptedLean.submitted == sent and _files(plain_root) == held
+
+
+def test_an_unknown_arm_and_a_changed_target_rate_on_a_prepared_run_are_refused(loop, monkeypatch):
+    config = loop.config
+    _run_stage(config)
+    runs = ladder_round._store(config).root.parent
+    monkeypatch.setenv(ARM, "t005")                                    # an arm the config does not name: refused, and nothing is made
+    for step in ("ladder_l2_prepare", "ladder_l2_embed", "ladder_l2_report"):
+        with pytest.raises(ValueError, match=r"names the arm 't005' and ladder_loop.l2_arms has \['t010'\]"):
+            ladder_l2.STEPS[step](config)
+    assert sorted(path.name for path in runs.iterdir()) == ["ladder_l1_seed0"]
+    config["ladder_loop"]["l2_arms"]["wide"] = {"target_rate": 0.10, "random_share": 0.5}      # an arm changes the target rate and nothing else
+    monkeypatch.setenv(ARM, "wide")
+    with pytest.raises(ValueError, match="and nothing else"):
+        ladder_l2.ladder_l2_prepare(config)
+    # A run prepared under one target rate does not continue under another.
+    monkeypatch.setenv(ARM, "t010")
+    ladder_l2.ladder_l2_prepare(config)
+    ladder_l2.ladder_l2_embed(config)
+    config["ladder_loop"]["l2_arms"]["t010"]["target_rate"] = 0.08
+    with pytest.raises(RuntimeError, match="prepared at the target rate 0.1 and the config now gives 0.08"):
+        ladder_l2.ladder_l2_prepare(config)                            # the stage's first step: the task stops at once
+    with pytest.raises(RuntimeError, match="keeps the target rate it began with"):
+        ladder_l2.STEPS["ladder_l2_round_1"](config)
+    assert not list(ladder_l2._store(config).root.glob("proposals_*"))
+    config["ladder_loop"]["l2_arms"]["t010"]["target_rate"] = 0.10
+    assert ladder_l2.ladder_l2_prepare(config)["target_rate"] == 0.10
+    # Nor does a run change its arm: one prepared with no arm is not continued as an arm (a run-directory override), nor the reverse.
+    monkeypatch.delenv(ARM)
+    ladder_l2.ladder_l2_prepare(config)
+    monkeypatch.setenv(ARM, "t010")
+    monkeypatch.setenv(ladder_l2.L2_RUN_VARIABLE, "ladder_l2_seed0")
+    with pytest.raises(RuntimeError, match="prepared with no arm and this task runs arm t010"):
+        ladder_l2.ladder_l2_prepare(config)
+    monkeypatch.delenv(ARM)
+    monkeypatch.setenv(ladder_l2.L2_RUN_VARIABLE, "ladder_l2_t010_seed0")
+    with pytest.raises(RuntimeError, match="prepared as arm t010 and this task runs no arm"):
+        ladder_l2.ladder_l2_prepare(config)
+
+
+def test_the_arms_stage_is_the_l2_stage_with_the_arms_variable():
+    steps = [entry.step_fields(stage_entry) for stage_entry in entry.STAGES["ladder_l2"]]
+    of_the_arm = [entry.step_fields(stage_entry) for stage_entry in entry.STAGES["ladder_l2_t010"]]
+    assert [(environment, step) for environment, step, _ in of_the_arm] == [(environment, step) for environment, step, _ in steps]
+    assert "ladder_l2_control_trained" in [step for _, step, _ in of_the_arm]
+    assert all(options == {"environment": {ARM: "t010"}} for _, _, options in of_the_arm) and "t010" in CONFIG["ladder_loop"]["l2_arms"]
+    variables = entry.child_environment("gpu", "key", of_the_arm[2][2])
+    assert variables[ARM] == "t010" and not [name for name in (ladder_l2.L2_DATA_VARIABLE, ladder_l2.L2_RUN_VARIABLE, ladder_l2.L2_PROBLEMS_VARIABLE) if name in variables]
+    assert ARM not in entry.child_environment("gpu", "key", steps[2][2])
+    assert ARM not in entry.child_environment("gpu", "key", entry.step_fields(entry.STAGES["ladder_l2_smoke"][2])[2])
 
 
 def test_the_stage_is_registered_with_a_guard_before_every_gpu_step_and_its_smoke_run_reads_the_l1_smoke_run():

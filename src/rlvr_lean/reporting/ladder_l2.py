@@ -141,8 +141,18 @@ def build_l2_report(prepare: Mapping, groups: Sequence[Mapping], base_rungs: Seq
         per_thousand = [None if rate is None else round(1000 * rate, 2) for rate in (even["successes_per_attempt_of_the_last_model"], even["successes_per_attempt_of_the_base"])]
         at_equal = (f"; at equal attempts ({even['episodes_after']} each): {model_name(last)} {even['resolved_after']} against the base {even['resolved_before']}, "
                     f"{_split(even)}, {per_thousand[0]} against {per_thousand[1]} successes per 1,000 attempts")
+    # An arm of the stage (L2t): the run says which it is at the top. A run with no arm is reported as it always was.
+    arm = None
+    if prepare.get("arm"):
+        arm = {"name": prepare["arm"], "target_rate": prepare.get("target_rate", target),
+               "what": "the L2 stage with ONE setting of the challenger changed: every reward figure here (the band, the shares in, below and above it, the "
+                       "mean reward, the trajectory's target) is at this target rate. The held-out rungs are L1's stored groups and do not move with it; "
+                       "for a comparison with another arm read the classes that do not move (share_at_k_0, share_at_k_1_to_3, share_at_k_4_or_more)",
+               "this_reports_primary_and_branch": f"L2's own, {model_name(last)} minus the base in THIS run; the arm's read against the run at the config's "
+                                                  "target rate is made from the two runs' files, outside the stage"}
     headline = (
-        f"L2 seed {prepare['seed']}: {branch['name']}. Primary (below-band rung, {model_name(last)} minus the base, {rungs['below']} problems): {_interval(primary)}; "
+        f"L2 {'arm ' + arm['name'] + ' (target rate ' + str(arm['target_rate']) + ') ' if arm else ''}seed {prepare['seed']}: {branch['name']}. "
+        f"Primary (below-band rung, {model_name(last)} minus the base, {rungs['below']} problems): {_interval(primary)}; "
         f"by round: {below_by_round or 'none measured'}; climb ({model_name(last)} minus {model_name(first)}): {climbed}; "
         f"reach on G ({len(goal)}): {model_name(last)} against the base afresh "
         + (f"{against_base['resolved_after']} to {against_base['resolved_before']}, {_split(against_base)}" if against_base else "not measured")
@@ -155,6 +165,7 @@ def build_l2_report(prepare: Mapping, groups: Sequence[Mapping], base_rungs: Seq
         + (f"; NOT TO BE READ: too many attempts without an answer in {', '.join(not_to_be_read)}" if not_to_be_read else ""))
     return {
         "spec": "docs/spec/ladder-loop.spec.md, L2: three rounds", "headline": headline, "ok": not not_to_be_read, "seed": prepare["seed"],
+        **({"arm": arm} if arm else {}),
         "naming": NAMING, "fixture": bool(prepare.get("fixture")),
         "stand_in_engine": bool(prepare.get("stand_in_engine") or any(entry["summary"].get("stand_in_engine") for entry in rounds.values())),
         "target_rate": target, "band_reward_floor": floor, "band": {"low": round(low, 4), "high": round(high, 4)},

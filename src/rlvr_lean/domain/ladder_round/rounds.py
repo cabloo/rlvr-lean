@@ -214,6 +214,9 @@ def _picks(proposals: Sequence[Mapping], results: Mapping[str, Mapping], target_
             "share_below_the_band": share(sum(0 < rate < low for rate in rates)),
             "share_in_the_band": share(sum(low <= rate <= high for rate in rates)),
             "share_above_the_band": share(sum(rate > high for rate in rates)),
+            # Classes that do NOT move with the target rate (the band does): what two arms of the loop are compared on.
+            "share_at_k_1_to_3": share(sum(1 <= row["resolved"] <= 3 for row in rows)),
+            "share_at_k_4_or_more": share(sum(row["resolved"] >= 4 for row in rows)),
             "mean_reward": round(sum(reward(row["resolved"], row["episodes"], target_rate) for row in rows) / len(rows), 5),
             "mean_predicted_rate": round(sum(row["predicted_rate"] for row in proposals) / len(proposals), 5),
             "mean_expected_reward": round(sum(row["score"] for row in proposals) / len(proposals), 5),
@@ -227,7 +230,8 @@ def picks_row(proposals: Sequence[Mapping], results: Sequence[Mapping], examples
 
     Each quantity is given for the SCORED picks (the places the challenger chose by expected reward: the
     trajectory is read on these), for the random places, and for all of them: the share that are known false,
-    the mean pass rate, the shares at k = 0, below, in and above the band, the mean reward, and the predictor's
+    the mean pass rate, the shares at k = 0, below, in and above the band, the shares at k = 1 to 3 and at k of
+    4 or more (fixed classes: the band moves with the target rate), the mean reward, and the predictor's
     calibration. The training set: the share of its examples that come from problems above the band (k >= 4 of
     8 at t = 1/4) and from refutations (a proof of a negation)."""
     by_id = {row["problem_id"]: row for row in results}

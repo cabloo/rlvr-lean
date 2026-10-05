@@ -32,10 +32,17 @@ The run directory is its own (`ladder_l2_seed<seed>`): nothing here can mark a s
 resumes at the first step, the first batch and, inside a batch's episodes, the first block that is not done. A
 verified proof on the side a certificate contradicts stops the step with the soundness alarm's exit code, as in L1.
 The gain by k is NOT measured in L2 (L1 measured it at three seeds and t stays 1/4).
+
+ARMS (spec, "L2t: the lower target"). `RLVR_LEAN_LADDER_L2_ARM` names an arm of `ladder_loop.l2_arms`: the same steps
+with ONE setting of the challenger changed (`t010`: the target rate, 0.10 for 0.25), in a run directory of its own
+(`ladder_l2_<arm>_seed<seed>`). Every step reads the arm's config (`arm_config`); the candidates, batches, seeds and
+sampling seeds are the stage's, and the held-out rungs are L1's stored groups, which no arm moves. With no arm the
+stage is what it was, file for file.
 """
 
 from __future__ import annotations
 
+import functools
 import gc
 import hashlib
 import json
@@ -72,6 +79,8 @@ L2_RUN_VARIABLE = "RLVR_LEAN_LADDER_L2_RUN"              # another run directory
 L2_SOURCE_VARIABLE = "RLVR_LEAN_LADDER_L2_SOURCE"        # another L1 run directory to read than `ladder_l1_seed<seed>`
 L2_PROBLEMS_VARIABLE = "RLVR_LEAN_LADDER_L2_PROBLEMS"    # another `round.problems` (a smoke run: the fixture has twelve candidates)
 L2_BATCHES_VARIABLE = "RLVR_LEAN_LADDER_L2_BATCHES"      # another `round.batches` (the same)
+L2_ARM_VARIABLE = "RLVR_LEAN_LADDER_L2_ARM"              # an ARM of the stage (L2t): `ladder_loop.l2_arms.<arm>`, in a run directory of its own
+ARM_SETTINGS = ("target_rate",)                          # what an arm may change, each a setting of `ladder_loop.challenger`
 PACKAGE_L2_DATA = Path(__file__).resolve().parents[1] / "data" / "ladder_l2"
 ROUNDS = (1, 2, 3)                                       # the stage's steps; `round.rounds` must give these
 PREPARE, EMBED, CONTROL_STEP, REPORT = "ladder_l2_prepare", "ladder_l2_embed", "ladder_l2_control", "ladder_l2_report"
@@ -96,9 +105,49 @@ def _runs(config: dict) -> Path:
     return pipeline.STORE / lean_pin_from_config(ladder_loop.ladder_config(config)).runs_directory
 
 
+def arm_name() -> str | None:
+    return os.environ.get(L2_ARM_VARIABLE) or None
+
+
+def arm_settings(config: dict) -> dict:
+    """What this task's arm changes: `ladder_loop.l2_arms.<arm>`, and nothing with no arm. An arm the config does
+    not name, or one that would change anything but `ARM_SETTINGS`, is refused."""
+    name = arm_name()
+    if name is None:
+        return {}
+    arms = config["ladder_loop"].get("l2_arms") or {}
+    if name not in arms:
+        raise ValueError(f"{L2_ARM_VARIABLE} names the arm {name!r} and ladder_loop.l2_arms has {sorted(arms)}: refused")
+    settings = dict(arms[name] or {})
+    if not settings or set(settings) - set(ARM_SETTINGS):
+        raise ValueError(f"ladder_loop.l2_arms.{name} is {settings}: an arm changes {list(ARM_SETTINGS)} and nothing else")
+    return settings
+
+
+def arm_config(config: dict) -> dict:
+    """The config as this task's steps read it. With no arm it is `config` itself. With one (spec, "L2t: the lower
+    target") ONE setting of the challenger is changed, for everything in the run that reads it: the expected
+    reward the proposals are chosen by, the reward recorded for a round, the report's reward figures. Nothing
+    else moves: the candidates, the batches, the seeds, and the held-out rungs, which are L1's stored groups."""
+    settings = arm_settings(config)
+    if not settings:
+        return config
+    ladder = config["ladder_loop"]
+    return {**config, "ladder_loop": {**ladder, "challenger": {**ladder["challenger"], **settings}}}
+
+
+def _in_arm(step):
+    """A step as the stage runs it: it reads the config of this task's arm."""
+    @functools.wraps(step)
+    def run(config: dict, *arguments):
+        return step(arm_config(config), *arguments)
+    return run
+
+
 def _store(config: dict) -> ArtifactStore:
     mirror = os.environ.get("RLVR_LEAN_STEP_DIR")
-    run = os.environ.get(L2_RUN_VARIABLE) or f"ladder_l2_seed{training_seed(config)}"
+    arm = arm_name() if arm_settings(config) else None       # an unknown arm is refused before any directory is made
+    run = os.environ.get(L2_RUN_VARIABLE) or f"ladder_l2_{arm + '_' if arm else ''}seed{training_seed(config)}"
     return ArtifactStore(_runs(config) / run, Path(mirror) if mirror else None)
 
 
@@ -168,20 +217,36 @@ def _need(store: ArtifactStore, marker: str, what: str) -> None:
         raise RuntimeError(f"{what} needs the step {marker} of this run, which is not done: the stage `ladder_l2` runs the steps in order")
 
 
+def _same_arm(config: dict, prepared: dict, store: ArtifactStore) -> None:
+    """A run keeps the arm, and the target rate, it was prepared with: its proposals and the rewards it recorded
+    were made under them. (A run with no arm recorded neither: it is one prepared with no arm.)"""
+    recorded, now = prepared.get("arm"), arm_name()
+    if recorded != now:
+        raise RuntimeError(f"{store.root} was prepared {'as arm ' + recorded if recorded else 'with no arm'} and this task runs "
+                           f"{'arm ' + now if now else 'no arm'}: a run keeps the arm it began with")
+    target = config["ladder_loop"]["challenger"]["target_rate"]
+    if "target_rate" in prepared and prepared["target_rate"] != target:
+        raise RuntimeError(f"{store.root} was prepared at the target rate {prepared['target_rate']} and the config now gives {target}: "
+                           "a run keeps the target rate it began with")
+
+
 def _sizes(config: dict, store: ArtifactStore) -> dict:
     """The loop's sizes, refused when they are not the ones this run was prepared with: its batches are stored by
-    their number, and a run resumed with other sizes would mix two loops."""
+    their number, and a run resumed with other sizes would mix two loops. The arm is held to the same rule."""
     sizes, prepared = loop_sizes(config), store.done_summary(PREPARE)
     recorded = {"problems": prepared["problems_a_round"], "batches": prepared["batches"], "batch_sizes": prepared["batch_sizes"], "solvers": prepared["solvers"]}
     if sizes != recorded:
         raise RuntimeError(f"{store.root} was prepared with {recorded} and the config now gives {sizes}: a run keeps the sizes it began with")
+    _same_arm(config, prepared, store)
     return sizes
 
 
 # ------------------------------------------------------------------------------------------------- prepare
+@_in_arm
 def ladder_l2_prepare(config: dict) -> dict:
     store = _store(config)
     if store.is_done(PREPARE):
+        _same_arm(config, store.done_summary(PREPARE), store)
         return store.done_summary(PREPARE)
     sizes, seed, source = loop_sizes(config), training_seed(config), source_directory(config)
     attempt_files = sorted(source.glob(f"episodes_rungs_{BASE}_attempts_*.jsonl")) if source.is_dir() else []
@@ -231,6 +296,9 @@ def ladder_l2_prepare(config: dict) -> dict:
                "base_distinct_attempts_on_the_rungs": distinct_attempts([row for path in attempt_files for row in _rows(path)]),
                "l1_contradicted_side_setting": stored["rungs"].get("contradicted_side_setting"),
                "contradicted_side_setting": config["ladder_loop"]["episode"].get("contradicted_side", "all")}
+    if arm_name():      # an arm's run says which it is and what it changed; a run with no arm is recorded as it always was
+        summary.update({"arm": arm_name(), "target_rate": config["ladder_loop"]["challenger"]["target_rate"],
+                        "the_heldout_rungs_are": "L1's stored groups, read from its run directory: they do not move with the arm"})
     store.mark_done(PREPARE, summary)
     return summary
 
@@ -255,6 +323,7 @@ def _save_array(path: Path, array: np.ndarray) -> None:
     temporary.replace(path)
 
 
+@_in_arm
 def ladder_l2_embed(config: dict) -> dict:
     store = _store(config)
     data = ladder_round._data(config, data_directory())
@@ -403,6 +472,7 @@ def _propose(config: dict, store: ArtifactStore, data: dict, statements: dict, s
     return picks
 
 
+@_in_arm
 def ladder_l2_round(config: dict, number: int) -> dict:
     """Round `number`: its batches, one after the other in this ONE process (the engine is loaded once), each
     attempted by M(number - 1); then the round's training set. A batch that is done is not touched again."""
@@ -450,6 +520,7 @@ def ladder_l2_round(config: dict, number: int) -> dict:
 
 
 # ------------------------------------------------------------------------------------------------ training
+@_in_arm
 def ladder_l2_train(config: dict, number: int) -> dict:
     """M(number): trained FROM THE BASE, one pass, on every round's training set so far (`ladder_round._train`:
     the same model, adapter, optimizer and order rule as L1's one round)."""
@@ -488,6 +559,7 @@ def ladder_l2_train(config: dict, number: int) -> dict:
 
 
 # ------------------------------------------------------------------------------------------------- measure
+@_in_arm
 def ladder_l2_measure(config: dict, number: int) -> dict:
     """M(number) on the three held-out rungs and on G, with L1's sampling seeds: the same problems, the same random
     numbers and the same sides as L1's base measurement and as every other round, so each pairs by problem with
@@ -513,6 +585,7 @@ def ladder_l2_measure(config: dict, number: int) -> dict:
 
 
 # ------------------------------------------------------------------------------------------------- control
+@_in_arm
 def ladder_l2_control(config: dict) -> dict:
     """The equal-compute control, after the last round: the BASE gets every attempt episode the rounds ran, the
     same number on each problem of G, with a sampling seed of its own. They are read on top of the episodes of
@@ -550,6 +623,7 @@ def _ensure_problems(store: ArtifactStore, wanted: str, held: str) -> None:
     store.write_rows("problems.jsonl", rows + own)
 
 
+@_in_arm
 def ladder_l2_control_trained(config: dict) -> dict:
     """The same extra attempts for the trained model (spec, "Added 2026-10-05, after seeds 0 and 1"): the LAST
     model gets on every problem of G exactly the control's number of episodes, with the control's sampling seed
@@ -584,6 +658,7 @@ def ladder_l2_control_trained(config: dict) -> dict:
 
 
 # -------------------------------------------------------------------------------------------------- report
+@_in_arm
 def ladder_l2_report(config: dict) -> dict:
     from rlvr_lean.reporting.ladder_l2 import build_l2_report
 

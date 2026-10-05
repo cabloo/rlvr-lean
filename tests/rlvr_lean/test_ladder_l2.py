@@ -315,6 +315,14 @@ def test_a_row_of_the_challengers_table_is_counted_from_its_picks_their_results_
     assert [scored[key] for key in ("share_at_k_0", "share_below_the_band", "share_in_the_band", "share_above_the_band")] == [0.25, 0.25, 0.25, 0.25]
     assert scored["mean_reward"] == pytest.approx((0 + reward(2, 8, T) + reward(5, 8, T) + reward(1, 8, T)) / 4, abs=1e-5)
     assert scored["mean_expected_reward"] == pytest.approx(0.45) and scored["calibration"]["problems"] == 4
+    # Classes that do not move with the target rate: k = 0, k = 1 to 3 (here 2 and 1), k of 4 or more (here 5).
+    assert (scored["share_at_k_0"], scored["share_at_k_1_to_3"], scored["share_at_k_4_or_more"]) == (0.25, 0.5, 0.25)
+    assert (row["random_places"]["share_at_k_1_to_3"], row["random_places"]["share_at_k_4_or_more"], row["all"]["share_at_k_4_or_more"]) == (0.0, 0.5, round(2 / 6, 5))
+    # At t = 1/10 the band is k = 1 of 8 alone: the shares against the band move, the reward moves, the fixed classes do not.
+    lower = picks_row(proposals, results, examples, 0.10, FLOOR)["scored"]
+    assert [lower[key] for key in ("share_at_k_0", "share_below_the_band", "share_in_the_band", "share_above_the_band")] == [0.25, 0.0, 0.25, 0.5]
+    assert (lower["share_at_k_0"], lower["share_at_k_1_to_3"], lower["share_at_k_4_or_more"]) == (0.25, 0.5, 0.25) and lower["mean_reward"] != scored["mean_reward"]
+    assert lower["mean_reward"] == pytest.approx((0 + reward(2, 8, 0.10) + reward(5, 8, 0.10) + reward(1, 8, 0.10)) / 4, abs=1e-5)
     assert row["random_places"]["picks"] == 2 and row["random_places"]["share_known_false"] == 0.0 and row["all"]["picks"] == 6
     assert row["all"]["share_known_false"] == pytest.approx(2 / 6, abs=1e-5)
     # The training set: four proofs from these picks; two from problems with k >= 4 (c and f), two refutations (b and c).
@@ -494,6 +502,33 @@ def test_the_report_gains_the_equal_attempts_part_when_its_step_ran_and_changes_
     unwell = build_l2_report(PREPARE, groups, _rungs(groups, {"below": 1, "in": 2, "above": 6}), _reach(groups, {"goal0"}), rounds(), control, list(ROUNDS), SETTINGS,
                              EVALUATION, {"embed": None, "stopped_after_round": None}, trained)
     assert unwell["ok"] is False and unwell["not_to_be_read"] == ["control_m3"]
+
+
+def test_the_report_of_an_arm_says_which_it_is_at_the_top_and_reads_every_reward_figure_at_its_target_rate():
+    """Spec, "L2t: the lower target": the stage again with the challenger's target rate at 0.10. The report of a run
+    with no arm is what it always was, with the fixed classes added to the challenger's table."""
+    rounds = lambda: {number: _round(number, {"below": 2, "in": 3, "above": 7}, {"goal0", "goal2"}, false_picks=1) for number in ROUNDS}      # noqa: E731
+    groups = _groups()
+    arguments = lambda prepare, settings: (prepare, groups, _rungs(groups, {"below": 1, "in": 2, "above": 6}), _reach(groups, {"goal0", "goal1"}), rounds(), None,      # noqa: E731
+                                           list(ROUNDS), settings, EVALUATION, {"embed": None, "stopped_after_round": None})
+    plain = build_l2_report(*arguments(PREPARE, SETTINGS))
+    lower = {**SETTINGS, "challenger": {**SETTINGS["challenger"], "target_rate": 0.10}}
+    report = build_l2_report(*arguments({**PREPARE, "arm": "t010", "target_rate": 0.10}, lower))
+    assert "arm" not in plain and plain["target_rate"] == 0.25 and plain["headline"].startswith("L2 seed 0: ")
+    assert list(report)[:5] == ["spec", "headline", "ok", "seed", "arm"] and [key for key in report if key != "arm"] == list(plain)
+    assert report["arm"]["name"] == "t010" and report["arm"]["target_rate"] == 0.10 == report["target_rate"] and "do not move" in report["arm"]["what"]
+    assert report["headline"].startswith("L2 arm t010 (target rate 0.1) seed 0: ") and report["headline"].split("seed 0: ", 1)[1].split("; known-false")[0] == \
+           plain["headline"].split("seed 0: ", 1)[1].split("; known-false")[0]
+    # The band is the arm's (k = 1 of 8), and with it every share against the band and the mean reward...
+    assert (report["band"]["low"], report["band"]["high"]) == (0.0485, 0.1749) and (plain["band"]["low"], plain["band"]["high"]) == pytest.approx((0.127, 0.409), abs=1e-3)
+    ours, theirs = report["challenger"]["by_round"]["1"]["all"], plain["challenger"]["by_round"]["1"]["all"]
+    assert ours["share_in_the_band"] == 0.0 and theirs["share_in_the_band"] == 0.75 and ours["share_above_the_band"] == 0.75 and ours["mean_reward"] < theirs["mean_reward"]
+    assert report["challenger"]["trajectory"]["target_rate"] == 0.10
+    # ... while the classes that do not move with t, the picks themselves and everything measured on the held-out sets are the same.
+    fixed = ("picks", "known_false", "share_known_false", "mean_pass_rate", "share_at_k_0", "share_at_k_1_to_3", "share_at_k_4_or_more", "mean_predicted_rate")
+    assert {key: ours[key] for key in fixed} == {key: theirs[key] for key in fixed} and (ours["share_at_k_0"], ours["share_at_k_1_to_3"], ours["share_at_k_4_or_more"]) == (0.25, 0.75, 0.0)
+    for key in ("branch", "primary", "climb", "reach_on_g", "heldout", "rounds", "void_conditions", "stop_rule", "distinct_attempts_on_the_rungs"):
+        assert report[key] == plain[key], key
 
 
 def test_the_report_of_a_loop_that_stopped_or_lost_its_lean_answers_says_so():

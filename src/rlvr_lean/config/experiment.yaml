@@ -294,6 +294,9 @@ ladder_loop:                       # docs/spec/ladder-loop.spec.md, L0: the pool
   episode:                         # until L3 an episode is ONE attempt at the statement and one at its exact negation
     max_new_tokens: 1024           # an attempt that reaches it is a failure and is not sent to Lean
     lean_seconds: 30               # Lean checking per attempt; a proof that runs into it has failed
+    loops: 5                       # from L3 an episode is at most this many attempts. Read by L3a and L3a2 alone
+                                   # (gpu/ladder_l3a.py, gpu/ladder_l3a2.py): one blind first attempt, then up to loops - 1
+                                   # more in each arm. L0 to L2 make one attempt
     block_problems: 128            # an episode step stores its work every this many problems, and resumes there
     # Sampling and checking roll across blocks (gpu/ladder_loop.py, run_episodes).
     chunk_attempts: 512            # attempts per call to the engine, whatever the samples per prompt (16 prompts at 32
@@ -349,6 +352,41 @@ ladder_loop:                       # docs/spec/ladder-loop.spec.md, L0: the pool
     reading_every: 6               # then every this many steps, and at every checkpoint
     training_sample: 150           # training proofs in the fixed sample
     heldout_per_rung: 50           # held-out proofs per rung: verified proofs the base wrote in L1's rung measurement
+  # ---- L2t: arms of the L2 stage (gpu/ladder_l2.py; spec "L2t: the lower target"). An arm is the L2 stage again
+  # with ONE setting of the challenger changed, in a run directory of its own (ladder_l2_<arm>_seed<N>); the same
+  # candidates, batches, seeds and sampling seeds. The stage names its arm (runner/entry.py: RLVR_LEAN_LADDER_L2_ARM);
+  # an arm that is not here is refused. The held-out rungs do NOT move with an arm: they are L1's stored groups,
+  # cut at challenger.target_rate above.
+  l2_arms:
+    t010:
+      target_rate: 0.10            # the reward is 1 at this pass rate; at 8 episodes its band (reward at least 0.8) is k = 1
+  # ---- L3a: the repair check, no training (gpu/ladder_l3a.py; spec "L3a: the repair check, no training"). The base
+  # model, on G and the three rungs as L1's run of the seed stored them. Every problem gets blind first attempts; each
+  # one that failed goes on in THREE arms from that same attempt, to at most episode.loops - 1 more attempts each:
+  # blind (whole proofs), resume with the state (the arm's latest failed proof cut at its first error, Lean's proof
+  # state there as a comment in the prover's own format), resume without the state (the same cut, no comment). Where
+  # no goal is left at a cut and the kept lines verify on their own, the loop is "trimmed": it resolves the episode in
+  # the resuming arm with nothing generated, and is reported apart. The
+  # caps are an episode's (episode.max_new_tokens, episode.lean_seconds), the side is the one the certificate allows,
+  # and the ruled-out side is audited as above (first attempts only). Each attempt is one sample with a seed of its
+  # own: a hash of round.sampling_seed + 100 x the task's seed + 30 (a place no other measurement has), the problem,
+  # the episode and the loop, and not of the arm, so the three arms sample with the same random numbers.
+  repair:
+    episodes_goal: 4               # first attempts on every problem of G (392: 1,568)
+    episodes_rungs: 2              # first attempts on every problem of the three rungs (712: 1,424)
+  # ---- L3a2: one repair step after each fresh failure, then start over (gpu/ladder_l3a2.py, on L3a's loops; spec
+  # "L3a2: one repair step after each fresh failure, then start over (no training)"). The base model, the same problems.
+  # Every failed first attempt goes on in TWO arms, to at most episode.loops - 1 more attempts each: blind (whole
+  # proofs), and alternate: attempts 2 and 4 are ONE repair step each, from the fresh attempt just before (L3a's resume
+  # with the state, its trimmed case too); attempts 3 and 5 are whole proofs from the plain prompt. In both arms a
+  # proof whose text equals one Lean already rejected in the same episode is not sent to Lean (a failed attempt, its
+  # tokens counted: a "known copy"). The caps, the side and the audit are L3a's. The sampling seed is one place after
+  # L3a's (round.sampling_seed + 100 x the task's seed + 31), so no first attempt and no later draw is one of L3a's.
+  # The size is from L3a's spread: 12 episodes on each hard problem resolve about +-0.008 on the primary.
+  repair_alternate:
+    episodes_goal: 12              # first attempts on every problem of G (392: 4,704)
+    episodes_below: 12             # ... and of the below-band rung (166: 1,992): with G, the hard problems the primary is read on
+    episodes_rungs: 2              # ... and of a rung with no number of its own here: in the band and above it (546: 1,092)
 
 evaluation:
   conjecture_holdout_samples: 12

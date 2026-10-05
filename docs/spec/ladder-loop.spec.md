@@ -478,7 +478,7 @@ zero on any rung. Reach on G at 32 attempts: 54 gained, 43 lost, not shown. The 
 base wins, 92 against 30. At 93 attempts each: 64 gained, 52 lost, not shown, with M(3) succeeding on 1.5
 times as many attempts (+1.8 per 1,000 [+0.6, +3.2]). The challenger: the known-false share falls (45%, 40%,
 31%), as stated; the picks' mean pass rate moves away from the target (0.37, 0.47, 0.47), against what was
-stated, because the pool's 718 candidates predicted in the band are used up in round 1. **No further rounds
+stated, because the pool's 718 candidates predicted between 0.25 and 0.41 (the part of the band its expected reward favours; 2,555 are predicted in the band as a whole) are used up in round 1. **No further rounds
 run without a review** ("A round", stop rule): what to change is the owner's decision.
 
 ### L2t: the lower target (the owner, 2026-10-05: "lower reward target and add repair in parallel")
@@ -514,6 +514,25 @@ Three rounds, the control and the trained model's extra attempts on G, as in L2.
   methodology are run before anything is called a kill. A win cannot be shown at one seed.
 - **Cost.** About 95 minutes on the GPU box.
 
+**The scout's read (seed 0, 2026-10-05; `ladder_l2_t010_seed0` against `ladder_l2_seed0`): ESCALATE.** Recorded
+before seeds 1 and 2 run; the read above is not changed.
+
+- **The setting acted:** round 1's scored picks have a mean pass rate of 0.274 against the control's 0.368
+  (0.093 lower; the bar was 0.05). By round: 0.274, 0.334, 0.273 against 0.368, 0.460, 0.468. The picks stay
+  near a quarter where the control's drift to a half.
+- **Primary: +0.0075 [−0.0068, +0.0226]** (M(3) at t = 1/10 minus M(3) at t = 1/4 on the below-band rung).
+  At or above zero: escalate. One seed shows no win and no loss.
+- **Secondary, for the record (one seed):** in-band +0.008 [−0.023, +0.039], above-band −0.003
+  [−0.018, +0.013]. The goal set at 93 attempts each: 59 problems against 61 (gained 14, lost 16), and 263
+  successes against 202 (per attempt +0.0017 [+0.0003, +0.0033]).
+- **The challenger:** known-false share 25%, 8%, 10% (control 45%, 38%, 36%); never-solved picks (k = 0) 37%,
+  35%, 47% (control 23%, 19%, 22%); proofs per round 590, 595, 500 (control 710, 744, 728). Candidates left
+  with a predicted rate of 0.25 to 0.41: 718, 176, 31; of 0.13 to 0.25: 1,837, 1,503, 2,081.
+- **What follows:** seeds 1 and 2 of the arm (`ladder_l2_t010_seed1.json`, `ladder_l2_t010_seed2.json`: job configs,
+  not shipped in this copy),
+  each paired with its own control `ladder_l2_seed<N>`. The read at three seeds: the same primary over the
+  three seeds' problems together and by seed.
+
 ### L3a: the repair check, no training (the owner, 2026-10-05: "add repair in parallel")
 
 Milestone L3's first step: "a check without training against blind resampling at equal tokens". Every
@@ -532,10 +551,17 @@ format and needs no instruction-following it was never taught.
 1. **The cut.** The first error by position. If it lies in the proof body: keep every proof line before the
    line it is on. If it is the theorem's own "unsolved goals" (the proof ran out with goals open): keep the
    whole proof. A cut that leaves nothing kept is allowed (the state is then the theorem's own goal).
-2. **The state.** The kept prefix, then `sorry` at the cut line's indentation, checked by Lean. The state is
-   the goal Lean reports at that `sorry`, provided no error lies before it. If none can be had (a cut inside
-   a structure the prefix does not close, a timeout), that loop is a blind attempt and is counted as
-   "no state": never dropped.
+2. **The state.** The kept prefix, then `all_goals sorry` at the cut line's indentation, checked by Lean. The
+   state is every goal Lean reports there, provided no error lies before it. (Made exact 2026-10-05 from the
+   build's dry run on 600 stored failed attempts: a plain `sorry` reports only the goal it closes, which left
+   other open goals unshown in 38 of 592 states, and the prover's own format shows them all; `all_goals
+   sorry` returned them in 31 of the 38.) If no state can be had (a cut inside a structure the prefix does
+   not close, a timeout), that loop is a blind attempt and is counted as "no state": never dropped.
+2a. **A proof that was already complete.** If Lean reports that no goals are left at the cut, the kept lines
+   are a whole proof with something extra after it (3% of the rungs' failed attempts in the dry run). They are
+   then checked on their own, and if they verify, that loop resolves the episode with nothing generated. Both
+   resuming arms get this, since it comes from the cut and not from the state. It is counted as "trimmed" and
+   reported apart, and the primary is given with and without it.
 3. **The prompt.** The blind prompt, the kept proof lines, the state in the model's own comment format, and
    the model continues. The proof checked is the prefix plus the continuation.
 4. **An episode** is one blind attempt and then up to `episode.loops` − 1 = 4 repair loops, each from the
@@ -578,6 +604,98 @@ episodes, 95% bootstrap over problems.
   often as the blind one; less means the prompt or the cut is broken. A state for fewer than half of the
   failed first attempts means the cut is broken. Either is fixed and run again.
 - A verified proof on the side a certificate rules out stops the run (the soundness alarm), as everywhere.
+
+**Outcome (seed 0, 2026-10-05; `ladder-l3a-RESULT.md`): NOT SHOWN AT THIS SIZE.** Both "can this run see a
+win" checks pass (a state for 97.5% of the failed first attempts; above the band the resumed next attempt
+verifies 55.5% against blind's 65.9%). Primary +0.0063 [−0.0099, +0.0220]; without the trimmed loops 0.0000.
+The diagnostics, which the branch sends to the owner: the model uses the state (with it minus without it,
++0.026 [+0.013, +0.039] on the hard problems) and it repeats itself (the first step repeats the failed one in
+35% of repair loops, and by the fifth attempt 46% of resumed proofs are exact copies of an earlier one in the
+episode). The single step is where the gain is: the first resumed attempt verifies on 36 of 1,880 hard
+failures against a blind attempt's 20 (within 2 attempts, +0.0125 [+0.0027, +0.0228]). On the in-band and
+above-band rungs starting over beats resuming (−0.136, −0.055).
+
+### L3a2: one repair step after each fresh failure, then start over (no training)
+
+**Why.** L3a's repair loop resumed four times in a row from where it had just failed. Its first step paid (36
+verified of 1,880 hard failures against a blind attempt's 20) and its later ones did not (it rewrote what Lean
+had rejected). A reading composed from L3a's stored rows after seeing them, one repair step and then blind
+attempts, gave +0.0134 [+0.0049, +0.0224] on the hard problems within 5 attempts. That reading chose its own
+shape from the data it is read on, so it is a candidate. This step tests the policy it points to, on first
+attempts and sampling seeds L3a never used.
+
+**The episode under test ("alternate").** Up to 5 attempts, stopping at the first verified one:
+
+1. a whole proof from the plain prompt (blind);
+2. one repair step from attempt 1 (L3a's items 1 to 3 and 2a: the cut, the state by `all_goals sorry`, the
+   prover's own comment format; the trimmed case resolves the episode and is reported apart);
+3. a whole proof from the plain prompt;
+4. one repair step from attempt 3 (the latest fresh failure, never from a repair step's own output);
+5. a whole proof from the plain prompt.
+
+A repair step with no state to give is a blind attempt and is counted so (as in L3a). **In both arms, a proof
+whose text equals one already rejected in the same episode is not sent to Lean:** it is a failed attempt, its
+tokens are counted, and it is counted as a known copy.
+
+**Two arms, the same first attempts.** Blind: 4 more whole proofs from the plain prompt. Alternate: the episode
+above. The base model, nothing trained. The attempt is on the side the certificate allows; the 2% audit of the
+other side and the soundness alarm are as everywhere.
+
+**Problems and size.** The hard problems, where the primary is read: G (392) and the below-band rung (166),
+**12 episodes each** (6,696 episodes). The in-band and above-band rungs (546) at 2 episodes each, for the
+question whether the policy loses where a fresh attempt is strong. A sampling seed of its own (not L3a's
+1030). About 62,000 attempts, about 45 minutes on the GPU box. The size comes from L3a's spread: its
+primary had a half-width of 0.016 at 1,900 hard episodes; 12 episodes a problem brings that to about 0.008,
+against the +0.013 the composed reading suggests. One sampling seed: nothing is trained, so there is no
+training seed to vary, and the episodes are the sample.
+
+**The read, fixed before the run.** Paired by episode (the same first attempt), each problem's mean over its
+episodes, 95% bootstrap over problems.
+
+- **Primary: on the hard problems (558), episodes resolved within 5 attempts, alternate minus blind.**
+- **Secondary:** the same within 2, 3 and 4 attempts; G alone and the below-band rung alone; G by problem
+  (resolved in any of its 12 episodes), gained against lost; the in-band and the above-band rung within 5
+  attempts; the verified share by attempt position in each arm (positions 2 and 4 are the repair steps);
+  the trimmed resolutions, and the primary without them.
+- **Budget:** generated tokens, prompt tokens and Lean checks by arm, and the known copies by arm. If the
+  alternate arm generates more than 10% more tokens than the blind arm, the blind arm is read at the number
+  of attempts that matches.
+- **Branches.** Primary above zero with an interval clear of zero: this is the episode a round should use;
+  how it enters the round (and what training on repaired proofs adds, L3b) goes to the owner with the
+  numbers. Interval contains zero: not shown at a size that resolves about ±0.008; a repair step is then not
+  worth its extra Lean check as a search step for the untrained model, and what is left of repair is training
+  on it, the owner's call. Below zero with an interval clear of zero: L3a's single step did not repeat on
+  fresh attempts; reported as that.
+- **Can this run see a win (else INCONCLUSIVE, not a verdict).** A state for at least half of the failed
+  attempts a repair step starts from; and on the hard problems the repair step at position 2 verifies at
+  least half as often as the blind arm's attempt at position 2 (L3a: 1.9% against 1.1%). Less means this
+  build broke the prompt or the cut.
+
+**Made exact when the stage was built (2026-10-05, before any run).**
+
+- **The arms share their blind draws.** A sampling seed does not depend on the arm (as in L3a), and the same
+  prompt with the same seed is one generation. So attempts 3 and 5 are the same samples in both arms while
+  both are open, and the arms differ only by what attempts 2 and 4 were: a repair step or a blind draw. Each
+  arm's own distribution is unchanged; the pairing is tighter than the size above assumed.
+- **A known copy:** "rejected" is an attempt that was sent and that Lean failed (not one never sent, not one
+  Lean gave no answer for); "text" is the proof as it stands in the checked file; "the same episode" is the
+  shared first attempt and that arm's own later attempts. A repair step that would start from a known copy is
+  a blind attempt, counted with that reason.
+- **The checks:** the state check counts both repair positions; the position-2 check compares counts.
+- **Sampling seed** 1031 (L3a: 1030); no generation shares a seed with L3a's. Sizes: 7,788 first attempts
+  (4,704 on G, 1,992 below the band, 310 in it, 782 above), about 61,700 attempts and 58,000 Lean checks.
+- **Not shown by any dry run:** what the model writes at attempt 4 (nothing stored starts from a third
+  attempt). The smoke run is the first place it is seen.
+
+**Outcome (seed 0, 2026-10-05; `ladder-l3a2-RESULT.md`): NOT SHOWN AT THIS SIZE.** Both checks pass (a state
+for 97.4% of the failed attempts a repair step starts from; at position 2 on the hard problems the repair step
+verifies 177 of 6,562 against blind's 127). Primary +0.0048 [−0.0022, +0.0120]; without the trimmed steps
++0.0013 [−0.0054, +0.0081]. Within 2 attempts +0.0075 [+0.0015, +0.0137], and the blind arm then catches up;
+G by problem 49 against 47 (gained 12, lost 10). The second repair step is worth about one blind attempt (106
+of 6,286 against 113 of 6,325). The smoke run did not reach attempt 3, so attempt 4 was first seen in the run
+and was checked from its rows before the read (6,276 of 6,276 resumed steps start from attempt 3). By the
+branch: an untrained repair step is not worth its extra Lean check as a search step; training on repair (L3b)
+is the owner's call.
 
 ## Fixtures (these become the tests)
 
