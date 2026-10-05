@@ -1,0 +1,4 @@
+{"problem_id": "fixture_p1", "certificate_source": "internlm_proofs", "published_proof_chars": 11, "stp_round": null}
+{"problem_id": "fixture_p2", "certificate_source": "goedel", "published_proof_chars": 160, "stp_round": null}
+{"problem_id": "fixture_p3", "certificate_source": "internlm_rows", "published_proof_chars": 55, "stp_round": null}
+{"problem_id": "fixture_p4", "certificate_source": "stp", "published_proof_chars": 8, "stp_round": 2}

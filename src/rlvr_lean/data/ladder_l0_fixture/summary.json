@@ -1,0 +1,16 @@
+{
+ "fixture": true,
+ "note": "Ten small statements written for the pre-flight and the smoke run. NOT pool problems: they have no published certificate, and their sides are stated by hand. Nothing measured on them is a result.",
+ "lean_pin": "v4.27",
+ "pool": {},
+ "files": {
+  "heldout.jsonl": {
+   "rows": 6,
+   "sha256": "430fde8255e80de18de8bd42f1f1825fd1c81094ba9c69d2bb57ba633614dfcb"
+  },
+  "base_map.jsonl": {
+   "rows": 4,
+   "sha256": "6290958fc251ca8a691e23eb5c40ac45578a8b7bc39090fd444fc0e58e45dd9e"
+  }
+ }
+}

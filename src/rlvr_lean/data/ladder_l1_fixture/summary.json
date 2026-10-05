@@ -1,0 +1,23 @@
+{
+ "fixture": true,
+ "note": "Twelve small statements for the L1 pre-flight and the smoke run, and MADE-UP base results for the L0 fixture's ten statements. NOT pool problems: no published certificate, sides and facts stated by hand. Nothing measured on them is a result.",
+ "lean_pin": "v4.27",
+ "l0_files": {
+  "heldout.jsonl": "430fde8255e80de18de8bd42f1f1825fd1c81094ba9c69d2bb57ba633614dfcb",
+  "base_map.jsonl": "6290958fc251ca8a691e23eb5c40ac45578a8b7bc39090fd444fc0e58e45dd9e"
+ },
+ "files": {
+  "candidates.jsonl": {
+   "rows": 12,
+   "sha256": "21d85c1ff6c06aab836f483d5d89ba9a63c4b60ef7124679c0f3290e4951b5b9"
+  },
+  "base_map_facts.jsonl": {
+   "rows": 4,
+   "sha256": "8afe53132bd218da4148b42afb8da06451f0209b12a007f28207bf887cbb0c0f"
+  },
+  "base_results.jsonl": {
+   "rows": 10,
+   "sha256": "8a0a33d493ad6553e8f5f003d1511ff8713dae1d1289b19fc14e6f6568be48cf"
+  }
+ }
+}

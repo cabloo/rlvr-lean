@@ -1,0 +1,4 @@
+{"problem_id": "fixture_p1", "kind": "lean_workbook", "side": "true", "statement": "theorem fixture_p1 (a : ℝ) : a ^ 2 ≥ 0 := by\n", "rewritten": 0}
+{"problem_id": "fixture_p2", "kind": "lean_workbook", "side": "true", "statement": "theorem fixture_p2 (x : ℝ) (hx : 0 < x) : x + 1 / x ≥ 2 := by\n", "rewritten": 0}
+{"problem_id": "fixture_p3", "kind": "lean_workbook", "side": "false", "statement": "theorem fixture_p3 : ∀ x : ℝ, x ^ 2 = 4 → x = 2 := by\n", "rewritten": 0}
+{"problem_id": "fixture_p4", "kind": "stp_conjecture", "side": "true", "statement": "theorem fixture_p4 (n : ℕ) : n + 0 = n := by\n", "rewritten": 0}

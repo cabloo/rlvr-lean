@@ -1,0 +1,10 @@
+{"problem_id": "fixture_h1", "set": "heldout", "episodes": 32, "resolved": 20, "resolved_by_statement": 20, "resolved_by_negation": 0, "sides": 2}
+{"problem_id": "fixture_h2", "set": "heldout", "episodes": 32, "resolved": 8, "resolved_by_statement": 8, "resolved_by_negation": 0, "sides": 2}
+{"problem_id": "fixture_h3", "set": "heldout", "episodes": 32, "resolved": 0, "resolved_by_statement": 0, "resolved_by_negation": 0, "sides": 2}
+{"problem_id": "fixture_h4", "set": "heldout", "episodes": 32, "resolved": 3, "resolved_by_statement": 0, "resolved_by_negation": 3, "sides": 2}
+{"problem_id": "fixture_h5", "set": "heldout", "episodes": 32, "resolved": 10, "resolved_by_statement": 10, "resolved_by_negation": 0, "sides": 2}
+{"problem_id": "fixture_h6", "set": "heldout", "episodes": 32, "resolved": 2, "resolved_by_statement": 2, "resolved_by_negation": 0, "sides": 2}
+{"problem_id": "fixture_p1", "set": "base_map", "episodes": 8, "resolved": 8, "resolved_by_statement": 8, "resolved_by_negation": 0, "sides": 2}
+{"problem_id": "fixture_p2", "set": "base_map", "episodes": 8, "resolved": 2, "resolved_by_statement": 2, "resolved_by_negation": 0, "sides": 2}
+{"problem_id": "fixture_p3", "set": "base_map", "episodes": 8, "resolved": 3, "resolved_by_statement": 0, "resolved_by_negation": 3, "sides": 2}
+{"problem_id": "fixture_p4", "set": "base_map", "episodes": 8, "resolved": 6, "resolved_by_statement": 6, "resolved_by_negation": 0, "sides": 2}

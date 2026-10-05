@@ -1,0 +1,382 @@
+# rlvr_lean — the single experiment config.
+# Sections are added milestone by milestone; every value here is one the spec names.
+
+model:
+  hf_id: deepseek-ai/DeepSeek-Prover-V1.5-SFT
+  revision: e9a6e6fbb67620d4e9c4944bc51ff7c435af12da
+
+store:
+  # Persistent directory on the GPU box (survives tasks and container restarts, not a container re-create).
+  # The default of RLVR_LEAN_STORE, for a stage that runs as root in a container.
+  root: /root/rlvr_lean_store
+
+kimina:
+  host: lean-server.example        # the Lean server host: set your own
+  port: 18000
+  lan_dns_server: 192.0.2.1        # asked when the system resolver does not know the host (a documentation address: set your LAN's)
+  lean_timeout_seconds: 60
+  concurrent_requests: 16          # = the server's worker count
+
+lean:
+  # ONE setting chooses the Lean pin (the OEIS Open spec, O2a item 9a): v4.9, today's behaviour
+  # and the default until the port is accepted, or v4.27. It selects the endpoint, the Lean timeout, the
+  # requests in flight, the two verdict rules that differ and the run directory (domain/verification/pin.py).
+  # Nothing else in the pipeline asks which pin is in use.
+  pin: v4.9
+  # v4.9's endpoint is the `kimina` section above. v4.27's is the `oeis` pool (lean_pool/README.md):
+  # HTTPS, its own certificate authority, its own key.
+  pool:
+    name: lean-pool.example        # the NAME its certificate is checked against, and the SNI sent; the
+                                   # client connects to the address this name resolves to (kimina.lan_dns_server)
+    port: 18100
+    lean_timeout_seconds: 120      # longer than v4.9's 60 on this pool (O1 result)
+    concurrent_requests: 8         # = the pool's workers (one server of 8)
+    # How long the pool may hold a request before a worker takes it. A client that sends more requests than
+    # the pool has workers (the ladder loop does) must wait at least this long for an answer, plus Lean's own
+    # limit, or it gives up on a request that is still queued. As the pool is installed (its installer's
+    # defaults, Lean timeout 300 s; NOT read from the live proxy):
+    proxy_queue_seconds: 630       # HAProxy's `timeout queue`: 2 x 300 + 30 (lean_pool, derive_timeouts)
+    server_wait_seconds: 120       # each Lean server's own wait for a free worker (LEAN_SERVER_MAX_WAIT)
+    # For a client that follows the size the pool states (`auto`; lean_pool/README.md, "Background work and the pool's size"): it keeps
+    # workers x this margin in flight (a short queue in front of the servers, so no worker waits for the
+    # client), and never more than the ceiling, whatever the pool states.
+    size_margin: 1.25
+    in_flight_ceiling: 256
+
+data:
+  deepseek_prover_commit: 2c4ba9119eef74d0d611f494261b2c5bae98c69a   # datasets/minif2f.jsonl, few-shot proofs
+
+sampling:
+  temperature: 1.0
+  top_p: 0.95
+  max_new_tokens: 2048
+  stop: ["```"]                    # DeepSeek's own post-processing cuts at the closing code fence
+
+vllm:
+  max_model_len: 4096
+  # The CEILING for vLLM's share of the card. The share actually used is the largest one that still
+  # leaves gpu.desktop_reserve_gb free (gpu/memory_budget.py); on the 15.4 GiB card this ran on that is 0.741.
+  gpu_memory_utilization: 0.85
+  max_lora_rank: 16
+  # Set before vLLM starts. The worker image has no CUDA compiler, and vLLM's default top-p sampler is a
+  # FlashInfer kernel compiled on first use ("Could not find nvcc", Milestone 2 run 2). 0 selects vLLM's
+  # PyTorch sampler (vllm/v1/sample/ops/topk_topp_sampler.py, flashinfer_sampler_supported).
+  environment:
+    VLLM_USE_FLASHINFER_SAMPLER: "0"
+
+gpu:
+  # VRAM no stage may touch, so the machine's desktop always has room for its display and applications
+  # (2026-10-03: at 85% of the card the task left 230 MiB and no window manager could start). The desktop
+  # held 1.1 GiB at the time, so 3.0 leaves it about 1.9 GiB more. The cost is the sampling cache: 2.4 GiB
+  # here against 4.1 before. At 4.0 the engine cannot start (1.4 GiB of cache; one 4,096-token sequence
+  # needs 1.88), so a larger reserve needs a shorter vllm.max_model_len or a smaller sampler.
+  desktop_reserve_gb: 3.0
+  # What vLLM uses beyond its preallocated share (CUDA context, graphs). Measured: 1,009 MiB.
+  vllm_overhead_gb: 1.0
+  # What a PyTorch stage holds outside the allocator its cap governs (CUDA context, library workspaces).
+  # An estimate, not yet measured on this card.
+  torch_overhead_gb: 0.5
+
+quantization:
+  fp8_scheme: FP8_DYNAMIC          # llm-compressor, data-free
+  # Only linear layers are quantized. The shard-by-shard exporter also quantized the token embedding when
+  # only lm_head was listed, and vLLM refused the checkpoint (Milestone 2, run 1).
+  fp8_ignore: ["lm_head", "re:.*embed_tokens"]
+  nf4_double_quant: true
+
+lora:
+  rank: 16
+  alpha: 32
+  dropout: 0.0
+  target_modules: [q_proj, k_proj, v_proj, o_proj, gate_proj, up_proj, down_proj]
+
+training:
+  learning_rate: 1.0e-4
+  max_sequence_tokens: 2048
+
+data_sources:
+  lean_workbook_revision: 2e066e310b2c6d2c27616927ae131f82901c8f1c   # internlm/Lean-Workbook, lean_workbook.json
+  split_seed: 20261003
+
+conjecturing:
+  seeds_per_prompt: 3              # one focal seed + two drawn at random (spec §3)
+  samples_per_prompt: 4
+  max_statement_tokens: 256
+  vacuity_timeout_seconds: 20
+  holdout_fraction: 0.2            # conjecture holdout: never eligible for selection (spec §8)
+
+proving:
+  samples_per_conjecture: 12
+  samples_per_reward_statement: 8
+  verification_chunk_prompts: 64   # sampling and verification pipelined chunk by chunk (spec §1 item 10)
+
+selection:
+  maximum_training_set: 500
+  pool_fraction: 0.3333333333
+  band_upper: 0.25
+  band_minimum: 150
+  random_seed: 0
+  scoring_seed: 0                  # the fixed LoRA A for B-only scoring (spec §5)
+  stability_seed: 1                # a second A, for the stability check
+  stability_sample: 200
+  # The selection Phase A trains on. Cosine, not the dot product (decided after Milestone 3: the dot product
+  # correlated -0.93 with proof length, and its ranking was unrelated to the cosine's). The dot product is
+  # still computed and reported.
+  phase_a_method: learning_progress_cosine
+
+training:
+  learning_rate: 1.0e-4
+  max_sequence_tokens: 2048
+  epochs: 3
+  effective_batch: 8
+  warmup_steps: 5
+  seeds: [0]                       # seed 0 first; seeds 1 and 2 after it reads (spec §6)
+  heldout_loss_every: 6            # optimizer steps between held-out NF4 loss points on TensorBoard (spec §13)
+  heldout_every_step_until: 12     # an arm in the native pair format also reads it after every step up to here (spec §13a)
+
+scout:                             # spec §13a, fixed before the run (2026-10-04)
+  seed: 0
+  token_habit_below: -0.004        # a difference below this reads "the legacy gain depended on the token habit"
+  control_base_workbook_pass_at_1: 0.0744      # the stored seed-0 control must read these, or the scout is VOID
+  control_legacy_workbook_pass_at_1: 0.0843
+
+ladder:                            # spec §13b, fixed before the run (2026-10-04)
+  seed: 0
+  epochs: 1                        # ONE pass over the 137 examples: 18 optimizer steps at batch 8
+  below_band_verified: [1, 2]      # the primary's conjectures: the base proved them this many times of 12, stored
+  fresh_sampling_seed: 1           # fresh samples of the adapter, the base and the census (stored samples: seed 0)
+  # VOID if the base's fresh mean pass rate on the below-band conjectures falls outside this range. They were
+  # picked FOR a low stored count, so fresh samples regress upward: a binomial mixture fitted to the stored
+  # counts of all 1,500 conjectures predicts 0.132 under identical conditions (stored 0.1105), 99% interval:
+  void_base_fresh_rate: [0.083, 0.188]
+  never_proved_luck_expected: 25   # the same fit: never-proved conjectures the base proves once in 12 fresh samples
+  never_proved_luck_range: [13, 39]
+  reach_samples: 64                # last and optional: the base's reach on the workbook problems it never proved
+  reach_sampling_seed: 2
+
+ladder_loop:                       # docs/spec/ladder-loop.spec.md, L0: the pool of problems with a published answer
+  lean_pin: v4.27                  # the loop runs at v4.27 through the pool, whatever `lean.pin` above says
+  # The published files, each pinned by its repository revision AND by its SHA-256. A file with another hash
+  # is refused, so a pool is always built from exactly these bytes.
+  sources:
+    internlm_workbook:
+      repo: internlm/Lean-Workbook
+      revision: 2e066e310b2c6d2c27616927ae131f82901c8f1c
+      files:
+        lean_workbook.json: 577430f83caf094f1d9b99c9a3d18d92130fa21e74939d1b528b39c1927a7b0c
+        wkbk_1009.parquet: 80275c48d2ec0f989aadb248380f37b9da5131c48a17a7a92898f760c2c663f2
+    goedel_workbook_proofs:
+      repo: Goedel-LM/Lean-workbook-proofs
+      revision: b731852af8d8ab11498fda27bce9020738c01c59
+      files:
+        data/train-00000-of-00001.parquet: 24fcb50eecc2ccbcc52a58c6412c6d10edbeaa9483a97d30e207fb20ef6e2677
+    stp:
+      repo: kfdong/STP_Lean_0320
+      revision: 8759699c72a373a49497cde1341a4a94c3845b2f
+      files:
+        data/train-00000-of-00010.parquet: c8d4fcbae10e693720156163ee01e549a6b7469194cbeabd5352fcd96f81de0d
+        data/train-00001-of-00010.parquet: ffb42fc89ac2365dde6d12079ba9669a8c452933e62cf688865d3aaa96cb94de
+        data/train-00002-of-00010.parquet: 23bbd8a34465e302495e3fbccecdb5b54aaa062e1b4b4c56dfc36013862fd7f7
+        data/train-00003-of-00010.parquet: 933a33c80c5cc7f1bb7b579f670c81faa5fe230decabdb85dcd6d9e82f97a40b
+        data/train-00004-of-00010.parquet: f7cf37d342fd44ab38b6dcb3b1e0c9464c4eeb411fcda6f9e7712530f0f7af3e
+        data/train-00005-of-00010.parquet: 8d53a56c90d6fd0d2340853e1a920c49eaaf197021e4983cb3291df0cdd9aa6b
+        data/train-00006-of-00010.parquet: f7d4cb4265d3940842cec96578fc19b589e2a570f4e3a84c9b0407650db36348
+        data/train-00007-of-00010.parquet: fa0eb8acd0a55ca7ef05df00909d12ee285d7ab7f26068446527dfa4ab20be55
+        data/train-00008-of-00010.parquet: 58247ef5045698929ffef987e492b29ecdfe875cd424b8c500c5d09d0758cc69
+        data/train-00009-of-00010.parquet: ac2deb4f151112fe5fe6fc38dcf186a18835ba33bed9ae74c77922b63e143f93
+  certificates:
+    # The order a problem's published proofs are tried in; the first that verifies settles it and the rest
+    # are never sent. Most likely to survive v4.27 first, by the live sample of 2026-10-04 (80 certificates
+    # of each): internlm_proofs 96%, goedel 88%, stp 78% on Lean Workbook statements, internlm_rows 76%.
+    source_order: [internlm_proofs, goedel, stp, internlm_rows]
+    per_source: 2                  # at most this many proofs of one source for one problem, shortest first
+    stp_conjectures_checked: 50000 # L0 checks "a first 50,000" STP conjectures: the first of the seeded order
+    # The renaming pass (spec: "the renaming of library names Mathlib has since renamed or removed"): old name
+    # -> new name, applied to CERTIFICATES only, to WHOLE identifiers only, on what the first pass left
+    # unsettled. Each entry is Mathlib's (or Lean core's) OWN deprecation record, read at the tag named beside
+    # it, and its new name is declared at the pin's tag (Mathlib v4.27.0, Lean v4.27.0). Built from the names
+    # the first pass reports missing (`ladder_pool names`). A wrong entry costs a certificate: Lean judges.
+    renames:
+      # Mathlib/Algebra/Order/Field/Basic.lean @ v4.14.0
+      div_le_div_iff: div_le_div_iff₀                    # :197 @[deprecated div_le_div_iff₀ (since := "2024-11-12")]
+      div_lt_div_iff: div_lt_div_iff₀                    # :193 @[deprecated div_lt_div_iff₀ (since := "2024-11-12")]
+      div_lt_iff: div_lt_iff₀                            # :38  @[deprecated div_lt_iff₀ (since := "2024-10-02")]
+      lt_div_iff: lt_div_iff₀                            # :32  @[deprecated lt_div_iff₀ (since := "2024-10-02")]
+      div_lt_div_right: div_lt_div_iff_of_pos_right      # :182 @[deprecated div_lt_div_iff_of_pos_right (since := "2024-11-12")]
+      div_le_of_nonneg_of_le_mul: div_le_of_le_mul₀      # :81  @[deprecated div_le_of_le_mul₀ (since := "2024-10-03")]
+      div_le_one_of_le: div_le_one_of_le₀                # :90  @[deprecated div_le_one_of_le₀ (since := "2024-10-03")]
+      div_le_div_of_le_left: div_le_div_of_nonneg_left   # :171 @[deprecated (since := "2024-02-16")] alias
+      div_le_div_of_le: div_le_div_of_nonneg_right       # :174 @[deprecated div_le_div_of_nonneg_right (since := "2024-02-16")]; its two arguments swapped places
+      # Mathlib/Algebra/Order/GroupWithZero/Unbundled.lean @ v4.14.0
+      le_div_iff: le_div_iff₀                            # :1511 @[deprecated (since := "2024-08-21")] alias le_div_iff := le_div_iff₀
+      div_le_iff: div_le_iff₀                            # :1512 @[deprecated (since := "2024-08-21")] alias div_le_iff := div_le_iff₀
+      # Mathlib/Algebra/Order/Ring/Basic.lean @ v4.14.0
+      le_of_pow_le_pow_left: le_of_pow_le_pow_left₀      # :183 @[deprecated le_of_pow_le_pow_left₀ (since := "2024-11-12")]
+      one_le_pow_of_one_le: one_le_pow₀                  # :65  @[deprecated (since := "2024-09-28")] alias
+      # Mathlib/Algebra/Group/Defs.lean @ v4.14.0
+      add_left_neg: neg_add_cancel                       # :1072 @[deprecated (since := "2024-08-12")] alias
+      add_right_neg: add_neg_cancel                      # :1073 @[deprecated (since := "2024-08-12")] alias
+      # Mathlib/Algebra/Group/Basic.lean @ v4.18.0
+      add_left_eq_self: add_eq_right                     # :266 @[deprecated (since := "2025-03-05")] alias
+      # Mathlib/Order/Defs/LinearOrder.lean @ v4.22.0
+      le_of_not_lt: le_of_not_gt                         # :104 @[deprecated (since := "2025-05-11")] alias
+      le_or_lt: le_or_gt                                 # :113 @[deprecated (since := "2025-05-11")] alias
+      # Mathlib/Analysis/PSeries.lean @ v4.11.0, namespace Real; the proofs write it bare (the header opens Real),
+      # and Mathlib declares the name nowhere else
+      not_summable_one_div_nat_cast: Real.not_summable_one_div_natCast   # :343 @[deprecated (since := "2024-04-17")] alias
+      # Mathlib/Data/Real/Sqrt.lean @ v4.14.0, namespace Real
+      Real.sqrt_eq_iff_sq_eq: Real.sqrt_eq_iff_eq_sq     # :175 @[deprecated sqrt_eq_iff_eq_sq (since := "2024-08-25")]; the right side turned: `y ^ 2 = x` is now `x = y ^ 2`
+      # Mathlib/Data/Complex/Norm.lean @ v4.18.0, namespace Complex
+      Complex.abs_of_nonneg: Complex.norm_of_nonneg      # :122 @[deprecated (since := "2025-02-16")] protected alias
+      Complex.abs_ofReal: Complex.norm_real              # :121 @[deprecated (since := "2025-02-16")] alias
+      Complex.abs_apply: Complex.norm_def                # :74  @[deprecated (since := "2025-02-16")] alias
+      # Mathlib/Data/Set/Basic.lean @ v4.22.0, namespace Set
+      Set.eq_empty_iff_forall_not_mem: Set.eq_empty_iff_forall_notMem   # :469 @[deprecated (since := "2025-05-23")] alias
+      # Mathlib/Data/Int/Defs.lean @ v4.14.0, namespace Int
+      Int.coe_nat_dvd_left: Int.natCast_dvd              # :514 @[deprecated (since := "2024-04-02")] alias
+      # Mathlib/Data/ZMod/Basic.lean @ v4.14.0, namespace ZMod
+      ZMod.int_cast_eq_int_cast_iff: ZMod.intCast_eq_intCast_iff        # :531 @[deprecated (since := "2024-04-17")] alias
+      ZMod.natCast_zmod_eq_zero_iff_dvd: ZMod.natCast_eq_zero_iff       # Mathlib/Data/ZMod/Basic.lean:510 @ v4.22.0, (since := "2025-06-30") alias
+      # Mathlib/Data/Nat/Basic.lean @ v4.22.0, namespace Nat
+      "Nat.dvd_sub'": Nat.dvd_sub                        # :112 @[deprecated (since := "2025-04-01")] alias
+      # Lean core, src/Init/Data/Nat/Basic.lean @ v4.18.0, namespace Nat
+      Nat.pow_le_pow_of_le_right: Nat.pow_le_pow_right   # :751 @[deprecated Nat.pow_le_pow_right (since := "2025-02-17")]
+    # Reported missing and NOT in the table (no replacement name on record):
+    #   Complex.abs             Mathlib/Data/Complex/Norm.lean:72 @ v4.18.0: @[deprecated "use the norm instead"], a definition, no new name
+    #   Complex.abs.add_le      a field of that definition
+    #   pow_le_pow_of_le_left   two records (root: -> pow_le_pow_left -> pow_le_pow_left₀; Nat.: -> Nat.pow_le_pow_left), and
+    #                           the header opens Nat, so the bare name could be either
+    #   pow_lt_pow_of_lt_left   the same: root -> pow_lt_pow_left, Nat. -> Nat.pow_lt_pow_left (Mathlib v4.11.0)
+    #   mul_eq_one_iff          two records, in two places (Order/Monoid/Canonical/Defs.lean:117 and Associated/Basic.lean:857 @ v4.11.0)
+    #   cos_10                  not a library name in any revision read
+    #   Complex.norm_eq_abs, abs_add, Int.mod_self, Int.ofNat_succ   no deprecated declaration found in Mathlib v4.9.0,
+    #                           v4.11.0, v4.14.0, v4.18.0, v4.22.0, v4.25.0 or Lean v4.12.0, v4.18.0
+  heldout:                         # H, fixed before anything else uses the pool (spec, "Held-out sets")
+    seed: 20261004
+    workbook_problems: 1000
+    stp_conjectures: 1000
+  # The slice (spec: "The held-out sets do not wait for the whole pool"): candidates taken through BOTH passes
+  # first, so H and the base-map sample exist hours before the whole pool is checked. Each part is a PREFIX of
+  # the seeded order its draw uses (`heldout.seed`, `base_map.seed`), so the draw is the whole pool's, made
+  # early. Sized with margin at the survival measured on 2026-10-04 (one published STP proof: 55%).
+  slice:
+    lean_workbook: 1300            # beside the present holdout's 309 candidates; H wants 1,000 Lean Workbook problems
+    stp: 2500                      # H wants 1,000 STP conjectures
+    all: 6500                      # of all candidates; the base map wants 4,000 that are outside H
+  # ---- the GPU half of L0 (gpu/ladder_loop.py)
+  # Requests in flight for an episode step, through ONE client. ABOVE the pool's workers on purpose (28 on
+  # 2026-10-04, on three servers: 12, 13 and 3): the extra dozen wait in the proxy's queue
+  # for about a second, every worker always has a next check, and a server that joins mid-run is used without
+  # a restart. The bulk certificate check shares that queue and gets what its own requests in flight earn it.
+  # A number, or `auto` (lean_pool/README.md, "Background work and the pool's size"): ask the pool for its size at the start and keep
+  # workers x lean.pool.size_margin in flight, following the size it states on its answers. `auto` needs the
+  # pool refreshed with the release that states its size; against a pool that states none it is the fallback.
+  lean_in_flight: auto             # the pool states its size since its refresh of 2026-10-04 (37 workers, four servers)
+  lean_in_flight_fallback: 40     # with `auto`: until the pool states its size, and whenever it states none
+  challenger:
+    target_rate: 0.25              # t (decided 2026-10-04): the reward is 1 at this pass rate
+    band_reward: 0.8               # the band: the pass rates the reward scores at least this (0.13 to 0.41 at t = 1/4)
+    # L1 (gpu/ladder_round.py): in this stage the challenger CHOOSES pool problems. A small predictor of a
+    # problem's pass rate under the current solver, read from the base model's embedding of the statement and
+    # the published facts (source, side, length of the published proof, STP's round number).
+    candidates: 20000              # L1: pool problems drawn at random for it to choose from (the export's draw). L2 scores the
+                                   # WHOLE pool: its data directory is exported with `--candidates all`
+    random_share: 0.1              # of the round's places, given to random candidates so that it keeps learning
+    embedding_components: 32       # leading directions of the statement embeddings the predictor reads
+    embedding_max_tokens: 512      # a statement's prompt is cut here before it is embedded
+    embedding_batch: 8
+    ridge_grid: [1.0, 10.0, 100.0] # the penalty with the lowest cross-validated deviance is used
+    folds: 5
+    dispersion_grid: [0.0, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]   # of k around the predicted rate; 0 is binomial
+    held_back_share: 0.2           # of the base map, kept out of a first fit: the calibration is read on it
+    recency_decay: 0.5             # an observation one round old weighs this much against the current round's (L2: the base
+                                   # map is the base's results, as round 1's are: in round r it is r - 1 rounds old)
+  episode:                         # until L3 an episode is ONE attempt at the statement and one at its exact negation
+    max_new_tokens: 1024           # an attempt that reaches it is a failure and is not sent to Lean
+    lean_seconds: 30               # Lean checking per attempt; a proof that runs into it has failed
+    block_problems: 128            # an episode step stores its work every this many problems, and resumes there
+    # Sampling and checking roll across blocks (gpu/ladder_loop.py, run_episodes).
+    chunk_attempts: 512            # attempts per call to the engine, whatever the samples per prompt (16 prompts at 32
+                                   # samples, 64 at 8): Lean gets work every few seconds and not 2,048 attempts at once
+    blocks_in_flight: 3            # blocks sampled and not yet settled; beyond that the generator waits for Lean
+    pool_refusal_rounds: 2         # a check the POOL did not take (its queue timed out, no server up) is asked again this
+                                   # many times, then the block fails unrecorded: never a failed proof, never "no answer"
+    # The side a problem's certificate rules out can never verify (a verified proof there IS the soundness alarm).
+    # `all` (the default, and the spec's episode): every attempt on it is sent to Lean. `audit`: it is sent only
+    # for a seeded share of the PROBLEMS, in full, and still raises the alarm; for the rest it is not sent and
+    # resolves nothing. Decided 2026-10-04, until L3.
+    contradicted_side: audit               # all | audit (decided 2026-10-04: audit, until L3)
+    contradicted_side_audit_share: 0.02    # with `audit`: the share of problems whose contradicted side is still checked
+    skip_generating_contradicted_side: true    # with `audit`: also do not SAMPLE that side for the problems not audited
+  goal:
+    base_episodes: 32              # the base's placing episodes on every problem of H: they give G and the rungs
+    sampling_seed: 100
+    rung_minimum: 137              # L0 must show each rung holds at least this many problems
+  base_map:                        # the challenger's first fit: the base's pass rate on a random sample of the pool
+    problems: 4000
+    episodes: 8
+    seed: 20261004                 # the seeded draw from the pool
+    sampling_seed: 101
+  # ---- L1: one round, two arms that differ only in who chooses the problems (gpu/ladder_round.py)
+  round:
+    problems: 1000                 # pool problems an arm proposes
+    solvers: 8                     # n: the episodes each gets from the model the round starts from; k of them resolve it
+    epochs: 1                      # ONE pass over the round's training set (spec: "Three passes over 137 examples overfit")
+    seed: 0                        # the round's seed when the task names none (`--seeds 0`): the proposals, the training target, the adapter
+    sampling_seed: 1000            # this + 100 x the round's seed + the measurement's kind (round, reach, rungs, gain): one seed a kind,
+                                   # shared by both arms and by the base and the trained model (common random numbers); never L0's placing seeds
+    candidates_seed: 20261004      # the seeded draw of the pool the exported candidates are
+    # ---- L2: three rounds of the challenger arm, then the equal-compute control (gpu/ladder_l2.py; spec "L2: three
+    # rounds"). Rounds are numbered 1 to 3: round r starts from M(r - 1) and trains M(r), from the base, one pass
+    # over every round's training set so far; M(0) is the base.
+    rounds: 3                      # no more than three rounds run without a review
+    batches: 4                     # a round's proposals are made in this many EQUAL batches, each with its random_share of
+                                   # random places; after each batch's episodes the challenger is refitted on everything seen
+                                   # so far, so three quarters of a round's picks are chosen knowing the current model
+    # The control has no number of its own: after the last round the base gets every attempt episode the rounds ran
+    # (3 x 8,000 = 24,000), the same number on each problem of G (61 on each of 392, on top of the 32 of its fresh
+    # reach measurement), with a sampling seed no other measurement uses.
+  measure:
+    reach_episodes: 32             # on every problem of G, the trained model and (once) the base afresh: its luck
+    rung_episodes: 8               # on every problem of the three rungs, the trained model and (once) the base afresh
+  # ---- L1b: the dose curve (gpu/ladder_dose.py; spec "L1b: the dose curve"): one seed's challenger arm again, from
+  # the base, on the training proofs L1 stored, for three passes in place of one
+  dose:
+    passes: 3
+    checkpoints: [0.5, 1, 1.5, 2, 3]   # passes after which the adapter is saved and measured on the three held-out rungs
+    reach_at: [1, 2, 3]            # passes at which reach on G is read too (2 added for the three-seed escalation)
+    reading_every_step_until: 12   # the loss on the fixed pairs is read at every step up to this one,
+    reading_every: 6               # then every this many steps, and at every checkpoint
+    training_sample: 150           # training proofs in the fixed sample
+    heldout_per_rung: 50           # held-out proofs per rung: verified proofs the base wrote in L1's rung measurement
+
+evaluation:
+  conjecture_holdout_samples: 12
+  workbook_holdout_samples: 8
+  bootstrap_resamples: 10000
+  bootstrap_seed: 0
+
+# Sizes per profile (spec §2, §3, §8). `--profile smoke` is Milestone 3; `full` is Phase A's full run.
+profiles:
+  smoke:
+    seed_statements: 60
+    reward_statements: 100
+    conjecture_target: 50
+    minif2f_split: valid           # the smoke test never touches miniF2F-test
+    minif2f_problems: 40
+    minif2f_samples: 8
+  full:
+    seed_statements: 2000
+    reward_statements: 2000
+    conjecture_target: 1500
+    minif2f_split: test
+    minif2f_problems: 244
+    minif2f_samples: 32
+
+milestone2:
+  smoke_problems: 32               # miniF2F-valid problems sampled from the FP8 base
+  smoke_samples_per_problem: 4
+  adapter_check_prompts: 8         # greedy outputs compared between base and base + throwaway adapter
+  adapter_check_max_tokens: 256
+  qlora_micro_batches: 4           # one optimizer step over this many examples
+  gpu_idle_margin_mib: 300         # the GPU guard: used memory must return to baseline + this

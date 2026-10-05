@@ -1,0 +1,51 @@
+# rlvr-lean's dependency set.
+#
+# NOT an installable package: the code is imported with `src` on the path (pytest is configured for it
+# below; a stage sets PYTHONPATH itself), and this file tells `uv` which third-party packages each
+# activity needs:
+#
+#   tests, tools  : uv run --group dev pytest
+#   GPU work      : the `gpu` group (vLLM + PEFT + bitsandbytes), one environment on the GPU box
+#   FP8 export    : the `quantize` group (llm-compressor), a second environment on the GPU box
+#
+# vLLM and llm-compressor pin incompatible versions of compressed-tensors (and of torch and transformers),
+# so the two GPU groups are declared as conflicting and are always synced into separate environments.
+# Versions: read from PyPI and release notes on 2026-10-02 (spec, "GPU stack"); Milestone 2 is the run
+# that shows they work on the RTX 5080.
+[project]
+name = "rlvr-lean"
+version = "0.0.0"
+description = "Reinforcement learning from verifiable rewards for a Lean 4 prover: sampled proofs checked by Lean, QLoRA fine-tuning on a selected subset, and paired evaluations of what the training changes"
+requires-python = ">=3.11,<3.14"
+dependencies = [
+    "httpx>=0.27",     # async client for the Kimina Lean Server
+    "numpy>=2",        # pass@k estimator and bootstrap
+    "pyyaml>=6",       # the single experiment config
+]
+
+[dependency-groups]
+dev = ["pytest>=8"]
+# The published proof sets the ladder loop's pool is built from are parquet files (spec ladder-loop, L0):
+#   uv run --group data env PYTHONPATH=src python -m rlvr_lean.tools.ladder_pool ...
+data = ["pyarrow>=17"]
+gpu = [
+    "vllm==0.30.0",              # pins torch==2.13.0; PyPI wheel built for CUDA 13.0
+    "peft==0.21.2",
+    "bitsandbytes==0.50.2",      # NF4 4-bit; CUDA 12.8/13 builds list sm120
+    "accelerate>=1.10",
+    "huggingface-hub>=0.34",
+]
+quantize = [
+    "llmcompressor==0.14.0",     # FP8_DYNAMIC export, data-free
+    "huggingface-hub>=0.34",
+]
+
+[tool.uv]
+package = false
+conflicts = [[{ group = "gpu" }, { group = "quantize" }]]
+
+# `uv run --group dev pytest` from the repository root runs the main package's tests. `lean_pool/` is a
+# project of its own, with its own environment and tests (see its README).
+[tool.pytest.ini_options]
+testpaths = ["tests/rlvr_lean"]
+pythonpath = ["src"]
