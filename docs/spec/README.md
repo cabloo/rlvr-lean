@@ -14,6 +14,7 @@ or a question came from the owner, and they keep the corrections that later runs
 | [`ladder-l1-RESULT.md`](ladder-l1-RESULT.md) | One round, challenger against a random draw, three seeds |
 | [`ladder-l1b-RESULT.md`](ladder-l1b-RESULT.md) | The dose curve: one, two and three passes over the same proofs |
 | [`ladder-l2-RESULT.md`](ladder-l2-RESULT.md) | Three rounds; the goal set at equal attempts and at equal compute |
+| [`ladder-l2t-RESULT.md`](ladder-l2t-RESULT.md) | Three rounds again with the reward aimed at a pass rate of 1/10 in place of 1/4, three seeds |
 | [`ladder-l3a-RESULT.md`](ladder-l3a-RESULT.md) | The repair check, no training: resuming a failed proof from Lean's proof state against starting over |
 | [`ladder-l3a2-RESULT.md`](ladder-l3a2-RESULT.md) | The second repair check: one repair step after each fresh failure, then a fresh attempt |
 | [`phase-a-RESULT.md`](phase-a-RESULT.md) | The first experiment: one round on self-written conjectures |

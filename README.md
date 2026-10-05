@@ -25,6 +25,8 @@ The distributed Lean checking pool built to feed it is a project of its own, [le
 | Dose curve | Train longer on the same proofs? | A second pass adds 4.0 points on mid-difficulty problems and **loses** ground on never-solved ones (32 gained, 63 lost) |
 | Three rounds | Does the ladder climb, and does it reach new problems? | Every rung rises (hardest +2.0 points [+0.7, +3.4]). On 392 never-solved problems the trained model succeeds on 1.5 times as many attempts but solves about the same problems (64 gained, 52 lost, p = 0.31) |
 | Equal compute | Is training a better use of 24,000 attempts than plain sampling? | No: the base model given those attempts solves 158 of the never-solved problems against the trained model's 96 |
+| Lower reward target | Does aiming the challenger at a pass rate of 1/10 instead of 1/4 keep its picks hard, and does the model reach further? | The picks stay on target. Hardest rung: no difference shown (+0.6 points [−0.4, +1.6]). Never-solved problems: a third more successes per attempt at every seed; more problems solved in one seed of three |
+| Repair, no training (one seed, two checks) | Is an attempt that resumes from Lean's proof state better than a fresh one? | The next attempt is (2.7% against 1.9% verify on hard problems); five attempts are not (+0.5 points [−0.2, +1.2]), and the same problems get solved (49 against 47) |
 
 Every stage was run from a written spec whose pass, fail and void conditions were committed before the run.
 The specs and result notes are in [`docs/spec/`](docs/spec/).
@@ -109,6 +111,47 @@ round picks). A quota would fix the share by decree, and a discount on their rew
 20% off leaves 6% of the picks, 30% off leaves none. Left alone, with the challenger refit four times a round so it sees the current solver, the
 share falls by itself as the solver learns to refute.
 
+### Aiming the reward lower trains on fewer easy proofs, and that helps where it is hard
+
+<p align="center"><img src="docs/figures/lower_target.svg" width="760" alt="Goal problems solved and successes per 1,000 attempts at 93 attempts each, by seed: base model, three rounds at target 1/4, three rounds at target 1/10"></p>
+
+The same three rounds were run again with one setting changed: the reward's target, 1/10 in place of 1/4, so
+that its expected-reward peak sits at a quarter instead of above a third. The challenger then stays where it
+was aimed (its picks average a pass rate of 0.27, 0.34 and 0.24 over the rounds, against 0.37, 0.47 and 0.47)
+and refutations fall to a twentieth of its picks, with no quota.
+
+The measure fixed before the run, the hardest held-out rung, shows no difference (+0.6 points [−0.4, +1.6],
+the same sign at each seed). On the never-solved problems the lower target's model succeeds on about a third
+more attempts than the other at every seed (7.2 per 1,000 against 5.4; the base 3.6). It solves more of those
+problems in one seed of three and exactly as many as the base in the other two, so that is not counted as
+reach. It gives up about a point on the easy rung.
+
+What changed is the training set: about as many proofs from problems few solvers cracked (2,486 against
+2,601) and about 1,450 fewer from problems most did. Leaving the easy proofs out keeps the model more varied
+(90% of its attempts are distinct, against 87%), which is the dose curve's finding from the other side.
+
+### Feeding Lean's answer back helps the next attempt, not the fifth
+
+<p align="center"><img src="docs/figures/repair.svg" width="760" alt="Share of attempts that verify on hard problems, by attempt: starting over against resuming from Lean's proof state after every failure, and against repairing once and then starting over"></p>
+
+Everything above is blind resampling: a failed attempt tells the model nothing. Two checks with the untrained
+base model asked what happens when it does. A failed proof is cut before its first error, Lean reports the
+proof state at the cut, and the model resumes from the kept lines and that state, in the comment format the
+prover's authors trained it on.
+
+- **The state is information the model uses.** Resuming with it resolves 2.6 points more hard episodes than
+  resuming from the same kept lines without it [+1.3, +3.9].
+- **One repair step straight after a failure beats a fresh attempt,** measured twice on separate samples:
+  1.9% against 1.1% of 1,880 failures verify, then 2.7% against 1.9% of 6,562.
+- **Repeated, it gets stuck.** By the fifth attempt 46% of resumed proofs are exact copies of one Lean already
+  rejected in the same episode, most often a closing `nlinarith` written again.
+- **Repairing once and then starting over is not shown to beat plain resampling at five attempts**
+  (+0.5 points [−0.2, +1.2] over 6,696 hard episodes), and the same goal problems get solved (49 against 47).
+  The blind arm catches up: speed, not reach, once more.
+
+The second check was sized to resolve the gain that the first one's data suggested (+1.3 points). It did not
+repeat, which is what fixing the read before the run is for.
+
 ### A defect worth describing
 
 The first two experiments reported a fourfold drop in held-out loss after one round, and a selection score
@@ -142,7 +185,7 @@ certificates, recovered with a 29-entry rename table taken from Mathlib's own de
   an FP8 export and LoRA adapters for sampling at about 2,500 tokens per second.
 - **Statistics.** Paired by problem, bootstrap over problems, sign tests for solved/unsolved flips, one seed
   as a scout and three to conclude, and a distinction kept between a run that failed and an idea that failed.
-- **Tests.** About 700 tests for the loop (the pool's 1,100 are in its own repository). The model and Lean are
+- **Tests.** About 750 tests for the loop (the pool's 1,100 are in its own repository). The model and Lean are
   replaced by stand-ins, so the suite runs with no GPU and no network.
 
 ## Repository layout
@@ -150,7 +193,7 @@ certificates, recovered with a 29-entry rename table taken from Mathlib's own de
 ```
 src/rlvr_lean/
   domain/           pure rules: verification status, the reward and the band, the challenger's
-                    predictor, training-set selection, estimators (pass@k, bootstrap)
+                    predictor, training-set selection, the repair cut, estimators (pass@k, bootstrap)
   infrastructure/   the Lean client, the artifact store, the verification service
   gpu/              the steps that run on the GPU (sampling, training, measuring), one process each
   reporting/        the read of each stage, exactly as fixed before its run
@@ -181,11 +224,16 @@ from Lean Workbook and STP).
 
 ## Status
 
-Two follow-ups are running: the same three rounds with the reward aimed lower (the estimate's looseness makes
-a target of 1/4 steer at 0.35), and a first check of *repair*, where a failed proof is cut at its first
-error, Lean reports the proof state there and the model resumes from it. Every measurement above is blind
-resampling: a failed attempt tells the model nothing. Repair is the change most likely to move what the
-solver can reach.
+Every result so far has the same shape: the loop makes the prover more reliable on what it can already
+sometimes do, and has not been shown to take it to problems plain sampling does not solve. Three things are
+open.
+
+- **Training on repair.** The untrained model uses Lean's proof state for one step and then repeats itself.
+  Training on failed-then-repaired proofs asks whether a learned repair step reaches further than sampling.
+- **Which target to climb with.** The lower target is at least as good on hard problems from a quarter fewer
+  proofs; whether it reaches new problems needs more than three seeds to say.
+- **A deeper pool.** About 650,000 published proofs have not been re-checked yet; the pool's thin middle is
+  the scarcest thing the loop has.
 
 ## Credits
 

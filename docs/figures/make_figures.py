@@ -160,9 +160,67 @@ def pool_shape():
     save(figure, "pool_shape.svg")
 
 
+def lower_target():
+    data = load("ladder_l2t_three_seeds.json")
+    goal = data["goal_set_93_attempts"]
+    arms = (("base", "base", BASE_COLOR), ("quarter_target", "3 rounds, target 1/4", RUNG_COLORS["in"]),
+            ("low_target", "3 rounds, target 1/10", TRAINED_COLOR))
+    seeds = list(range(data["seeds"]))
+    width = 0.27
+    figure, (left, right) = plt.subplots(1, 2, figsize=(8.6, 3.5))
+    for axis, values, title, fmt, room in ((left, goal["problems_solved_by_seed"], "Goal problems solved, 93 attempts each", "{:.0f}", 1.42),
+                                            (right, goal["successes_per_1000_attempts_by_seed"], "Successes per 1,000 attempts", "{:.1f}", 1.14)):
+        for offset, (key, label, color) in zip((-width, 0, width), arms):
+            bars = axis.bar([seed + offset for seed in seeds], values[key], width=width * 0.92, color=color, label=label)
+            for bar, value in zip(bars, values[key]):
+                axis.text(bar.get_x() + bar.get_width() / 2, value, fmt.format(value), ha="center", va="bottom", fontsize=8)
+        axis.set_ylim(0, max(max(values[key]) for key, _, _ in arms) * room)
+        axis.set_xticks(seeds, [f"seed {seed}" for seed in seeds])
+        axis.set_title(title)
+        axis.grid(axis="x", visible=False)
+    left.set_ylabel("of 392 goal problems")
+    left.legend(fontsize=8.5, loc="upper left")
+    save(figure, "lower_target.svg")
+
+
+def repair():
+    data = load("repair_checks.json")
+    figure, (left, right) = plt.subplots(1, 2, figsize=(8.6, 3.5), sharey=True)
+    attempts = ["2", "3", "4", "5"]
+    xs = list(range(len(attempts)))
+
+    def rate(pairs):
+        return [100 * pairs[a][0] / pairs[a][1] for a in attempts]
+
+    first = data["first_check"]["hard_verified_by_attempt"]
+    for arm, label, color, style in (("blind", "start over (blind)", BASE_COLOR, "-"), ("resume_with_state", "resume with Lean's proof state", TRAINED_COLOR, "-"),
+                                     ("resume_without_state", "resume without the state", TRAINED_COLOR, ":")):
+        left.plot(xs, rate(first[arm]), color=color, linestyle=style, marker="o", markersize=5, linewidth=2, label=label)
+    left.set_title("Resuming after every failure")
+    left.set_ylabel("% of attempts that verify, hard problems")
+    left.legend(fontsize=8.5, loc="upper right")
+
+    second = data["second_check"]["hard_verified_by_attempt"]
+    alternate = rate(second["alternate"])
+    right.plot(xs, rate(second["blind"]), color=BASE_COLOR, marker="o", markersize=5, linewidth=2, label="start over (blind)")
+    right.plot(xs, alternate, color=TRAINED_COLOR, marker="o", markersize=5, linewidth=2, label="repair once, then start over")
+    for index in (0, 2):
+        right.annotate("repair", (xs[index], alternate[index]), textcoords="offset points", xytext=(9, 4), ha="left", fontsize=8.5, color=TRAINED_COLOR)
+    right.set_title("Repairing once, then starting over")
+    right.legend(fontsize=8.5, loc="upper right")
+    top = max(max(rate(first[arm])) for arm in first) if first else 0
+    for axis in (left, right):
+        axis.set_xticks(xs, [f"attempt {a}" for a in attempts])
+        axis.set_ylim(0, max(top, max(alternate)) * 1.18)
+        axis.grid(axis="x", visible=False)
+    save(figure, "repair.svg")
+
+
 if __name__ == "__main__":
     rungs_by_round()
     goal_set()
     dose_curve()
     challenger()
     pool_shape()
+    lower_target()
+    repair()

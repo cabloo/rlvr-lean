@@ -533,6 +533,17 @@ before seeds 1 and 2 run; the read above is not changed.
   each paired with its own control `ladder_l2_seed<N>`. The read at three seeds: the same primary over the
   three seeds' problems together and by seed.
 
+**Outcome at three seeds (2026-10-05; `ladder-l2t-RESULT.md`): NOT SHOWN on the primary.** The setting acted
+at every seed (round 1's picks 0.27 against 0.37). Primary +0.0058 [−0.0040, +0.0156], by seed +0.0075,
++0.0038, +0.0060. In the band +0.002 [−0.018, +0.023]; above it −0.009 [−0.018, +0.001]. The goal set at 93
+attempts each: successes per attempt +0.0017 [+0.0008, +0.0028] over the model at t = 1/4, at every seed (7.2
+per 1,000 against 5.4; the base 3.6); problems solved 189 against 170 and the base's 158, with the gain in
+one seed of three (against the base 20 gained and 20 lost, 39 and 8, 20 and 20), so it is not read as reach.
+The challenger stays on target (0.27, 0.34, 0.24 against 0.37, 0.47, 0.47) and half of round 3's picks are
+never solved. The hard side of the training set is the same size (2,486 proofs against 2,601); about 1,450
+easy proofs are left out. The config's default stays 0.25: the arm did not win its read; which target further
+rounds use is the owner's decision.
+
 ### L3a: the repair check, no training (the owner, 2026-10-05: "add repair in parallel")
 
 Milestone L3's first step: "a check without training against blind resampling at equal tokens". Every

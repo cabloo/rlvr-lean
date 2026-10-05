@@ -86,7 +86,9 @@ unusually poor fifth blind attempt, and it did not repeat.
    would give a few hundred to train on. The
    question it asks is whether a trained repair step reaches problems blind sampling does not.
 3. **Put the GPU on the lower target first.** At two of three seeds it is the first change that moves the
-   goal set against the base (`ladder-loop.spec.md`, "L2t"); its third seed is running.
+   goal set against the base (`ladder-loop.spec.md`, "L2t"); its third seed is running. (Added when it
+   finished, the same day: at three seeds the gain in goal problems solved is in one seed of three and is not
+   read as reach; `ladder-l2t-RESULT.md`.)
 
 Recommended: 3 now, and 2 only after the lower target is read at three seeds, built inside whichever target
 wins.
