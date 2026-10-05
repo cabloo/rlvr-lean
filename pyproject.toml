@@ -44,8 +44,7 @@ quantize = [
 package = false
 conflicts = [[{ group = "gpu" }, { group = "quantize" }]]
 
-# `uv run --group dev pytest` from the repository root runs the main package's tests. `lean_pool/` is a
-# project of its own, with its own environment and tests (see its README).
+# `uv run --group dev pytest` from the repository root runs the package's tests.
 [tool.pytest.ini_options]
 testpaths = ["tests/rlvr_lean"]
 pythonpath = ["src"]

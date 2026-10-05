@@ -105,7 +105,7 @@ def _lean_settings(config: dict, lean_seconds: int | None = None):
     client must then wait for an answer as long as the proxy may hold a request there AND a Lean server may hold
     it for a free worker, or it would give up on (and send again) a request that is still queued.
 
-    `lean_in_flight: auto` follows the size the pool states (lean_pool/README.md, "Background work and the pool's size"): workers x
+    `lean_in_flight: auto` follows the size the pool states (lean-pool's README, "Background work and the pool's size"): workers x
     `lean.pool.size_margin`, re-read while the step runs, so a server that joins or drops is followed. Until
     the pool states a size, and against a pool that states none, `lean_in_flight_fallback` is the number."""
     ladder = config["ladder_loop"]

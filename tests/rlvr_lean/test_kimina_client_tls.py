@@ -1,5 +1,5 @@
 """The Kimina client over HTTPS with a private certificate authority (the lean-pool front door,
-lean_pool/README.md, "TLS"): it trusts the authority it is given and no other.
+lean-pool's README, "TLS"): it trusts the authority it is given and no other.
 
 A real TLS server on loopback; the certificates are made with the `openssl` command."""
 

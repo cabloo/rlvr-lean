@@ -57,7 +57,7 @@ def test_the_shipped_config_selects_v4_9_and_names_the_pool():
                                       "concurrent_requests": 8,
                                       # how long the proxy's queue and a Lean server may hold a request (the ladder loop's client waits that long)
                                       "proxy_queue_seconds": 630, "server_wait_seconds": 120,
-                                      # for a client that follows the size the pool states (lean_pool/README.md, "Background work and the pool's size")
+                                      # for a client that follows the size the pool states (lean-pool's README, "Background work and the pool's size")
                                       "size_margin": 1.25, "in_flight_ceiling": 256}
     assert config["kimina"]["port"] == 18000 and config["kimina"]["concurrent_requests"] == 16    # v4.9's, untouched
 

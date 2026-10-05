@@ -9,8 +9,8 @@ project asks is narrow and hard: **does this loop take the model to problems it 
 does it only make it more reliable on the ones it already could?**
 
 The answer so far, at three seeds and with every read fixed before its run: **more reliable, measurably and
-on held-out problems; not yet further.** The repository contains the loop, the distributed Lean checking pool
-built to feed it, and the full record of results, including the ones that came out negative.
+on held-out problems; not yet further.** The repository contains the loop and the full record of results, including the ones that came out negative.
+The distributed Lean checking pool built to feed it is a project of its own, [lean-pool](https://github.com/cabloo/lean-pool).
 
 <p align="center"><img src="docs/figures/rungs_by_round.svg" width="620" alt="Held-out pass rate over the base model after one, two and three rounds, on three difficulty rungs"></p>
 
@@ -128,7 +128,7 @@ certificates, recovered with a 29-entry rename table taken from Mathlib's own de
 
 ## Engineering
 
-- **Verification is the bottleneck, so it got its own project.** [`lean_pool/`](lean_pool/) puts HAProxy, a
+- **Verification is the bottleneck, so it got its own project.** [lean-pool](https://github.com/cabloo/lean-pool) puts HAProxy, a
   shared result cache and per-machine load agents in front of several
   [Kimina Lean Servers](https://github.com/project-numina/kimina-lean-server), with an admission test a
   server must pass before it joins, optional mutual TLS, request priorities and a capacity signal clients
@@ -142,8 +142,8 @@ certificates, recovered with a 29-entry rename table taken from Mathlib's own de
   an FP8 export and LoRA adapters for sampling at about 2,500 tokens per second.
 - **Statistics.** Paired by problem, bootstrap over problems, sign tests for solved/unsolved flips, one seed
   as a scout and three to conclude, and a distinction kept between a run that failed and an idea that failed.
-- **Tests.** About 700 tests for the loop and 1,100 for the pool. The model and Lean are replaced by stand-ins, so both
-  suites run with no GPU and no network.
+- **Tests.** About 700 tests for the loop (the pool's 1,100 are in its own repository). The model and Lean are
+  replaced by stand-ins, so the suite runs with no GPU and no network.
 
 ## Repository layout
 
@@ -157,7 +157,6 @@ src/rlvr_lean/
   runner/           the stage runner: which steps make a stage, in what order
   tools/            building the problem pool, re-checking certificates, the Lean-version check
   config/           one experiment config
-lean_pool/          the Lean checking pool (its own README, tests and licence)
 tests/              the specs' fixtures as tests; stand-ins for the model and for Lean
 docs/spec/          the specs and the result notes, as written during the project
 docs/results/       the result summaries the figures are drawn from
@@ -171,8 +170,8 @@ uv run --group dev pytest          # the test suite: no GPU, no network
 python docs/figures/make_figures.py   # redraw the figures from docs/results/ (needs matplotlib)
 ```
 
-The GPU stages need a 16 GB card, a Kimina Lean Server or a `lean_pool` in front of several, and the model
-weights. A stage is one command, and the stages are listed in
+The GPU stages need a 16 GB card, a Kimina Lean Server (or [lean-pool](https://github.com/cabloo/lean-pool) in front of several) and the
+model weights. A stage is one command, and the stages are listed in
 [`src/rlvr_lean/runner/entry.py`](src/rlvr_lean/runner/entry.py); each has a `_smoke` variant that runs on the
 shipped fixtures, for example
 `PYTHONPATH=src python -m rlvr_lean.runner.entry --stage ladder_l1_smoke --profile full --out out/`. The settings are in
@@ -201,5 +200,3 @@ Built on [DeepSeek-Prover-V1.5](https://github.com/deepseek-ai/DeepSeek-Prover-V
 [Goedel-Prover's proofs](https://huggingface.co/datasets/Goedel-LM/Lean-workbook-proofs),
 [STP](https://huggingface.co/datasets/kfdong/STP_Lean_0320), [vLLM](https://github.com/vllm-project/vllm) and
 [PEFT](https://github.com/huggingface/peft).
-
-`lean_pool/` is MIT-licensed (see its `LICENSE`).

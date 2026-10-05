@@ -1,11 +1,10 @@
-"""The client's side of a lean-pool's two signals (lean_pool/README.md, "Background work and the pool's size"): priority, and the pool stating
+"""The client's side of a lean-pool's two signals (lean-pool's README, "Background work and the pool's size"): priority, and the pool stating
 its size (advisory): the priority header is sent only by a client configured with it; with `auto`
 the requests in flight follow the size the pool states and fall back, saying so once, on anything unreadable;
 the limit changes while requests are in flight without losing or doubling one; a background client waits out a
 503 from a pool that is up. No network: a fake server inside httpx."""
 
 import asyncio
-import importlib.util
 import json
 import random
 from pathlib import Path
@@ -72,17 +71,10 @@ def snippets(count, tag="s"):
 # ------------------------------------------------------------------------------------------------ the two names
 
 def test_the_names_are_the_pools_own():
-    """This package imports nothing from the lean_pool project, so the header names are written twice."""
-    spec = importlib.util.spec_from_file_location("leanpool_signals", ROOT / "lean_pool/leanpool/signals.py")
-    signals = importlib.util.module_from_spec(spec)
-    import sys
-    sys.modules[spec.name] = signals            # dataclasses resolve the module of a class they decorate
-    try:
-        spec.loader.exec_module(signals)
-    finally:
-        del sys.modules[spec.name]
-    assert (PRIORITY_HEADER, BACKGROUND_PRIORITY) == (signals.PRIORITY_HEADER, signals.BACKGROUND_PRIORITY)
-    assert (POOL_WORKERS_HEADER, POOL_WORKERS_FIELD) == (signals.WORKERS_HEADER, signals.WORKERS_FIELD)
+    """This package imports nothing from the lean-pool project, so the names it puts on the wire are written again
+    here: they are lean-pool's (`leanpool/signals.py`), and a change to either side must be made on both."""
+    assert (PRIORITY_HEADER, BACKGROUND_PRIORITY) == ("X-Lean-Priority", "background")
+    assert (POOL_WORKERS_HEADER, POOL_WORKERS_FIELD) == ("X-Lean-Pool-Workers", "workers")
 
 
 @pytest.mark.parametrize("value,workers", [("28", 28), (" 4 ", 4), (12, 12), ("1", 1)])

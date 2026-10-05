@@ -87,7 +87,7 @@ AUTO_IN_FLIGHT = "auto"
 
 def following_the_pool(settings: KiminaClientSettings, in_flight: object, fallback: int | None = None) -> KiminaClientSettings:
     """`settings` with the requests in flight a caller asked for: a number, as always, or `auto`: follow the
-    size the pool states (lean_pool/README.md, "Background work and the pool's size"), with `fallback` (default: the settings' own
+    size the pool states (lean-pool's README, "Background work and the pool's size"), with `fallback` (default: the settings' own
     number) in flight until it states one and whenever it states none. None or 0 changes nothing."""
     if in_flight == AUTO_IN_FLIGHT:
         return dataclasses.replace(settings, follow_pool_size=True,

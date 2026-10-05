@@ -31,7 +31,7 @@ Rules it keeps (the version tax tool's, whose checker it runs): a pool or transp
 a Lean failure, and is asked again on the next run; identical Lean files are checked once; a check that crashes
 its worker twice is left unanswered and counts as failed for its problem.
 
-`check`, `slice` and `rename` are BACKGROUND work to the pool (lean_pool/README.md, "Background work and the pool's size"):
+`check`, `slice` and `rename` are BACKGROUND work to the pool (lean-pool's README, "Background work and the pool's size"):
 their checks carry `X-Lean-Priority: background`, so the pool takes them only when no solver's check is
 waiting. A 503 from a pool that is up (the queue timed the check out behind the solver's) is waited out with a
 pause and asked again, never stored. `--in-flight auto` follows the size the pool states (item 9b); against a
@@ -321,7 +321,7 @@ def in_flight_argument(text: str):
 
 def pin_settings(arguments, config: dict, background: bool = False):
     """The pin's settings with this run's requests in flight. `background` (the bulk certificate check: `check`,
-    `slice`, `rename`) marks every check as background work (lean_pool/README.md, "Background work and the pool's size"): the pool then
+    `slice`, `rename`) marks every check as background work (lean-pool's README, "Background work and the pool's size"): the pool then
     takes them only when no solver's check is waiting, so the client waits as long as the pool's queue may
     hold a check, and a 503 from a pool that is up is waited out, not recorded. `sample` is a measurement
     with a budget of its own and stays a normal client."""

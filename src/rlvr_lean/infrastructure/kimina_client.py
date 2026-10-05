@@ -10,7 +10,7 @@ What it guarantees to its caller:
   * a Lean TIMEOUT is an answer, not a failure: it arrives as HTTP 200 and is never retried.
   * a snippet that still has no answer becomes a `server_error`-shaped result, recorded distinctly.
 
-Through a lean-pool (lean_pool/README.md, "Background work and the pool's size") two more things, both optional
+Through a lean-pool (https://github.com/cabloo/lean-pool; its README, "Background work and the pool's size") two more things, both optional
 and both harmless against a server that knows neither:
   * `priority="background"`: the pool serves these checks only when no normal check is waiting. A 503 from a
     pool that is up then means "wait": the client pauses and asks again, without counting an attempt.
@@ -35,8 +35,8 @@ import httpx
 
 RETRYABLE_STATUS_CODES = frozenset({429, 500, 502, 503, 504})
 
-# The pool's own names (lean_pool/leanpool/signals.py). This package imports nothing from that
-# project, so they are stated again here; tests/rlvr_lean/test_kimina_pool_signals.py holds the two equal.
+# The pool's own names (lean-pool's `leanpool/signals.py`). This package imports nothing from that
+# project, so they are stated again here; tests/rlvr_lean/test_kimina_pool_signals.py pins them.
 PRIORITY_HEADER = "X-Lean-Priority"
 BACKGROUND_PRIORITY = "background"
 POOL_WORKERS_HEADER = "X-Lean-Pool-Workers"
@@ -147,7 +147,7 @@ class KiminaClientSettings:
     http_margin_seconds: float = 60.0
     request_debug_diagnostics: bool = True   # ask for per-snippet cpu/memory figures
     # For an https `base_url` whose certificate was signed by a private authority (the lean-pool front door,
-    # lean_pool/README.md, "TLS"): that authority's certificate file, and then ONLY it
+    # lean-pool's README, "TLS"): that authority's certificate file, and then ONLY it
     # is trusted. None trusts the system's public authorities, which never vouch for the pool.
     ca_file: str | None = None
     # For an https `base_url` that holds an ADDRESS (a GPU task reaches the pool by a resolved LAN address,
@@ -156,7 +156,7 @@ class KiminaClientSettings:
     # the name is what the certificate is checked against, in place of the URL's host, and what is sent for
     # SNI. None checks the certificate against the URL's host, as any https client does.
     tls_server_name: str | None = None
-    # --- through a lean-pool only (lean_pool/README.md, "Background work and the pool's size"); a single server ignores all of it.
+    # --- through a lean-pool only (lean-pool's README, "Background work and the pool's size"); a single server ignores all of it.
     # "background": sent as `X-Lean-Priority`, and the pool takes these checks only when no normal check is
     # waiting. None sends no such header (a normal check). Any other text is sent as it is and means normal.
     priority: str | None = None

@@ -23,7 +23,7 @@ lean:
   # requests in flight, the two verdict rules that differ and the run directory (domain/verification/pin.py).
   # Nothing else in the pipeline asks which pin is in use.
   pin: v4.9
-  # v4.9's endpoint is the `kimina` section above. v4.27's is the `oeis` pool (lean_pool/README.md):
+  # v4.9's endpoint is the `kimina` section above. v4.27's is the `oeis` pool (lean-pool, https://github.com/cabloo/lean-pool):
   # HTTPS, its own certificate authority, its own key.
   pool:
     name: lean-pool.example        # the NAME its certificate is checked against, and the SNI sent; the
@@ -35,9 +35,9 @@ lean:
     # the pool has workers (the ladder loop does) must wait at least this long for an answer, plus Lean's own
     # limit, or it gives up on a request that is still queued. As the pool is installed (its installer's
     # defaults, Lean timeout 300 s; NOT read from the live proxy):
-    proxy_queue_seconds: 630       # HAProxy's `timeout queue`: 2 x 300 + 30 (lean_pool, derive_timeouts)
+    proxy_queue_seconds: 630       # HAProxy's `timeout queue`: 2 x 300 + 30 (lean-pool, derive_timeouts)
     server_wait_seconds: 120       # each Lean server's own wait for a free worker (LEAN_SERVER_MAX_WAIT)
-    # For a client that follows the size the pool states (`auto`; lean_pool/README.md, "Background work and the pool's size"): it keeps
+    # For a client that follows the size the pool states (`auto`; lean-pool's README, "Background work and the pool's size"): it keeps
     # workers x this margin in flight (a short queue in front of the servers, so no worker waits for the
     # client), and never more than the ceiling, whatever the pool states.
     size_margin: 1.25
@@ -268,7 +268,7 @@ ladder_loop:                       # docs/spec/ladder-loop.spec.md, L0: the pool
   # 2026-10-04, on three servers: 12, 13 and 3): the extra dozen wait in the proxy's queue
   # for about a second, every worker always has a next check, and a server that joins mid-run is used without
   # a restart. The bulk certificate check shares that queue and gets what its own requests in flight earn it.
-  # A number, or `auto` (lean_pool/README.md, "Background work and the pool's size"): ask the pool for its size at the start and keep
+  # A number, or `auto` (lean-pool's README, "Background work and the pool's size"): ask the pool for its size at the start and keep
   # workers x lean.pool.size_margin in flight, following the size it states on its answers. `auto` needs the
   # pool refreshed with the release that states its size; against a pool that states none it is the fallback.
   lean_in_flight: auto             # the pool states its size since its refresh of 2026-10-04 (37 workers, four servers)
