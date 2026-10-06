@@ -26,7 +26,7 @@ The distributed Lean checking pool built to feed it is a project of its own, [le
 | Three rounds | Does the ladder climb, and does it reach new problems? | Every rung rises (hardest +2.0 points [+0.7, +3.4]). On 392 never-solved problems the trained model succeeds on 1.5 times as many attempts but solves about the same problems (64 gained, 52 lost, p = 0.31) |
 | Equal compute | Is training a better use of 24,000 attempts than plain sampling? | No: the base model given those attempts solves 158 of the never-solved problems against the trained model's 96 |
 | Lower reward target | Does aiming the challenger at a pass rate of 1/10 instead of 1/4 keep its picks hard, and does the model reach further? | The picks stay on target. Hardest rung: no difference shown (+0.6 points [−0.4, +1.6]). Never-solved problems: a third more successes per attempt at every seed; more problems solved in one seed of three |
-| Repair, no training (one seed, two checks) | Is an attempt that resumes from Lean's proof state better than a fresh one? | The next attempt is (2.7% against 1.9% verify on hard problems); five attempts are not (+0.5 points [−0.2, +1.2]), and the same problems get solved (49 against 47) |
+| Repair, no training (one seed, two checks) | Is an attempt that resumes from Lean's proof state better than a fresh one? | One repair step is (2.7% against 1.9% verify on hard problems); a second adds nothing. Over five attempts the lead is +0.5 points [−0.2, +1.2], and the same problems get solved (49 against 47) |
 
 Every stage was run from a written spec whose pass, fail and void conditions were committed before the run.
 The specs and result notes are in [`docs/spec/`](docs/spec/).
@@ -130,24 +130,27 @@ What changed is the training set: about as many proofs from problems few solvers
 2,601) and about 1,450 fewer from problems most did. Leaving the easy proofs out keeps the model more varied
 (90% of its attempts are distinct, against 87%), which is the dose curve's finding from the other side.
 
-### Feeding Lean's answer back helps the next attempt, not the fifth
+### Feeding Lean's answer back: one repair step puts the solver ahead, a second adds nothing
 
-<p align="center"><img src="docs/figures/repair.svg" width="760" alt="Share of attempts that verify on hard problems, by attempt: starting over against resuming from Lean's proof state after every failure, and against repairing once and then starting over"></p>
+<p align="center"><img src="docs/figures/repair.svg" width="760" alt="Share of hard episodes resolved within one to five attempts: starting over against resuming from Lean's proof state after every failure, and against repairing once and then starting over; the lead in points is marked at two and at five attempts"></p>
 
 Everything above is blind resampling: a failed attempt tells the model nothing. Two checks with the untrained
 base model asked what happens when it does. A failed proof is cut before its first error, Lean reports the
 proof state at the cut, and the model resumes from the kept lines and that state, in the comment format the
-prover's authors trained it on.
+prover's authors trained it on. The figure shows running totals, because a per-attempt rate at later attempts
+would compare different survivors: the arm that resolved more early is left with the harder episodes.
 
 - **The state is information the model uses.** Resuming with it resolves 2.6 points more hard episodes than
   resuming from the same kept lines without it [+1.3, +3.9].
 - **One repair step straight after a failure beats a fresh attempt,** measured twice on separate samples:
   1.9% against 1.1% of 1,880 failures verify, then 2.7% against 1.9% of 6,562.
-- **Repeated, it gets stuck.** By the fifth attempt 46% of resumed proofs are exact copies of one Lean already
-  rejected in the same episode, most often a closing `nlinarith` written again.
-- **Repairing once and then starting over is not shown to beat plain resampling at five attempts**
-  (+0.5 points [−0.2, +1.2] over 6,696 hard episodes), and the same goal problems get solved (49 against 47).
-  The blind arm catches up: speed, not reach, once more.
+- **The lead it makes is kept, and it is small.** Within two attempts the repairing episode is ahead by 0.7
+  points [+0.1, +1.4]; within five, by 0.5 [−0.2, +1.2] (9.0% of 6,696 hard episodes against 8.5%), which is
+  no longer separable from zero. The first check, which resumed after every failure, ends at +0.6 [−1.0, +2.2].
+- **A second repair step adds nothing.** On the 6,179 episodes still open in both arms after three attempts,
+  it verifies 94 times and a fresh attempt 98. The episodes a repair can fix are taken by the first one; and
+  resumed every time, the model rewrites what Lean rejected (46% exact copies by the fifth attempt).
+- **Reach does not move.** The same goal problems get solved either way (49 against 47).
 
 The second check was sized to resolve the gain that the first one's data suggested (+1.3 points). It did not
 repeat, which is what fixing the read before the run is for.

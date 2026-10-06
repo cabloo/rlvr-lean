@@ -701,9 +701,14 @@ episodes, 95% bootstrap over problems.
 **Outcome (seed 0, 2026-10-05; `ladder-l3a2-RESULT.md`): NOT SHOWN AT THIS SIZE.** Both checks pass (a state
 for 97.4% of the failed attempts a repair step starts from; at position 2 on the hard problems the repair step
 verifies 177 of 6,562 against blind's 127). Primary +0.0048 [−0.0022, +0.0120]; without the trimmed steps
-+0.0013 [−0.0054, +0.0081]. Within 2 attempts +0.0075 [+0.0015, +0.0137], and the blind arm then catches up;
-G by problem 49 against 47 (gained 12, lost 10). The second repair step is worth about one blind attempt (106
-of 6,286 against 113 of 6,325). The smoke run did not reach attempt 3, so attempt 4 was first seen in the run
++0.0013 [−0.0054, +0.0081]. Within 2 attempts +0.0075 [+0.0015, +0.0137], and the lead is then kept and not
+added to (hard episodes resolved within 2, 3, 4, 5 attempts: 311, 410, 516, 602 against 261, 371, 484, 570);
+G by problem 49 against 47 (gained 12, lost 10). The second repair step is worth one blind attempt: on the
+6,179 episodes still open in both arms after attempt 3 it verifies 94 times, a fresh attempt 98. (Corrected
+2026-10-06 after the owner's review: this note first said "the blind arm then catches up" and compared the
+second repair step with a blind attempt on different survivors, 106 of 6,286 against 113 of 6,325. Arms are
+compared by running totals or on matched episodes, never by the rate among the episodes each has left.) The
+smoke run did not reach attempt 3, so attempt 4 was first seen in the run
 and was checked from its rows before the read (6,276 of 6,276 resumed steps start from attempt 3). By the
 branch: an untrained repair step is not worth its extra Lean check as a search step; training on repair (L3b)
 is the owner's call.

@@ -206,7 +206,52 @@
   "first_step_repeats_the_failed_step": 0.35266,
   "share_of_failed_first_attempts_with_a_state": 0.97457,
   "generated_tokens_resume_over_blind": 0.5388,
-  "branch": "NOT SHOWN AT THIS SIZE"
+  "branch": "NOT SHOWN AT THIS SIZE",
+  "hard_resolved_within": {
+   "blind": {
+    "1": 0.01658,
+    "2": 0.03181,
+    "3": 0.04973,
+    "4": 0.06496,
+    "5": 0.07213
+   },
+   "resume_with_state": {
+    "1": 0.01658,
+    "2": 0.04435,
+    "3": 0.06317,
+    "4": 0.07392,
+    "5": 0.07841
+   },
+   "resume_without_state": {
+    "1": 0.01658,
+    "2": 0.02957,
+    "3": 0.04032,
+    "4": 0.04973,
+    "5": 0.05287
+   }
+  },
+  "hard_lead_within_resume_with_state_minus_blind": {
+   "2": [
+    0.012544802867383513,
+    0.002688172043010753,
+    0.0228494623655914
+   ],
+   "3": [
+    0.013440860215053764,
+    -0.00044802867383512545,
+    0.027329749103942653
+   ],
+   "4": [
+    0.008960573476702509,
+    -0.0062724014336917565,
+    0.024193548387096774
+   ],
+   "5": [
+    0.00627,
+    -0.00986,
+    0.02195
+   ]
+  }
  },
  "second_check": {
   "what": "the second repair check: one repair step after each fresh failure, then start over (blind, repair, blind, repair, blind) against blind; base model",
@@ -387,6 +432,116 @@
   "generated_tokens_alternate_over_blind": 0.8289,
   "lean_checks_alternate_over_blind": 1.432,
   "share_of_repair_steps_with_a_state": 0.974,
-  "branch": "NOT SHOWN AT THIS SIZE"
- }
+  "branch": "NOT SHOWN AT THIS SIZE",
+  "hard_resolved_within": {
+   "blind": {
+    "1": 0.02001,
+    "2": 0.03898,
+    "3": 0.05541,
+    "4": 0.07228,
+    "5": 0.08513
+   },
+   "alternate": {
+    "1": 0.02001,
+    "2": 0.04645,
+    "3": 0.06123,
+    "4": 0.07706,
+    "5": 0.0899
+   }
+  },
+  "hard_lead_within_alternate_minus_blind": {
+   "2": [
+    0.00747,
+    0.00149,
+    0.01374
+   ],
+   "3": [
+    0.00582,
+    0.0,
+    0.0118
+   ],
+   "4": [
+    0.00478,
+    -0.00254,
+    0.01225
+   ],
+   "5": [
+    0.00478,
+    -0.00224,
+    0.01195
+   ]
+  },
+  "hard_episodes": 6696,
+  "hard_resolved_counts_within": {
+   "1": {
+    "alternate": 134,
+    "blind": 134,
+    "alternate_only": 0,
+    "blind_only": 0,
+    "both": 134,
+    "sign_test_p": 1.0
+   },
+   "2": {
+    "alternate": 311,
+    "blind": 261,
+    "alternate_only": 163,
+    "blind_only": 113,
+    "both": 148,
+    "sign_test_p": 0.003112658434542321
+   },
+   "3": {
+    "alternate": 410,
+    "blind": 371,
+    "alternate_only": 146,
+    "blind_only": 107,
+    "both": 264,
+    "sign_test_p": 0.01672163330814066
+   },
+   "4": {
+    "alternate": 516,
+    "blind": 484,
+    "alternate_only": 216,
+    "blind_only": 184,
+    "both": 300,
+    "sign_test_p": 0.121032836846099
+   },
+   "5": {
+    "alternate": 602,
+    "blind": 570,
+    "alternate_only": 205,
+    "blind_only": 173,
+    "both": 397,
+    "sign_test_p": 0.11070991597471488
+   }
+  },
+  "first_repair_step": {
+   "what": "attempt 2 on every failed first attempt: the repair step in one arm, a fresh attempt in the other",
+   "episodes": 6562,
+   "repair_verified": 177,
+   "blind_verified": 127,
+   "repair_only": 163,
+   "blind_only": 113,
+   "sign_test_p": 0.003112658434542321,
+   "of_the_repair_steps_episodes_the_blind_arm_resolved": {
+    "at_attempt_2": 14,
+    "later_within_5": 39,
+    "never_within_5": 124
+   }
+  },
+  "second_repair_step_on_matched_episodes": {
+   "what": "attempt 4 on the episodes still open in BOTH arms after attempt 3 (the same failed attempts 1 and 3): the repair step against a fresh attempt",
+   "episodes": 6179,
+   "repair_verified": 94,
+   "blind_verified": 98,
+   "repair_only": 85,
+   "blind_only": 89,
+   "sign_test_p": 0.8201708574029796,
+   "difference": [
+    1.6938457798673193e-05,
+    -0.006557510589768656,
+    0.006836542589230759
+   ]
+  }
+ },
+ "how_to_read": "Compare the arms by the running total (hard_resolved_within) or on matched episodes. The per-attempt counts (hard_verified_by_attempt) are shares of the episodes still open at that attempt, and after attempt 2 those are different episodes in each arm."
 }

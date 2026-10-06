@@ -186,32 +186,39 @@ def lower_target():
 def repair():
     data = load("repair_checks.json")
     figure, (left, right) = plt.subplots(1, 2, figsize=(8.6, 3.5), sharey=True)
-    attempts = ["2", "3", "4", "5"]
+    attempts = ["1", "2", "3", "4", "5"]
     xs = list(range(len(attempts)))
 
-    def rate(pairs):
-        return [100 * pairs[a][0] / pairs[a][1] for a in attempts]
+    def total(by_attempt):
+        return [100 * by_attempt[a] for a in attempts]
 
-    first = data["first_check"]["hard_verified_by_attempt"]
-    for arm, label, color, style in (("blind", "start over (blind)", BASE_COLOR, "-"), ("resume_with_state", "resume with Lean's proof state", TRAINED_COLOR, "-"),
-                                     ("resume_without_state", "resume without the state", TRAINED_COLOR, ":")):
-        left.plot(xs, rate(first[arm]), color=color, linestyle=style, marker="o", markersize=5, linewidth=2, label=label)
+    def mark_lead(axis, upper, lead):
+        for a in ("2", "5"):
+            axis.annotate(f"+{100 * lead[a][0]:.1f}", (int(a) - 1, upper[int(a) - 1]), textcoords="offset points", xytext=(0, 7), ha="center",
+                          fontsize=8.5, color=TRAINED_COLOR)
+
+    first = data["first_check"]
+    totals = first["hard_resolved_within"]
+    left.plot(xs, total(totals["blind"]), color=BASE_COLOR, marker="o", markersize=5, linewidth=2, label="start over (blind)")
+    left.plot(xs, total(totals["resume_with_state"]), color=TRAINED_COLOR, marker="o", markersize=5, linewidth=2, label="resume with Lean's proof state")
+    left.plot(xs, total(totals["resume_without_state"]), color=TRAINED_COLOR, linestyle=":", marker="o", markersize=5, linewidth=2, label="resume without the state")
+    left.fill_between(xs, total(totals["blind"]), total(totals["resume_with_state"]), color=TRAINED_COLOR, alpha=0.10, linewidth=0)
+    mark_lead(left, total(totals["resume_with_state"]), first["hard_lead_within_resume_with_state_minus_blind"])
     left.set_title("Resuming after every failure")
-    left.set_ylabel("% of attempts that verify, hard problems")
-    left.legend(fontsize=8.5, loc="upper right")
+    left.set_ylabel("% of hard episodes resolved so far")
+    left.legend(fontsize=8.5, loc="upper left")
 
-    second = data["second_check"]["hard_verified_by_attempt"]
-    alternate = rate(second["alternate"])
-    right.plot(xs, rate(second["blind"]), color=BASE_COLOR, marker="o", markersize=5, linewidth=2, label="start over (blind)")
-    right.plot(xs, alternate, color=TRAINED_COLOR, marker="o", markersize=5, linewidth=2, label="repair once, then start over")
-    for index in (0, 2):
-        right.annotate("repair", (xs[index], alternate[index]), textcoords="offset points", xytext=(9, 4), ha="left", fontsize=8.5, color=TRAINED_COLOR)
+    second = data["second_check"]
+    totals = second["hard_resolved_within"]
+    right.plot(xs, total(totals["blind"]), color=BASE_COLOR, marker="o", markersize=5, linewidth=2, label="start over (blind)")
+    right.plot(xs, total(totals["alternate"]), color=TRAINED_COLOR, marker="o", markersize=5, linewidth=2, label="repair once, then start over")
+    right.fill_between(xs, total(totals["blind"]), total(totals["alternate"]), color=TRAINED_COLOR, alpha=0.10, linewidth=0)
+    mark_lead(right, total(totals["alternate"]), second["hard_lead_within_alternate_minus_blind"])
     right.set_title("Repairing once, then starting over")
-    right.legend(fontsize=8.5, loc="upper right")
-    top = max(max(rate(first[arm])) for arm in first) if first else 0
+    right.legend(fontsize=8.5, loc="upper left")
     for axis in (left, right):
-        axis.set_xticks(xs, [f"attempt {a}" for a in attempts])
-        axis.set_ylim(0, max(top, max(alternate)) * 1.18)
+        axis.set_xticks(xs, ["1 attempt"] + [f"{a} attempts" for a in attempts[1:]], fontsize=8.5)
+        axis.set_ylim(0, 100 * max(second["hard_resolved_within"]["alternate"].values()) * 1.3)
         axis.grid(axis="x", visible=False)
     save(figure, "repair.svg")
 

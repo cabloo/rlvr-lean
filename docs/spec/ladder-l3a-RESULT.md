@@ -56,7 +56,28 @@ Three things are in this table.
    points in the band and 5.5 above it. A fresh attempt may take another approach; a resumed one is held to
    the approach that just failed.
 
+## Read as running totals (corrected 2026-10-06, after the owner's review)
+
+The first version of this note compared the arms attempt by attempt, by the share of the episodes still open
+that verify at each attempt (the table below). After attempt 2 those are different episodes in each arm: the
+arm that resolved more early is left with the harder ones. The fair read is the running total. Hard problems,
+resolved within k attempts (each problem's mean over its episodes, as the primary is read):
+
+| Within | Blind | Resume with the state | Resume without the state | With the state minus blind |
+|---|---|---|---|---|
+| 1 attempt (shared) | 1.7% | 1.7% | 1.7% | |
+| 2 attempts | 3.2% | 4.4% | 3.0% | +0.0125 [+0.0027, +0.0228] |
+| 3 attempts | 5.0% | 6.3% | 4.0% | +0.0134 [−0.0004, +0.0273] |
+| 4 attempts | 6.5% | 7.4% | 5.0% | +0.0090 [−0.0063, +0.0242] |
+| 5 attempts | 7.2% | 7.8% | 5.3% | +0.0063 [−0.0099, +0.0220] |
+
+The arm that resumes with the state is ahead at every attempt count. Its lead is largest within three
+attempts and smaller, and no longer separable from zero, within five. It is not caught up.
+
 ## Attempt by attempt, hard problems (verified / attempts made at that loop)
+
+Shares of the episodes still open at that attempt. After attempt 2 the rows are different episodes, so they
+are not a comparison of the arms.
 
 | | Attempt 2 | Attempt 3 | Attempt 4 | Attempt 5 |
 |---|---|---|---|---|
@@ -64,14 +85,18 @@ Three things are in this table.
 | Resume with the state | 36 / 1,880 (1.91%) | 26 / 1,844 (1.41%) | 14 / 1,818 (0.77%) | 5 / 1,804 (0.28%) |
 | Resume without the state | 16 / 1,880 (0.85%) | 12 / 1,864 (0.64%) | 12 / 1,852 (0.65%) | 5 / 1,840 (0.27%) |
 
-The first resumed attempt is worth nearly two blind ones; the fourth is worth a quarter of one. The blind
-arm's low last column was checked for a mechanical cause and none was found (the same token counts, Lean
-times and finish reasons as the other loops; every sampling seed distinct; by set 2 of 1,549 on G and 7 of
-269 below the band, against 6, 2, 8 and 14, 19, 13 before).
+The first resumed attempt is worth nearly two blind ones (the same episodes in each arm: every failed first
+attempt). **Withdrawn (2026-10-06):** "the fourth is worth a quarter of one" compared the resuming arm's
+survivors with the blind arm's. Whether a later repair step is worth a blind attempt was tested like for like
+in the second check: it is worth one (`ladder-l3a2-RESULT.md`, 94 against 98 on 6,179 matched episodes). The
+blind arm's low last column was checked for a mechanical cause and none was found (the same token counts,
+Lean times and finish reasons as the other loops; every sampling seed distinct; by set 2 of 1,549 on G and 7
+of 269 below the band, against 6, 2, 8 and 14, 19, 13 before).
 
-## Why the resumed loop fades: it writes what it wrote
+## The resuming arm writes what it wrote
 
-Share of attempts whose whole proof is an exact copy of an earlier attempt in the same episode:
+These too are shares of the attempts made at each position, so the later columns describe the episodes that
+stayed open. Share of attempts whose whole proof is an exact copy of an earlier attempt in the same episode:
 
 | | Attempt 2 | Attempt 3 | Attempt 4 | Attempt 5 |
 |---|---|---|---|---|
@@ -98,7 +123,8 @@ after `nlinarith [pow_two_nonneg (a - b), ...]` failed on `a ^ 3 + 2 * b ^ 3 + 2
 variable in [0, 1], it wrote three `have : a ^ 2 - a ≤ 0` steps and closed the goal; after `linarith` failed
 on `(b * (2 * a) / (a + b)) ^ 2 ≤ a * b`, it wrote `field_simp`, `ring_nf`, `nlinarith`. Resumed attempts
 that do not repeat the failed step verify at 1.51% on the hard problems (72 of 4,769), against the blind
-arm's 0.96% (71 of 7,397).
+arm's 0.96% (71 of 7,397); the two counts are over different episodes at the later attempts, so this
+describes the attempts and does not compare the arms (noted 2026-10-06).
 
 Known corner, seen in the smoke run: when the error is inside an `all_goals` block, the state shown is the
 branch that is still open, not the branch where the step failed.
@@ -108,8 +134,10 @@ branch that is still open, not the branch where the step failed.
 - It does **not** say repair fails. The primary's interval contains zero at this size, and the arm that
   resumed spent half the generated tokens.
 - It says **where a repair step pays for this model, untrained:** once, straight after a failure, on a hard
-  problem, with the state shown. It says where it does not: repeated from the same cut, and on problems where
-  a fresh attempt often works.
+  problem, with the state shown. It says where it does not: on problems where a fresh attempt often works.
+  That it does not pay when repeated is not shown by this run's attempt-by-attempt rates (corrected
+  2026-10-06); the second check tested it on matched episodes and found a second repair step worth one blind
+  attempt.
 - **A reading composed from the stored rows, not a run arm, and made after seeing the above:** one repair
   step and then blind attempts (attempt 2 from the resuming arm, attempts 3 to 5 from the blind arm's first
   three) resolves 0.0855 of hard episodes within 5 attempts against blind's 0.0721, +0.0134 [+0.0049,
