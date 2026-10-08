@@ -240,6 +240,30 @@ STAGES["ladder_l3a2"] = list(_LADDER_L3A2)
 _LADDER_L3A2_SMOKE = {"environment": {"RLVR_LEAN_LADDER_L3A2_SOURCE": "ladder_l1_smoke", "RLVR_LEAN_LADDER_L3A2_RUN": "ladder_l3a2_smoke",
                                       "RLVR_LEAN_LADDER_L3A2_EPISODES": "repair"}}
 STAGES["ladder_l3a2_smoke"] = [(environment, step, _LADDER_L3A2_SMOKE) for environment, step in _LADDER_L3A2]
+
+# The ladder loop's L3c, an episode that keeps what verified (spec ladder-loop, "L3c: an episode that keeps what verified (no
+# training)"; `gpu/ladder_l3c.py`, with L3a's run, first attempts and sampling): the base model's first generations on G and
+# on the three rungs, then every one that failed continued in two arms from that same generation, each to at most seven
+# more: blind (whole proofs), and accumulate (the episode holds a pool of verified lemmas harvested from its failed proofs;
+# a generation continues from the pool and Lean's state after it when the pool has changed, and is a whole proof otherwise;
+# the kept closing steps are tried again after the pool whenever it has grown). In both arms a proof Lean already rejected
+# in the same episode is not sent to Lean again. ONE sampling step, one engine. It READS the L1 run directory of its seed in
+# the box's store and writes a run directory of its own. One seed per task (`--seeds 0`: it is the sampling seed, and no
+# generation is one of L3a's or L3a2's). No parts: a failure, or a soundness alarm, ends the stage; a rerun resumes at the
+# first loop that is not done.
+_LADDER_L3C = [("sync", "gpu"), ("gpu", "fix_tokenizers"), ("gpu", "ladder_l3c_prepare"),
+               ("guard", None), ("gpu", "ladder_l3c_attempts"), ("guard", None), ("gpu", "ladder_l3c_report")]
+STAGES["ladder_l3c"] = list(_LADDER_L3C)
+# The PILOT: the same steps on the real problems, the first 40 of G and the first 40 of the below-band rung at 2 episodes
+# each (`ladder_loop.accumulate.pilot_problems`, `pilot_episodes`), in a run directory of its own
+# (`ladder_l3c_pilot_seed<N>`) and with a sampling seed of its own. It is the run that reaches a continuing generation
+# before the real one is queued: the fixture's problems are too easy for the smoke run to. Not read as a result.
+_LADDER_L3C_PILOT = {"environment": {"RLVR_LEAN_LADDER_L3C_PILOT": "1"}}
+STAGES["ladder_l3c_pilot"] = [(environment, step, _LADDER_L3C_PILOT) for environment, step in _LADDER_L3C]
+# The same steps on what the L1 SMOKE run left in the box's store (`ladder_l1_smoke`: the fixture's one goal problem and
+# five rung problems), in a run directory of its own, with the stage's own episodes (6 on a hard problem, 2 on the others).
+_LADDER_L3C_SMOKE = {"environment": {"RLVR_LEAN_LADDER_L3C_SOURCE": "ladder_l1_smoke", "RLVR_LEAN_LADDER_L3C_RUN": "ladder_l3c_smoke"}}
+STAGES["ladder_l3c_smoke"] = [(environment, step, _LADDER_L3C_SMOKE) for environment, step in _LADDER_L3C]
 SOUNDNESS_ALARM_EXIT = 3        # `gpu.__main__`'s code for a proof of both sides of one statement (it cannot be imported here)
 
 

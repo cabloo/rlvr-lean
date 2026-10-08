@@ -47,6 +47,12 @@ start over") is the same run, first attempts, loop, settling and files with othe
 `Check`: its name, its arms, which of an arm's loops are repair steps and whether they show the state, its sizes and
 its sampling seed, and whether a proof already rejected in its episode is sent to Lean again. L3a's is `L3A`, and every
 function here that is given no check runs L3a's.
+
+A THIRD STAGE USES THE PARTS. L3c (`gpu/ladder_l3c.py`; spec "L3c: an episode that keeps what verified") has loops of
+its own, because its episode carries a pool of lemmas from one generation to the next: it takes from here the run and
+its prepare step (a `Check` may take only some of the problems, `chosen`, and name its run directory, `directory`), the
+first attempts, the sampling of a loop in chunks (`sampled`), the checking of a chunk (`settle_chunk`, with no arm
+that asks for a state), the attempt rows and the report step.
 """
 
 from __future__ import annotations
@@ -120,6 +126,9 @@ class Check:
     repairs: Callable[[str, int], bool]         # whether an arm's attempt at a loop is a repair step, from the arm's attempt before it
     shows_state: Callable[[str], bool]          # whether an arm's repair step is prompted with Lean's state at the cut
     known_copies: bool = False                  # a proof Lean already rejected in its episode is not sent again (`alternate.py`)
+    directory: str | None = None                # the run directory before `_seed<seed>`, when it is not the stage's name (L3c's pilot)
+    chosen: Callable[[dict, list[dict]], list[dict]] | None = None      # the problems a run takes, from its sizes and all of them
+                                                # (each with its `group`), when it does not take every one (L3c's pilot)
 
     def step(self, part: str) -> str:
         """The name of one of the stage's steps (`prepare`, `attempts`, `report`): its marker in the run too."""
@@ -134,7 +143,7 @@ def _runs(config: dict) -> Path:
 def _store(config: dict, check: Check | None = None) -> ArtifactStore:
     check = check or L3A
     mirror = os.environ.get("RLVR_LEAN_STEP_DIR")
-    run = os.environ.get(check.run_variable) or f"{check.name}_seed{training_seed(config)}"
+    run = os.environ.get(check.run_variable) or f"{check.directory or check.name}_seed{training_seed(config)}"
     return ArtifactStore(_runs(config) / run, Path(mirror) if mirror else None)
 
 
@@ -242,7 +251,10 @@ def prepare_run(config: dict, check: Check) -> dict:
                            f"problems, {len(misplaced)} in another group than their set; first: {misplaced[:1]}). Nothing was written.")
     episode_settings = config["ladder_loop"]["episode"]
     kept, without_a_side, audited = [], [], 0
-    for row in [*goal, *rungs]:
+    taken = [*goal, *rungs]
+    if check.chosen is not None:
+        taken = check.chosen(own, [{**row, "group": group_of[row["problem_id"]]} for row in taken])
+    for row in taken:
         plan = side_plan(row, episode_settings, own["sampling_seed"])
         if allowed_side(row, plan) is None:
             without_a_side.append(row["problem_id"])
@@ -641,16 +653,14 @@ def state_rows(job: Job, loop: int, repair_arms: Sequence[str] = RESUME_ARMS) ->
     return rows
 
 
-def run_loop(config: dict, store: ArtifactStore, problems: list[dict], own: dict, loop: int, jobs: list[Job], trimmed: list[dict], engine,
-             parameters_of: Callable, count_tokens: Callable[[str], int], pool, check: Check | None = None) -> dict:
-    """Generate, check and store one loop. The calling thread samples chunk after chunk; each chunk is settled by
-    a waiting thread as its checks come back, so Lean works while the model writes the next chunk. The loop's
-    attempts (with its `trimmed` rows, for which nothing is generated) are written BEFORE they are judged (an
-    alarm leaves its evidence), then its state requests, and only then is the loop marked done."""
-    check = check or L3A
-    episode_settings = config["ladder_loop"]["episode"]
+def sampled(jobs: list[Job], own: dict, episode_settings: dict, engine, parameters_of: Callable, count_tokens: Callable[[str], int],
+            settle: Callable[[list[Job]], dict]) -> tuple[list[dict], float, float]:
+    """Sample a loop's jobs and have them settled: (what each chunk's settling returned, the seconds of generation,
+    the time the last chunk was generated). The calling thread samples chunk after chunk; each chunk is settled by a
+    waiting thread as its checks come back (`settle`), so Lean works while the model writes the next chunk. A chunk
+    whose settling failed (a pool that refuses) stops the sampling and raises here."""
     chunk_size = max(1, episode_settings.get("chunk_attempts", 512))
-    started, generation_seconds, futures = time.monotonic(), 0.0, []
+    generation_seconds, futures = 0.0, []
     with ThreadPoolExecutor(max_workers=SETTLERS, thread_name_prefix="repair-settle") as settlers:
         for start in range(0, len(jobs), chunk_size):
             failed = next((future for future in futures if future.done() and future.exception() is not None), None)
@@ -665,9 +675,23 @@ def run_loop(config: dict, store: ArtifactStore, problems: list[dict], own: dict
             for job, output in zip(chunk, outputs):
                 sample = output.outputs[0]
                 job.completion, job.token_count, job.finish_reason = completion_from_output(sample.text), len(sample.token_ids), sample.finish_reason
-            futures.append(settlers.submit(settle_chunk, pool, chunk, episode_settings, check.repair_arms))
+            futures.append(settlers.submit(settle, chunk))
         generated = time.monotonic()
-    settled = [future.result() for future in futures]       # a chunk that failed (a pool that refuses) fails the loop here, unrecorded
+    return [future.result() for future in futures], generation_seconds, generated
+
+
+def run_loop(config: dict, store: ArtifactStore, problems: list[dict], own: dict, loop: int, jobs: list[Job], trimmed: list[dict], engine,
+             parameters_of: Callable, count_tokens: Callable[[str], int], pool, check: Check | None = None) -> dict:
+    """Generate, check and store one loop. The calling thread samples chunk after chunk; each chunk is settled by
+    a waiting thread as its checks come back, so Lean works while the model writes the next chunk. The loop's
+    attempts (with its `trimmed` rows, for which nothing is generated) are written BEFORE they are judged (an
+    alarm leaves its evidence), then its state requests, and only then is the loop marked done."""
+    check = check or L3A
+    episode_settings = config["ladder_loop"]["episode"]
+    started = time.monotonic()
+    # A chunk that failed (a pool that refuses) fails the loop here, unrecorded.
+    settled, generation_seconds, generated = sampled(jobs, own, episode_settings, engine, parameters_of, count_tokens,
+                                                     lambda chunk: settle_chunk(pool, chunk, episode_settings, check.repair_arms))
     rows = [*trimmed, *(row for job in jobs for row in attempt_rows(job, loop))]
     store.write_rows(attempts_file(loop), rows)
     by_problem: dict[str, list[dict]] = {}

@@ -5,6 +5,8 @@ only): text and rows in, text and rows out. The GPU steps that drive it are `rlv
 `cut.py` holds what is done to ONE failed proof (the cut, the file that asks for the state, the state read from Lean's
 answer, the prompt, the proof that is checked); `read.py` holds the read fixed before the run. `alternate.py` is the
 second check (L3a2: one repair step after each fresh failure, then start over): its arms, its known copies, its read.
+`accumulate.py` is the episode that keeps what verified (L3c): the harvest of a failed proof's lemmas, the pool and its
+check, the kept closers, what an episode holds from its stored rows, its read.
 """
 
 FIRST = "first"                     # the blind first attempt of an episode: the three arms share it

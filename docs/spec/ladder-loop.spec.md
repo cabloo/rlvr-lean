@@ -713,6 +713,144 @@ and was checked from its rows before the read (6,276 of 6,276 resumed steps star
 branch: an untrained repair step is not worth its extra Lean check as a search step; training on repair (L3b)
 is the owner's call.
 
+### L3c: an episode that keeps what verified (no training) — APPROVED by the owner 2026-10-07 ("yes on building")
+
+The ceiling at the end of this section is NOT approved: the owner's yes was for building and running the
+episode.
+
+**Why** (`reach-diagnosis-RESULT.md`). The problems the model never solves need longer proofs (median 4 lines
+against 1 on the easy rung), and three rounds of training help where a short proof exists (2.3 times at 1 to 3
+lines) and not where a long one is needed (0.7 times at 8 or more). In 58% of failed attempts on hard problems
+every step verified but the last, and the next attempt starts from nothing. Pooling those verified steps
+across a problem's stored attempts, with no generation, closed 15 hard problems that no whole attempt of that
+run had, 9 of them never solved by any model here in 558 attempts. L3a and L3a2 resumed from ONE failed
+attempt, which keeps that attempt's plan; this step keeps the verified facts of every attempt.
+
+**The episode ("accumulate").** One problem, up to `accumulate.generations` = 8 generations (the round's
+attempts a problem), stopping at the first verified proof. It holds a **pool**: an ordered list of verified
+lemmas, empty at the start.
+
+1. **A fresh generation:** a whole proof from the plain prompt, as now. Checked by Lean.
+2. **Harvest.** From a failed proof, its leading top-level `have` steps that end before its first error are
+   verified in place (L3a's cut gives the line). They join the pool with the names they bind made unique to
+   that generation, unless the same statement is already there. A step that binds a pattern, or anything other
+   than a `have`, ends the harvest: what follows it may depend on a goal it changed. The pool holds at most
+   `accumulate.pool_blocks` = 12 blocks.
+3. **Try the kept closers again.** A failed proof that was lemmas and then ONE closing step leaves that step
+   as a kept closer (at most 8). Whenever the pool has grown, each kept closer is checked after the pool. This
+   costs Lean checks and no generation. A proof that verifies this way resolves the episode and is counted
+   apart ("assembled").
+4. **A continuing generation:** the plain prompt, the pool's lemmas as the proof so far, and Lean's state
+   after them in the prover's own comment format (L3a's items 2 and 3: `all_goals sorry`, every goal, so the
+   pooled facts appear as hypotheses); the model continues. Checked as the pool plus the continuation;
+   harvested like a fresh one (its new lemmas were verified with the pool above them, and join it).
+5. **Which kind:** generation 1 is fresh. After that a generation continues when the pool has changed since
+   the last continuing generation, and is fresh otherwise (an unchanged pool would be shown the same prompt
+   again, which is how L3a's loop came to repeat itself). With an empty pool a generation is fresh.
+6. A proof whose text Lean has already rejected in the episode is not sent again (L3a2's rule).
+
+**Two arms, the same draws where they can be.** Blind: 8 whole proofs from the plain prompt. Accumulate: the
+episode above. A sampling seed does not depend on the arm, so every fresh generation in the accumulate arm is
+the same sample as the blind arm's at that position, and the arms differ only where the accumulate arm
+continued. The base model, nothing trained. The side a certificate allows, the 2% audit and the soundness
+alarm as everywhere.
+
+**Problems and size.** The hard problems: G (392) and the below-band rung (166), 6 episodes each (3,348
+episodes of up to 8 generations); the in-band and above-band rungs at 2 episodes each for the question whether
+it costs anything where a fresh attempt is strong. A sampling seed of its own. About 45,000 generations and
+about 110,000 Lean checks; about 45 minutes on the GPU box.
+
+**The read, fixed before the run.** Paired by episode, each problem's mean over its episodes, 95% bootstrap
+over problems. Arms are compared by RUNNING TOTALS only (resolved within k generations), never by the rate
+among the episodes each arm has left (the owner's correction of 2026-10-06).
+
+- **Primary: on the hard problems, episodes resolved within 8 generations, accumulate minus blind.**
+- **Reach, the second number that decides:** problems of G resolved in any of their 6 episodes, accumulate
+  against blind, gained against lost; and the same restricted to the problems whose shortest published proof
+  is 4 lines or more (230 of G by the shipped line counts; this said 248, from an earlier count that took the
+  proof with the fewest characters).
+- **Secondary:** the running total at 2, 4 and 6 generations; the primary by the length of the shortest
+  published proof (1, 2 to 3, 4 to 7, 8 or more lines); how the accumulate arm's resolutions came (a fresh
+  proof, a continuing generation, an assembled proof); the lengths of the proofs each arm verified; the
+  in-band and above-band rungs.
+- **Budget:** generations, generated tokens, prompt tokens and Lean checks by arm. If the accumulate arm
+  generates more than 10% more tokens, the blind arm is read at the number of generations that matches.
+- **Can this run see a win (else INCONCLUSIVE):** a non-empty pool in at least 30% of hard episodes by their
+  last generation (the stored attempts gave a verified run in 22% of failed attempts, unevenly over problems,
+  so about half is expected after four fresh ones); a state for at least half of the continuing generations;
+  and the pool as
+  harvested stands with `sorry` in at least 95% of the checks made of it.
+- **Branches.** Primary above zero with an interval clear of zero: the accumulating episode is the solver's
+  episode from here, and L3d trains on the proofs it assembles (its own read; the question there is whether
+  the model then writes the longer proofs itself). Interval contains zero and reach is not ahead: not shown;
+  the probe's gain came from more attempts' pieces than an episode has, and the size of the pool is the next
+  thing to vary, on the owner's word. Reach ahead (gained more than lost, sign test under 0.05) with the
+  primary's interval through zero: the episode reaches problems without resolving more episodes; reported as
+  that, and L3d is still the next step.
+
+**Made exact before the build (2026-10-07).**
+
+- **The pool only grows.** A lemma that came later may use one that came earlier (a generation's own harvest
+  is ordered, and a continuing generation's lemmas were verified with the whole pool above them), so nothing
+  is ever dropped from the middle or the front. A harvest that would take the pool past 12 blocks is cut at
+  its tail, and a full pool takes no more. (The first wording, "when it is full the oldest go", would have
+  broken lemmas that use them.)
+- **The same statement twice.** A harvested `have` whose statement is already in the pool is not added; the
+  name it bound is read as the pooled lemma's name in what follows it (its own later lemmas, its closer).
+- **The pool is checked whenever it changes** (the pool, then `all_goals sorry`): that check gives the state
+  for the next continuing generation, and if Lean reports an error in it the newest harvest is taken back out.
+- **Closers are the model's own.** A kept closer is a closing step the model wrote. No fixed list of tactics
+  is tried: the diagnosis used six plain ones to probe, and here a continuing generation, which sees the pool,
+  has that job. A kept closer that names a lemma the pool does not hold is not tried. A (pool, closer) pair is
+  checked once.
+- **Names.** A harvested lemma's name gets a suffix for its generation; anonymous ones stay anonymous.
+- **A pilot before the run:** the same stage on 40 hard problems at 2 episodes (`ladder_l3c_pilot`), because
+  the fixture problems are too easy for a smoke run to reach a continuing generation (L3a2's smoke resolved 13
+  of 14 episodes at the first attempt). The pilot's episodes are not read as a result.
+- **Proof lengths** for the read by length: the line count of each held-out problem's shortest published
+  proof, shipped as a small data file made from the pool build's candidates
+  (`data/ladder_l0/heldout_proof_lines.jsonl`). It is used by the report only; no prompt and no rule sees it.
+- **Sampling seed** 1032 at seed 0 (L3a 1030, L3a2 1031).
+
+**Made exact by the build (2026-10-08, before any run).**
+
+- **A pool stands** only when Lean reports no error at all and exactly one goal at the `sorry`. A timeout, no
+  answer, no goal left or several goals also take the newest harvest back out.
+- **A lemma** is a top-level `have` that binds one name or none and carries its own proof. A `have` with no
+  proof, a pattern, or one followed by a combinator line at step indentation ends the harvest.
+- **A closer and its own proof.** The pool right after a proof's own harvest, with that proof's own closer, is
+  the proof Lean just rejected under pooled names: it is not sent. A one-step proof with no lemma also leaves
+  a closer.
+- **Nothing is harvested** from a known copy, from a proof with no error position (the token cap, a timeout),
+  or from a continuing proof whose first error lies in the pool's own lines.
+- **The pilot has a sampling seed of its own** (1033), so no generation of the run is seen beforehand.
+- **A fourth branch,** which the read above did not name: the primary's interval entirely below zero. It is
+  reported as "the accumulating episode resolves fewer episodes than blind attempts".
+- **Extra Lean time falls on the accumulate arm:** a continuing proof re-proves the pool, and a closer with
+  more facts above it is slower, under the same 30 s limit. Timeouts are counted as failures and reported by
+  kind.
+
+**Outcome at three seeds (2026-10-08; `ladder-l3c-RESULT.md`): THE ACCUMULATING EPISODE IS THE SOLVER'S EPISODE
+FROM HERE, at each seed.** All three checks pass; the rows were checked before the read. Primary by seed
++0.0114 [+0.0039, +0.0191], +0.0114 [+0.0045, +0.0185], +0.0084 [+0.0015, +0.0152]; over the three,
++0.0104 [+0.0053, +0.0157] (1,294 of 10,044 hard episodes against 1,190), with the lead growing at every
+generation (3, 31, 50, 71, 88, 98, 104 episodes within 2 to 8). Reach: the goal set by problem over 18
+episodes, 92 against 65, gained 28 and lost 1; where the shortest published proof is 4 lines or more, 36
+against 28, gained 8 and lost 0. Twenty of the 92 were never solved by the base or the trained models in 558
+attempts (5 of the blind arm's 65). The same generations, 91% of the generated tokens, 1.5 times the Lean
+checks. What it does not show: reliability (19 of the 28 gained problems were won in one episode of 18), and
+a gain in episodes where 8 lines or more are needed (−0.0006 [−0.0082, +0.0064]). The untrained model mostly
+answers a pool with a closing step (75%) and repeats a rejected proof in 27% of continuing generations; 151
+of the arm's resolutions on hard problems are assembled proofs and 119 continuing generations. What follows
+is L3d (the episode in the round, training on what it assembles), which needs its own spec and the owner's
+approval.
+
+**After it, on the owner's word: the ceiling.** One fine-tune on published proofs of pool problems the base
+cannot solve (never held-out ones), the same recipe and number of proofs as a three-round model, measured on
+the rungs and on G by proof length. Published proofs are certificates, not training text, by the owner's rule;
+this is a labelled diagnostic and nothing trained this way is kept. It bounds what training on assembled
+proofs can reach with this model.
+
 ## Fixtures (these become the tests)
 
 1. An episode that proves the statement resolves the problem; so does one that proves the exact negation; one

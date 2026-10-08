@@ -17,6 +17,8 @@ or a question came from the owner, and they keep the corrections that later runs
 | [`ladder-l2t-RESULT.md`](ladder-l2t-RESULT.md) | Three rounds again with the reward aimed at a pass rate of 1/10 in place of 1/4, three seeds |
 | [`ladder-l3a-RESULT.md`](ladder-l3a-RESULT.md) | The repair check, no training: resuming a failed proof from Lean's proof state against starting over |
 | [`ladder-l3a2-RESULT.md`](ladder-l3a2-RESULT.md) | The second repair check: one repair step after each fresh failure, then a fresh attempt |
+| [`reach-diagnosis-RESULT.md`](reach-diagnosis-RESULT.md) | Why the loop had not reached new problems: proof length, discarded verified steps, and a probe that pools them |
+| [`ladder-l3c-RESULT.md`](ladder-l3c-RESULT.md) | An episode that keeps what verified: more hard episodes resolved and more never-solved problems reached, three seeds |
 | [`phase-a-RESULT.md`](phase-a-RESULT.md) | The first experiment: one round on self-written conjectures |
 | [`phase-b-selection-RESULT.md`](phase-b-selection-RESULT.md) | Selection by a learning-progress score against a random draw, and its correction |
 | [`native-format-RESULT.md`](native-format-RESULT.md) | The missing-token defect: does the gain survive the fix |

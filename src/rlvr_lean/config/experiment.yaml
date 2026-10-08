@@ -387,6 +387,24 @@ ladder_loop:                       # docs/spec/ladder-loop.spec.md, L0: the pool
     episodes_goal: 12              # first attempts on every problem of G (392: 4,704)
     episodes_below: 12             # ... and of the below-band rung (166: 1,992): with G, the hard problems the primary is read on
     episodes_rungs: 2              # ... and of a rung with no number of its own here: in the band and above it (546: 1,092)
+  # ---- L3c: an episode that keeps what verified (gpu/ladder_l3c.py; rules in domain/repair/accumulate.py; spec "L3c: an
+  # episode that keeps what verified (no training)"). The base model, the same problems. Every failed first generation
+  # goes on in TWO arms, to at most generations - 1 more each: blind (whole proofs), and accumulate: the episode holds
+  # a pool of verified lemmas (the leading top-level `have` steps of its failed proofs, each checked again with the
+  # pool); a generation continues from the pool and Lean's state after it when the pool has changed since the last
+  # continuing one, and is a whole proof from the plain prompt otherwise (then the blind arm's own sample); a failed
+  # proof's one closing step is kept and tried again after the pool whenever the pool has grown. In both arms a proof
+  # Lean already rejected in the episode is not sent again. The caps, the side and the audit are L3a's. The sampling
+  # seed is one place after L3a2's (round.sampling_seed + 100 x the task's seed + 32); the pilot's is the place after.
+  accumulate:
+    generations: 8                 # an episode is at most this many generations (the round's attempts a problem), the first one shared
+    pool_blocks: 12                # the lemmas a pool may hold; it only grows, and a harvest that would pass this is cut at its tail
+    kept_closers: 8                # the closing steps an episode keeps to try again after its pool
+    episodes_goal: 6               # first generations on every problem of G (392: 2,352)
+    episodes_below: 6              # ... and of the below-band rung (166: 996): with G, the hard problems the primary is read on
+    episodes_rungs: 2              # ... and of a rung with no number of its own here: in the band and above it (546: 1,092)
+    pilot_problems: 40             # the pilot (stage ladder_l3c_pilot): the first this many problems of G and of the below-band rung,
+    pilot_episodes: 2              # this many episodes each (160), in a run directory of its own; not read as a result
 
 evaluation:
   conjecture_holdout_samples: 12
