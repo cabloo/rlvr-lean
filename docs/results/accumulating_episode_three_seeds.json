@@ -1,0 +1,383 @@
+{
+ "what": "an episode of up to 8 generations on a problem that keeps a pool of its own verified lemmas (accumulate), against 8 blind attempts from the same first attempt; the base model, nothing trained; three sampling seeds, 6 episodes a problem and seed on the 558 hard held-out problems (the 392 goal problems and the 166 of the hardest rung). Arms are compared by running totals: episodes resolved within k generations",
+ "seeds": 3,
+ "hard_episodes": 10044,
+ "by_seed": [
+  {
+   "seed": 0,
+   "primary": [
+    0.01135,
+    0.00388,
+    0.01912
+   ],
+   "accumulate": 0.12634,
+   "blind": 0.11499,
+   "goal_problems": [
+    54,
+    42
+   ],
+   "goal_gained_lost": [
+    16,
+    4
+   ],
+   "goal_sign_test_p": 0.0118179,
+   "goal_problems_4_lines_or_more": [
+    21,
+    17
+   ],
+   "goal_gained_lost_4_lines_or_more": [
+    6,
+    2
+   ]
+  },
+  {
+   "seed": 1,
+   "primary": [
+    0.01135,
+    0.00448,
+    0.01852
+   ],
+   "accumulate": 0.13082,
+   "blind": 0.11947,
+   "goal_problems": [
+    46,
+    35
+   ],
+   "goal_gained_lost": [
+    15,
+    4
+   ],
+   "goal_sign_test_p": 0.0192108,
+   "goal_problems_4_lines_or_more": [
+    16,
+    13
+   ],
+   "goal_gained_lost_4_lines_or_more": [
+    4,
+    1
+   ]
+  },
+  {
+   "seed": 2,
+   "primary": [
+    0.00836,
+    0.00149,
+    0.01523
+   ],
+   "accumulate": 0.12933,
+   "blind": 0.12097,
+   "goal_problems": [
+    59,
+    40
+   ],
+   "goal_gained_lost": [
+    25,
+    6
+   ],
+   "goal_sign_test_p": 0.00087791,
+   "goal_problems_4_lines_or_more": [
+    23,
+    16
+   ],
+   "goal_gained_lost_4_lines_or_more": [
+    7,
+    0
+   ]
+  }
+ ],
+ "hard_resolved_within": {
+  "1": {
+   "accumulate": 200,
+   "blind": 200,
+   "difference": [
+    0.0,
+    0.0,
+    0.0
+   ]
+  },
+  "2": {
+   "accumulate": 393,
+   "blind": 390,
+   "only_accumulate": 39,
+   "only_blind": 36,
+   "sign_test_p": 0.8175538505509844,
+   "difference": [
+    0.0002986857825567504,
+    -0.0017921146953405018,
+    0.0023894862604540022
+   ]
+  },
+  "3": {
+   "accumulate": 577,
+   "blind": 546,
+   "only_accumulate": 85,
+   "only_blind": 54,
+   "sign_test_p": 0.010678285382555542,
+   "difference": [
+    0.0030864197530864204,
+    0.00029868578255675055,
+    0.00607327757865392
+   ]
+  },
+  "4": {
+   "accumulate": 740,
+   "blind": 690,
+   "only_accumulate": 113,
+   "only_blind": 63,
+   "sign_test_p": 0.00020218969307107755,
+   "difference": [
+    0.004978096375945836,
+    0.001692552767821586,
+    0.008363201911589
+   ]
+  },
+  "5": {
+   "accumulate": 889,
+   "blind": 818,
+   "only_accumulate": 144,
+   "only_blind": 73,
+   "sign_test_p": 1.644241710302052e-06,
+   "difference": [
+    0.007068896853843082,
+    0.0032855436081242534,
+    0.011150935882118667
+   ]
+  },
+  "6": {
+   "accumulate": 1052,
+   "blind": 964,
+   "only_accumulate": 172,
+   "only_blind": 84,
+   "sign_test_p": 4.0123847150251644e-08,
+   "difference": [
+    0.008761449621664669,
+    0.004480286738351255,
+    0.01324173636001592
+   ]
+  },
+  "7": {
+   "accumulate": 1178,
+   "blind": 1080,
+   "only_accumulate": 192,
+   "only_blind": 94,
+   "sign_test_p": 6.980439152376629e-09,
+   "difference": [
+    0.009757068896853833,
+    0.004978096375945839,
+    0.01483472720031859
+   ]
+  },
+  "8": {
+   "accumulate": 1294,
+   "blind": 1190,
+   "only_accumulate": 215,
+   "only_blind": 111,
+   "sign_test_p": 8.799194458487047e-09,
+   "difference": [
+    0.010354440461967328,
+    0.005276782158502588,
+    0.01573078454798884
+   ]
+  }
+ },
+ "primary": [
+  0.010354440461967328,
+  0.005276782158502588,
+  0.01573078454798884
+ ],
+ "within_8_by_set": {
+  "goal": {
+   "accumulate": 260,
+   "blind": 185,
+   "difference": [
+    0.01062925170068027,
+    0.005810657596371883,
+    0.015731292517006796
+   ]
+  },
+  "below": {
+   "accumulate": 1034,
+   "blind": 1005,
+   "difference": [
+    0.009705488621151274,
+    -0.0033467202141900937,
+    0.02342704149933065
+   ]
+  },
+  "in": {
+   "accumulate": 795,
+   "blind": 802,
+   "difference": [
+    -0.00752688172043011,
+    -0.020430107526881718,
+    0.005376344086021505
+   ]
+  },
+  "above": {
+   "accumulate": 2342,
+   "blind": 2343,
+   "difference": [
+    -0.00042625745950554135,
+    -0.0012787723785166241,
+    0.0
+   ]
+  }
+ },
+ "hard_by_proof_length": {
+  "1": {
+   "problems": 67,
+   "difference": [
+    0.021558872305140964,
+    -0.0041459369817578775,
+    0.048922056384742944
+   ],
+   "accumulate": 258,
+   "blind": 232
+  },
+  "2-3": {
+   "problems": 193,
+   "difference": [
+    0.017559009786989054,
+    0.007772020725388602,
+    0.02792170408750717
+   ],
+   "accumulate": 613,
+   "blind": 552
+  },
+  "4-7": {
+   "problems": 203,
+   "difference": [
+    0.004926108374384237,
+    0.0,
+    0.010125889436234263
+   ],
+   "accumulate": 313,
+   "blind": 295
+  },
+  "8+": {
+   "problems": 95,
+   "difference": [
+    -0.0005847953216374269,
+    -0.008187134502923977,
+    0.0064327485380116945
+   ],
+   "accumulate": 110,
+   "blind": 111
+  }
+ },
+ "goal_set_by_problem": {
+  "problems": 392,
+  "episodes_each": 18,
+  "generations_each": 8,
+  "solved": {
+   "accumulate": 92,
+   "blind": 65
+  },
+  "gained": 28,
+  "lost": 1,
+  "by_proof_length": {
+   "1": {
+    "problems": 37,
+    "accumulate": 19,
+    "blind": 12,
+    "gained": 7,
+    "lost": 0
+   },
+   "2-3": {
+    "problems": 125,
+    "accumulate": 37,
+    "blind": 25,
+    "gained": 13,
+    "lost": 1
+   },
+   "4-7": {
+    "problems": 156,
+    "accumulate": 30,
+    "blind": 24,
+    "gained": 6,
+    "lost": 0
+   },
+   "8+": {
+    "problems": 74,
+    "accumulate": 6,
+    "blind": 4,
+    "gained": 2,
+    "lost": 0
+   }
+  },
+  "at_4_lines_or_more": [
+   36,
+   28,
+   8,
+   0,
+   0.0078125
+  ],
+  "never_solved_by_the_base_in_279_attempts": {
+   "accumulate": 33,
+   "blind": 13
+  },
+  "never_solved_by_the_base_or_the_trained_models_in_558_attempts": {
+   "accumulate": 20,
+   "blind": 5
+  },
+  "won_in_at_least_n_of_the_episodes": {
+   "1": {
+    "accumulate": 92,
+    "blind": 65
+   },
+   "2": {
+    "accumulate": 52,
+    "blind": 41
+   },
+   "5": {
+    "accumulate": 21,
+    "blind": 13
+   },
+   "9": {
+    "accumulate": 2,
+    "blind": 2
+   }
+  },
+  "gained_problems_by_episodes_won": {
+   "1": 19,
+   "2": 4,
+   "3": 2,
+   "4": 1,
+   "5": 1,
+   "7": 1
+  },
+  "for_scale": {
+   "base_279_attempts": 82,
+   "trained_three_rounds_279_attempts": 94
+  }
+ },
+ "how_the_accumulate_arm_resolved_hard_episodes": {
+  "None": 8750,
+  "first": 200,
+  "fresh": 824,
+  "assembled": 151,
+  "continue": 119
+ },
+ "budget_on_the_hard_problems": {
+  "blind": {
+   "generations": 65620,
+   "generated_tokens": 5767241,
+   "prompt_tokens": 9192094,
+   "attempts_sent_to_lean": 64271,
+   "pool_checks": 0,
+   "closer_checks": 0,
+   "lean_checks": 64271,
+   "known_copies": 1225
+  },
+  "accumulate": {
+   "generations": 65279,
+   "generated_tokens": 5258690,
+   "prompt_tokens": 12744706,
+   "attempts_sent_to_lean": 60887,
+   "pool_checks": 13641,
+   "closer_checks": 21927,
+   "lean_checks": 96455,
+   "known_copies": 4255
+  }
+ }
+}

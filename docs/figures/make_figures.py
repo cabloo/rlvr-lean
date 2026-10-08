@@ -223,6 +223,46 @@ def repair():
     save(figure, "repair.svg")
 
 
+def accumulating_episode():
+    data = load("accumulating_episode_three_seeds.json")
+    figure, (left, right) = plt.subplots(1, 2, figsize=(8.6, 3.5))
+    within = data["hard_resolved_within"]
+    ks = sorted(within, key=int)
+    xs = [int(k) for k in ks]
+    episodes = data["hard_episodes"]
+    blind = [100 * within[k]["blind"] / episodes for k in ks]
+    keeps = [100 * within[k]["accumulate"] / episodes for k in ks]
+    left.plot(xs, blind, color=BASE_COLOR, marker="o", markersize=5, linewidth=2, label="8 blind attempts")
+    left.plot(xs, keeps, color=TRAINED_COLOR, marker="o", markersize=5, linewidth=2, label="an episode that keeps verified lemmas")
+    left.fill_between(xs, blind, keeps, color=TRAINED_COLOR, alpha=0.10, linewidth=0)
+    left.annotate(f"+{100 * data['primary'][0]:.1f}", (xs[-1], keeps[-1]), textcoords="offset points", xytext=(0, 7), ha="center", fontsize=8.5, color=TRAINED_COLOR)
+    left.set_xticks(xs)
+    left.set_xlabel("generations used on a problem")
+    left.set_ylabel("% of hard episodes resolved so far")
+    left.set_ylim(0, max(keeps) * 1.22)
+    left.set_title("The lead grows with every generation")
+    left.legend(fontsize=8.5, loc="upper left")
+    left.grid(axis="x", visible=False)
+
+    groups = data["goal_set_by_problem"]["by_proof_length"]
+    names = list(groups)
+    width = 0.38
+    positions = list(range(len(names)))
+    for offset, key, label, color in ((-width / 2, "blind", "8 blind attempts", BASE_COLOR), (width / 2, "accumulate", "keeps verified lemmas", TRAINED_COLOR)):
+        heights = [groups[name][key] for name in names]
+        bars = right.bar([p + offset for p in positions], heights, width=width * 0.94, color=color, label=label)
+        for bar, height in zip(bars, heights):
+            right.text(bar.get_x() + bar.get_width() / 2, height, f"{height}", ha="center", va="bottom", fontsize=8.5)
+    right.set_xticks(positions, [f"{name} line" + ("" if name == "1" else "s") + f"\nof {groups[name]['problems']}" for name in names], fontsize=8.5)
+    right.set_xlabel("shortest published proof; problems of that length")
+    right.set_ylabel("never-solved problems solved")
+    right.set_ylim(0, max(groups[name]["accumulate"] for name in names) * 1.25)
+    right.set_title("More never-solved problems solved")
+    right.legend(fontsize=8.5, loc="upper right")
+    right.grid(axis="x", visible=False)
+    save(figure, "accumulating_episode.svg")
+
+
 if __name__ == "__main__":
     rungs_by_round()
     goal_set()
@@ -231,3 +271,4 @@ if __name__ == "__main__":
     pool_shape()
     lower_target()
     repair()
+    accumulating_episode()

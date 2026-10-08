@@ -715,8 +715,8 @@ is the owner's call.
 
 ### L3c: an episode that keeps what verified (no training) — APPROVED by the owner 2026-10-07 ("yes on building")
 
-The ceiling at the end of this section is NOT approved: the owner's yes was for building and running the
-episode.
+That yes was for building and running the episode. The ceiling at the end of this section was approved
+separately, on 2026-10-08, and has its own heading there.
 
 **Why** (`reach-diagnosis-RESULT.md`). The problems the model never solves need longer proofs (median 4 lines
 against 1 on the easy rung), and three rounds of training help where a short proof exists (2.3 times at 1 to 3
@@ -850,6 +850,60 @@ cannot solve (never held-out ones), the same recipe and number of proofs as a th
 the rungs and on G by proof length. Published proofs are certificates, not training text, by the owner's rule;
 this is a labelled diagnostic and nothing trained this way is kept. It bounds what training on assembled
 proofs can reach with this model.
+
+### The ceiling: a labelled diagnostic — APPROVED by the owner 2026-10-08 ("Yes to all, keep pushing")
+
+**What it is for.** L3c reaches problems and does not make them reliable; the step that would is training on
+longer proofs (L3d). Before that is built, one question bounds it: **shown longer proofs of problems it cannot
+solve, does this model learn to write such proofs in one shot?** If it does not even from published proofs,
+training on a few hundred assembled ones will not do it, and reach has to stay in the search. If it does, the
+size of the gain against the number of proofs says how many assembled proofs L3d needs.
+
+**It is an exception, not a change of rule.** The owner's rule stands: published proofs are certificates and
+not training text. This trains once on them, on a branch, as a diagnostic. No model trained this way is used
+in a round or kept, its training file is not published, and its result is always labelled "ceiling".
+
+**The training file** (`data/ladder_ceiling/training.jsonl`, built on the dev machine with Lean checks only):
+
+- **Eligible:** pool candidates (never a held-out problem, never one of the base map's) on the side `true`,
+  whose pass rate the challenger predicted for the base below 0.05 (round 1 of L2's seed 0): 4,190 Lean
+  Workbook problems and 31,083 STP ones.
+- **Chosen:** every Lean Workbook one, and a random 4,800 of the STP ones.
+- **The proof:** of a problem's published proofs (as published, and as the pool build rewrote them for
+  Mathlib's lemma renames), the one with the fewest lines that verifies under v4.27 as a solver's attempt is
+  checked.
+- **Written:** 8,000 rows in a shuffled order: every chosen Lean Workbook problem with a verified proof, and
+  STP ones to make up the number. The first 2,000 rows are the smaller dose.
+
+**The run.** From the base, the round's training recipe unchanged, ONE pass over the 8,000 rows in the file's
+order, with a checkpoint after 2,000 rows (about the size of a three-round model's training set) and at the
+end. Seed 0. At each checkpoint: 8 episodes on the three held-out rungs and 93 attempts on each goal problem
+(32 and 61, with the sampling seeds L2 used for its models), so each checkpoint pairs by problem with the
+base's stored 93 attempts and with the three-round model at t = 1/10.
+
+**The read, fixed before the run.** One-shot attempts only. Paired by problem, 95% bootstrap over problems;
+problems solved as gained against lost.
+
+- **Primary: the goal problems whose shortest published proof is 4 lines or more (230), successes per attempt
+  over 93 attempts, the 8,000-proof model minus the base.** Beside it the same for the three-round model at
+  t = 1/10 minus the base (from stored results: 3.9 per 1,000 against 2.9 at 4 to 7 lines, 0.3 against 0.4
+  at 8 or more), which is what the loop's own training reaches.
+- **Secondary:** the same by length group (1, 2 to 3, 4 to 7, 8 or more) and for the 2,000-proof model; goal
+  problems solved at 93 attempts, gained against lost, by length group; the three rungs; the line counts of
+  the proofs each model verifies; the share of distinct attempts.
+- **Branches.** The primary above zero with an interval clear of zero, and at least twice the three-round
+  model's own gain there: the model can learn longer proofs from examples; L3d is worth building, and the
+  two doses say how the gain scales with proofs. Above zero but not twice the loop's own: longer proofs help
+  about as the loop's own do; L3d's case rests on assembled proofs being better aimed than published ones,
+  which this cannot tell. Interval through zero at 8,000 proofs: for this model and recipe, one-shot writing
+  of longer proofs is not shown to be learnable at this size; L3d as plain training is unlikely to pay, and
+  reach stays in the episode (a larger pool, more generations, or training the continuing step).
+- **Can this run see a win (else INCONCLUSIVE).** The training took: the mean training loss over the last 500
+  rows is below the mean over the first 500. The model still writes proofs: its share of attempts without an
+  answer on the rungs stays under 5%. And training on other provers' proofs has not broken it: its pass rate
+  on the above-band rung is at least half the base's.
+- **One seed:** a diagnostic that sizes the next step. If the primary's interval touches zero and its point
+  is above the loop's own gain, two more seeds are run before anything is concluded.
 
 ## Fixtures (these become the tests)
 

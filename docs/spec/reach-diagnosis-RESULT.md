@@ -1,7 +1,7 @@
 # Why the loop has not reached new problems, read from stored results: the problems it cannot solve need longer proofs, each attempt throws its verified steps away, and pooling those steps solves problems that 558 sampled attempts did not
 
-A diagnosis, 2026-10-06, after the owner's question: "how do we push this further? ideally to reliably
-accomplishing tasks the model couldn't accomplish before". No GPU and no generation: stored results of
+A diagnosis, 2026-10-06, of the question the three-seed results left: how to push the loop further, to
+reliably solving problems the model could not solve before. No GPU and no generation: stored results of
 `ladder-l2-RESULT.md`, `ladder-l2t-RESULT.md` and `ladder-l3a2-RESULT.md`, the published proofs of the held-out
 problems, and about 14,000 Lean checks through the pool at background priority. It closes with a proposal;
 nothing here is a verdict fixed before a run.
@@ -126,6 +126,6 @@ line groups are the measure of reach.
 
 ## Files
 
-Scripts of this reading were run from the session's scratch directory and are not kept as tools: the tables
+The scripts of this reading are not kept as tools: the tables
 are reproducible from the run directories named in the three result notes and from
 `experiments/rlvr_lean/ladder_l0/steps/candidates.jsonl` (the published proofs).

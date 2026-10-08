@@ -8,8 +8,14 @@ attempts them, Lean checks every attempt, and the solver is fine-tuned on what v
 project asks is narrow and hard: **does this loop take the model to problems it could not solve before, or
 does it only make it more reliable on the ones it already could?**
 
-The answer so far, at three seeds and with every read fixed before its run: **more reliable, measurably and
-on held-out problems; not yet further.** The repository contains the loop and the full record of results, including the ones that came out negative.
+The answer so far, at three seeds and with every read fixed before its run, has two parts. **Training on its
+own proofs makes the model more reliable on held-out problems and does not take it further.** What does take
+it further is not training at all: **an episode that keeps the steps Lean verified, instead of starting each
+attempt from nothing, solves 92 of the never-solved problems where the same number of blind attempts solves
+65** (28 gained, 1 lost), 20 of them problems no model here had solved in 558 attempts. Those problems are
+reached, not yet reliable; training on the proofs the episode assembles is the step now being built.
+
+The repository contains the loop and the full record of results, including the ones that came out negative.
 The distributed Lean checking pool built to feed it is a project of its own, [lean-pool](https://github.com/cabloo/lean-pool).
 
 <p align="center"><img src="docs/figures/rungs_by_round.svg" width="620" alt="Held-out pass rate over the base model after one, two and three rounds, on three difficulty rungs"></p>
@@ -27,6 +33,7 @@ The distributed Lean checking pool built to feed it is a project of its own, [le
 | Equal compute | Is training a better use of 24,000 attempts than plain sampling? | No: the base model given those attempts solves 158 of the never-solved problems against the trained model's 96 |
 | Lower reward target | Does aiming the challenger at a pass rate of 1/10 instead of 1/4 keep its picks hard, and does the model reach further? | The picks stay on target. Hardest rung: no difference shown (+0.6 points [−0.4, +1.6]). Never-solved problems: a third more successes per attempt at every seed; more problems solved in one seed of three |
 | Repair, no training (one seed, two checks) | Is an attempt that resumes from Lean's proof state better than a fresh one? | One repair step is (2.7% against 1.9% verify on hard problems); a second adds nothing. Over five attempts the lead is +0.5 points [−0.2, +1.2], and the same problems get solved (49 against 47) |
+| Accumulating episode, no training | Does an episode that keeps its verified lemmas across 8 generations solve more than 8 blind attempts? | **Yes, at every seed.** Hard episodes resolved: +1.0 points [+0.5, +1.6]. Never-solved problems solved: 92 against 65 (28 gained, 1 lost); where the proof needs 4 lines or more, 36 against 28 (8 gained, 0 lost). The same generations, 91% of the tokens, 1.5 times the Lean checks |
 
 Every stage was run from a written spec whose pass, fail and void conditions were committed before the run.
 The specs and result notes are in [`docs/spec/`](docs/spec/).
@@ -73,7 +80,7 @@ lift the pass rate on every held-out rung: by 7.6 points where the base already 
 8.7 where it solves 27%, and by 2.0 [+0.7, +3.4] where it solves 7%. The third round adds nothing that
 separates from zero.
 
-### It has not yet reached problems the base could not solve
+### Training alone has not reached problems the base could not solve
 
 <p align="center"><img src="docs/figures/goal_set.svg" width="760" alt="Goal problems solved and successes per 1,000 attempts, base model against the three-round model, at 32 and at 93 attempts"></p>
 
@@ -155,6 +162,57 @@ would compare different survivors: the arm that resolved more early is left with
 The second check was sized to resolve the gain that the first one's data suggested (+1.3 points). It did not
 repeat, which is what fixing the read before the run is for.
 
+### What the never-solved problems have in common: they need longer proofs
+
+Reading the stored results by the length of each problem's shortest published proof gave the cause. The
+problems the base never solves are not another kind of mathematics: their proofs are a few intermediate facts
+and a closing step (median 4 lines, against 1 on the easiest rung). And training helps exactly where a short
+proof exists:
+
+| Shortest published proof | Never-solved problems | Base, successes per 1,000 attempts | After three rounds | Ratio |
+|---|---|---|---|---|
+| 1 line | 37 | 9.5 | 22.9 | 2.4 |
+| 2 to 3 lines | 125 | 4.7 | 10.6 | 2.3 |
+| 4 to 7 lines | 156 | 2.9 | 3.9 | 1.4 |
+| 8 lines or more | 74 | 0.4 | 0.3 | 0.7 |
+
+A proof written in one shot is verified all or nothing, so its chance falls with every step it needs.
+Training on the model's own proofs raises the chance of a step it already takes and does not supply the steps
+it never takes. Meanwhile the pieces are there and are thrown away: in 58% of failed first attempts on hard
+problems, the first error is on the last line, so every step before it had verified, and the next attempt
+starts from nothing.
+
+### An episode that keeps what verified reaches problems that sampling does not
+
+<p align="center"><img src="docs/figures/accumulating_episode.svg" width="760" alt="Share of hard episodes resolved within one to eight generations, eight blind attempts against an episode that keeps its verified lemmas; and never-solved problems solved by each, by the length of the shortest published proof"></p>
+
+So the episode was changed and the model was not. An episode gets up to 8 generations on a problem and holds a
+pool of lemmas that only grows. After each failed proof, its leading `have` steps that Lean accepted are added
+to the pool (and checked together); the closing step of a failed proof is kept and tried again whenever the
+pool has grown; and a generation either starts fresh or continues from the pool, shown Lean's proof state.
+The comparison is 8 blind attempts from the same first attempt, with the same untrained base model, read by
+running totals.
+
+- **It resolves more hard episodes at every seed,** +1.1, +1.1 and +0.8 points; over the three, +1.0
+  [+0.5, +1.6] (12.9% of 10,044 episodes against 11.8%). The lead grows with every generation, where a repair
+  step's lead was made once and held.
+- **It solves problems sampling does not.** Of the 392 never-solved problems, 92 against 65 over 18 episodes
+  each: 28 gained, 1 lost. 20 of the 92 were never solved by the base model or by any trained model here in
+  558 attempts.
+- **The longer proofs move too.** Where the shortest published proof is 4 lines or more: 36 against 28, 8
+  gained and none lost (sign test p = 0.008). Most of the gain is still on short-proof problems, the ones
+  blind attempts kept nearly solving.
+- **The cost is Lean time, not GPU time.** The same number of generations, 91% of the generated tokens, and
+  1.5 times the Lean checks, because an assembled proof (the pooled lemmas with a kept closing step) is a
+  candidate that cost no generation. Of the 28 gained problems, 23 were won by such a proof.
+- **Reached is not reliable.** Of the 28 gained problems, 19 were won in one episode of 18. And the untrained
+  model does little with a pool it is shown: three quarters of its continuations go straight to a closing
+  tactic, and 27% repeat a proof Lean already rejected.
+
+For scale: the base model with 279 blind attempts a problem solved 82 of these problems, and the models after
+three rounds of training, with 279, solved 94. The accumulating episode solves 92 with 144 generations of the
+untrained model.
+
 ### A defect worth describing
 
 The first two experiments reported a fourfold drop in held-out loss after one round, and a selection score
@@ -188,7 +246,7 @@ certificates, recovered with a 29-entry rename table taken from Mathlib's own de
   an FP8 export and LoRA adapters for sampling at about 2,500 tokens per second.
 - **Statistics.** Paired by problem, bootstrap over problems, sign tests for solved/unsolved flips, one seed
   as a scout and three to conclude, and a distinction kept between a run that failed and an idea that failed.
-- **Tests.** About 750 tests for the loop (the pool's 1,100 are in its own repository). The model and Lean are
+- **Tests.** About 790 tests for the loop (the pool's 1,100 are in its own repository). The model and Lean are
   replaced by stand-ins, so the suite runs with no GPU and no network.
 
 ## Repository layout
@@ -223,18 +281,24 @@ shipped fixtures, for example
 `PYTHONPATH=src python -m rlvr_lean.runner.entry --stage ladder_l1_smoke --profile full --out out/`. The settings are in
 [`src/rlvr_lean/config/experiment.yaml`](src/rlvr_lean/config/experiment.yaml). The problem pool is rebuilt
 from the published datasets with `python -m rlvr_lean.tools.ladder_pool` (it is not shipped: 30 MB derived
-from Lean Workbook and STP).
+from Lean Workbook and STP). The one data file that is shipped,
+[`heldout_proof_lines.jsonl`](src/rlvr_lean/data/ladder_l0/heldout_proof_lines.jsonl), holds the held-out
+problems' ids and the line count of each one's shortest published proof, which the reports group by; it holds
+no statement and no proof.
 
 ## Status
 
-Every result so far has the same shape: the loop makes the prover more reliable on what it can already
-sometimes do, and has not been shown to take it to problems plain sampling does not solve. Three things are
-open.
+Training on one-shot proofs makes the prover more reliable on what it can already sometimes do. Reach came
+from the search: an episode that keeps what verified solves problems that sampling does not, with an untrained
+model. Neither is yet the aim, which is to do reliably what could not be done before. Three things are open.
 
-- **Training on repair.** The untrained model uses Lean's proof state for one step and then repeats itself.
-  Training on failed-then-repaired proofs asks whether a learned repair step reaches further than sampling.
-- **Which target to climb with.** The lower target is at least as good on hard problems from a quarter fewer
-  proofs; whether it reaches new problems needs more than three seeds to say.
+- **Training on what the episode assembles.** The proofs it verifies on the never-solved problems are longer
+  than the blind attempts' (median 6 lines against 4, the longest 21 against 11), and they are the training
+  examples the loop has never had. The next stage puts the accumulating episode inside the round and asks
+  whether the trained model then solves the reached problems reliably, and in one shot.
+- **A ceiling for that.** One fine-tune on published proofs of problems the base cannot solve, as a labelled
+  diagnostic and never kept, says whether this model can learn to write longer proofs when shown them at all.
+  It bounds what the stage above can reach.
 - **A deeper pool.** About 650,000 published proofs have not been re-checked yet; the pool's thin middle is
   the scarcest thing the loop has.
 

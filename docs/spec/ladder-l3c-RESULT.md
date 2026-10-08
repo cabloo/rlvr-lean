@@ -116,19 +116,17 @@ longest is 21; the blind arm's, 4 and 11 (seed 0).
   what it wrote. A model trained on assembled proofs has seen lemmas followed by more lemmas.
 - **One base model, one pool of problems.** Nothing here is trained, so a seed is a sampling seed.
 
-## For the owner: what follows
+## What follows (all three approved by the owner, 2026-10-08)
 
 1. **L3d: put the episode in the round and train on what it assembles.** A round whose solver episodes
    accumulate, and a training set that holds the assembled and continued proofs (long, with lemmas) beside
    the one-shot ones. Its read, to be fixed first: held-out goal problems by proof length, and whether the
    trained model then solves the reached problems reliably and in one shot. This is the step the branch
-   names; it needs a spec and the owner's approval.
-2. **The ceiling** (still not approved): one fine-tune on published proofs of pool problems the base cannot
-   solve, as a labelled diagnostic. It says how far training can take this model on long proofs at all.
-3. **Target for the rounds:** 1/10 (recommended; `ladder-l2t-RESULT.md`).
-
-Recommended: 1, with the target at 1/10; 2 beside it if the owner allows it, since it bounds what 1 can
-reach.
+   names; its spec is written before it is built.
+2. **The ceiling:** one fine-tune on published proofs of pool problems the base cannot solve, as a labelled
+   diagnostic (the spec's section "The ceiling"). It says how far training can take this model on long
+   proofs at all, which bounds what 1 can reach. Nothing trained this way is kept or used in a round.
+3. **Target for the rounds:** 1/10 (`ladder-l2t-RESULT.md`).
 
 ## Points the build made exact
 
