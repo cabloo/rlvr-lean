@@ -381,10 +381,11 @@ ceiling's file and the pretraining file are built from the pool by `python -m rl
 
 Training on one-shot proofs makes the prover more reliable on what it can already sometimes do. Reach came
 from the search: an episode that keeps what verified solves problems that sampling does not, with an untrained
-model. Training on what that search assembles is not shown to add to it, and the loop's own training does
-nothing where a proof needs 4 lines or more; the one thing measured that does is training on proofs written
-by stronger provers, which is a ceiling and not the loop's doing. None of this is yet the aim, which is to do
-reliably what could not be done before. Three things are open.
+model. Training on what that search assembles is not shown to add to it, and the loop's own training has
+barely moved the problems whose proof needs 4 lines or more (+0.00064 successes per attempt over three
+seeds); the one thing measured that moves them is training on proofs written by stronger provers, which is a
+ceiling and not the loop's doing. None of this is yet the aim, which is to do reliably what could not be done
+before. Three things are open.
 
 - **The loop on top of pretraining (in progress).** The same six rounds from a model pretrained on published
   proofs, on a half of the pool the pretraining never saw, asks whether the loop takes that model to problems
