@@ -35,6 +35,12 @@ Every difference is paired by problem and averaged over the seeds; intervals are
 By seed, challenger arm: below +0.0053, +0.0120, +0.0098; in +0.0379, +0.0371, +0.0556; above +0.0566,
 +0.0435, +0.0540. Random arm: below +0.0023, −0.0030, −0.0098.
 
+The last column over all 712 rung problems at once (a summary added 2026-10-08, after the run; not a
+pre-registered read; paired by problem, each problem's mean over the three seeds, 95% bootstrap over
+problems): challenger-trained minus random-trained **+0.0254 [+0.0198, +0.0311]** (pass rates 0.5355 against
+0.5101). It is one pooled interval, not a statement about each rung: the three rows above are those, and each
+of their intervals is clear of zero.
+
 ## Reach on the goal set (392 problems the base never resolved in its 32 placing episodes)
 
 | | Base afresh | Challenger-trained | Random-trained |

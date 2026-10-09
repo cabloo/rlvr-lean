@@ -360,6 +360,29 @@ ladder_loop:                       # docs/spec/ladder-loop.spec.md, L0: the pool
   l2_arms:
     t010:
       target_rate: 0.10            # the reward is 1 at this pass rate; at 8 episodes its band (reward at least 0.8) is k = 1
+  # ---- Arms of the L2 stage WITH ASSEMBLY in the round (spec "L3d: train on what the episode reaches", Step 2;
+  # gpu/ladder_assembly.py; rules in domain/ladder_round/assembly.py; stage ladder_l3d2). Such an arm is the arm above at
+  # its target rate, with its own number of rounds, and after each batch's attempts the Lean-only assembly
+  # (domain/repair/replay.py, with accumulate.pool_blocks and accumulate.kept_closers) over the 8 attempts of every side
+  # of every problem none of them resolved. A problem only assembly resolved counts as k = 1 for the challenger. The
+  # candidates, batches, seeds and sampling seeds are the stage's; the run directory is the arm's own.
+  l2_assembly_arms:
+    t010_assembly:
+      target_rate: 0.10
+      rounds: 6                    # rounds 4 to 6 sample with the places after round 3's (round.sampling_seed + 100 x the seed + 14, 15, 16)
+    # L4's arm (spec "L4: the loop from a model pretrained on published proofs"): the arm above with two differences and
+    # no other. Every model of the arm, and its twin, is trained FROM the adapter `pre` of the pretraining stage in the
+    # place of the base, and round 1 is attempted by `pre`; the candidates are the `loop` half of the pool (l4.half_seed).
+    # It reads no H0: those proofs came from the base arm's history, and half their problems are in the `pretrain` half.
+    # Its challenger starts from the MAP OF THE MODEL THE ARM STARTS FROM (`pre`'s own, made by the pretraining stage on the
+    # base map's problems), read wherever the base arm reads the base's: one rule for both arms.
+    t010_assembly_pre:
+      target_rate: 0.10
+      rounds: 6
+      start: pre
+      candidates: loop_half
+      h0: false
+      map: start_model
   # ---- L3a: the repair check, no training (gpu/ladder_l3a.py; spec "L3a: the repair check, no training"). The base
   # model, on G and the three rungs as L1's run of the seed stored them. Every problem gets blind first attempts; each
   # one that failed goes on in THREE arms from that same attempt, to at most episode.loops - 1 more attempts each:
@@ -405,6 +428,112 @@ ladder_loop:                       # docs/spec/ladder-loop.spec.md, L0: the pool
     episodes_rungs: 2              # ... and of a rung with no number of its own here: in the band and above it (546: 1,092)
     pilot_problems: 40             # the pilot (stage ladder_l3c_pilot): the first this many problems of G and of the below-band rung,
     pilot_episodes: 2              # this many episodes each (160), in a run directory of its own; not read as a result
+  # ---- The ceiling: a labelled diagnostic (gpu/ladder_ceiling.py; rules in domain/ladder_round/ceiling.py; spec "The
+  # ceiling: a labelled diagnostic"). AN EXCEPTION, not a change of rule: ONE training from the base on published
+  # proofs of pool problems the base cannot solve (data/ladder_ceiling/training.jsonl, in the file's order, one pass,
+  # the round's recipe otherwise), a checkpoint after each number of rows below, and at each: 8 episodes on the three
+  # held-out rungs and 93 attempts on every goal problem (measure.reach_episodes with L1's sampling seed for G, then
+  # as many more as L2's control gave the base, with the control's sampling seed), so that each checkpoint pairs by
+  # problem with the base's stored attempts and with the three-round model of the arm below. No model trained this
+  # way is kept: the report step deletes the adapters once a report that can be read is written.
+  ceiling:
+    checkpoints: [2000, 8000]      # rows of the training file seen when an adapter is saved and measured: the smaller dose
+                                   # (about a three-round model's training set), and the end of the one pass
+    loop_arm: t010                 # the three-round model shown beside the primary, as information that decides nothing: this
+                                   # seed's L2 run of this arm (ladder_l2_t010_seed<N>)
+    # The loop's own gain, ONE fixed number the branches are read against: on the 230 goal problems whose shortest
+    # published proof is 4 lines or more, successes per attempt, the model after three rounds at t = 1/10 minus the
+    # base, the THREE SEEDS POOLED (279 attempts a problem), paired by problem: +0.00064 [-0.00025, +0.00162] (the
+    # base 135 successes of 64,170 attempts, 2.10 per 1,000; the trained model 176, 2.74 per 1,000; by seed -0.00019,
+    # +0.00192, +0.00019). Computed on 2026-10-08 from the stored three-seed rows, before the run.
+    loops_own_gain: 0.00064
+    times_the_loops_own_gain: 2    # the branch: a primary clear of zero is read against this many times it (+0.00128)
+    # The training file (tools/ladder_ceiling_set.py writes data/ladder_ceiling/training.jsonl; spec "The training
+    # file"). It holds as many rows as the last checkpoint above; its first rows are the smaller dose.
+    training_file:
+      below_predicted_rate: 0.05   # eligible: the challenger predicted the base's pass rate below this (round 1 of L2's seed 0)
+      stp_sample: 4800             # every eligible Lean Workbook problem is chosen, and this many of the STP ones
+      proofs_tried: 3              # of a problem's published proofs, the shortest by lines that are sent to Lean
+      maximum_characters: 2400     # a published proof is tried only if statement and proof together are at most this long:
+                                   # stored model proofs of 150 tokens or more measure at least 1.25 characters a token, so
+                                   # such a row is at most 1,920 tokens and the prompt's fixed part (the recipe cuts at 2,048)
+      seed: 0                      # the draw of the STP problems and the shuffle of the rows, a generator each
+      lean_seconds: 60             # the Lean limit of a published proof's check (the pool's own is lean.pool's)
+    # Can this run see a win (else INCONCLUSIVE), read on the model after the last checkpoint:
+    loss_window_rows: 500          # the mean training loss over the last this many rows is below the mean over the first
+    maximum_share_without_an_answer: 0.05                      # of its attempts on the three rungs (the token cap, or no verdict)
+    minimum_share_of_the_bases_pass_rate_above_the_band: 0.5   # its pass rate on the above-band rung against the base's
+  # ---- L3d: train on what the episode reaches (spec "L3d: train on what the episode reaches"). An episode is 8
+  # one-shot attempts with the Lean-only assembly after them (domain/repair/replay.py, with L3c's rules and the sizes
+  # accumulate.pool_blocks and accumulate.kept_closers above; a proof's Lean limit is episode.lean_seconds).
+  l3d:
+    # The harvest H0 (tools/ladder_harvest.py writes data/ladder_l3d/harvest_h0.jsonl; Lean only, background checks):
+    # assembled proofs of pool problems no stored training-side attempt verified, each minimised.
+    harvest:
+      attempts: 48                 # at most this many distinct stored failed attempts a side, in the order run, file, row
+    # Step 1: do assembled proofs teach? (gpu/ladder_l3d1.py; rules in domain/ladder_round/l3d.py; report in
+    # reporting/ladder_l3d1.py). TWO trainings from the base in one run, one pass each, the round's recipe: `without`
+    # (the training examples the three rounds of the arm below stored at this seed, in a seeded order) and `with` (the
+    # same rows in the same relative order, with H0's proofs at seeded places among them). Each is measured as the
+    # ceiling's models are: 8 episodes on the three held-out rungs and 93 attempts on every goal problem, with the
+    # sampling seeds L2 used for its models. Both adapters are kept: they are the loop's own models.
+    step_1:
+      loop_arm: t010               # the L2 run of this arm and seed (ladder_l2_t010_seed<N>): its training_examples_r1 to _r3 are
+                                   # `without`'s rows, and its three-round model stands beside (the noise floor)
+      # Can this run see a win (else INCONCLUSIVE):
+      minimum_h0: 100              # H0 holds at least this many proofs; with fewer the prepare step refuses and nothing is trained
+      loss_share_of_rows: 0.1      # a training took: its mean loss over the last tenth of its rows is below the mean over the first tenth
+      maximum_share_without_an_answer: 0.05                    # of a model's attempts on the three rungs (the token cap, or no verdict)
+    # Step 2: the loop with assembly in the round, and a twin trained without the assembled proofs (stage ladder_l3d2:
+    # gpu/ladder_l3d2.py on the L2 stage's arm below; rules in domain/ladder_round/l3d2.py; report in
+    # reporting/ladder_l3d2.py). The arm runs its six rounds with assembly after each batch (l2_assembly_arms above);
+    # the model of its last round is `with`; `without` is one more training from the base on the rounds' one-shot rows
+    # alone, in `with`'s order with the other rows left out. Both are measured as the ceiling's models are.
+    step_2:
+      arm: t010_assembly           # the arm of ladder_loop.l2_assembly_arms the stage runs (its tasks set RLVR_LEAN_LADDER_L2_ARM to it)
+      loop_arm: t010               # the stored three-round model that stands beside: ladder_l2_t010_seed<N>
+      # Can this run see a win (else INCONCLUSIVE):
+      minimum_assembled: 150       # `with` was trained on at least this many assembled proofs (H0's and the rounds') that `without` was not
+      loss_share_of_rows: 0.1      # a training took: its mean loss over the last tenth of its rows is below the mean over the first tenth
+      maximum_share_without_an_answer: 0.05                    # of a model's attempts on the three rungs (the token cap, or no verdict)
+      # The note beside an interval that holds zero: what a published proof was worth in the ceiling, per attempt on the
+      # primary's quantity, for each of its first 2,000 (ladder-ceiling-RESULT.md; fixed in the spec before this run).
+      gain_of_a_published_proof: 0.000013
+  # ---- L4: the loop from a model pretrained on published proofs (spec "L4: the loop from a model pretrained on
+  # published proofs"). THE POOL IS CUT IN TWO, by problem, before anything is trained: SHA-256 of
+  # `<half_seed>:l4_half:<problem id>` read as an integer, even is the `pretrain` half and odd the `loop` half
+  # (domain/ladder_round/l4.py, the one place that says it). The pretraining file is made from the `pretrain` half
+  # alone; the rounds of this arm draw from the `loop` half alone.
+  l4:
+    half_seed: 0
+    # The pretraining file (tools/ladder_ceiling_set.py --file l4_pretrain writes data/ladder_l4/pretraining.jsonl):
+    # every candidate of the `pretrain` half on the side true, with THE CERTIFICATE THE POOL BUILD VERIFIED for it,
+    # taken from its published proofs by the hash of its check (pool.jsonl); no Lean check is made for the file.
+    # No cut by predicted rate and no sample: all of them, Lean Workbook and STP alike. Not distributed.
+    pretraining_file:
+      maximum_characters: 2400     # a problem is left out when its statement and its certificate together are longer
+      seed: 0                      # the shuffle of the rows
+      maximum_share_without_a_match: 0.01      # of the chosen problems; above it the tool stops: the hash is not rebuilt as the pool build made it
+      # A control, by Lean (`--control`): a seeded sample of the written rows, each checked as a solver's attempt is.
+      control:
+        rows: 300
+        seed: 0
+        lean_seconds: 60           # the Lean limit of one check
+        minimum_share_verified: 0.98           # under it the file is not used (the ceiling's file found a verified proof for 98.2% of its problems)
+    # The two stages (gpu/ladder_l4.py; rules in domain/ladder_round/l4.py; reports in reporting/ladder_l4.py).
+    # ladder_l4_pretrain: from the base, one pass over the pretraining file in its order; the adapter `pre` is KEPT.
+    # ladder_l4: the arm below from `pre` (l2_assembly_arms), its twin and the two measurements, as L3d Step 2's.
+    arm: t010_assembly_pre         # the arm of ladder_loop.l2_assembly_arms the stage ladder_l4 runs
+    loop_arm: t010                 # the stored three-round model that stands beside: ladder_l2_t010_seed<N>
+    base_arm: t010_assembly        # the base arm, whose own gain stands beside the primary: ladder_l2_t010_assembly_seed<N>
+    # Can this run see a win (else INCONCLUSIVE):
+    minimum_solved_by_pre: 150     # the pretraining took: `pre` solves at least this many goal problems in its 93 attempts
+    minimum_goal_set_again: 80     # G' (the goal problems `pre` does not solve in its 32-attempt sampling) holds at least this many
+    # The two measured trainings ran (`with`'s and `without`'s): the adapter saved differs from `pre`'s, and the mean loss over the
+    # last tenth of its rows is not above the mean over the first tenth by more than two standard errors of their difference.
+    loss_share_of_rows: 0.1
+    standard_errors_allowed: 2
+    maximum_share_without_an_answer: 0.05                      # of a model's attempts on the three rungs (the token cap, or no verdict)
 
 evaluation:
   conjecture_holdout_samples: 12

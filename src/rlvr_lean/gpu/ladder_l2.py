@@ -38,6 +38,14 @@ with ONE setting of the challenger changed (`t010`: the target rate, 0.10 for 0.
 (`ladder_l2_<arm>_seed<seed>`). Every step reads the arm's config (`arm_config`); the candidates, batches, seeds and
 sampling seeds are the stage's, and the held-out rungs are L1's stored groups, which no arm moves. With no arm the
 stage is what it was, file for file.
+
+ARMS WITH ASSEMBLY (spec, "L3d ... Step 2"; `ladder_loop.l2_assembly_arms`, stage `ladder_l3d2`). Such an arm has its own
+number of ROUNDS (six), and after each batch's attempts the Lean-only assembly over every problem none of them
+resolved (`gpu/ladder_assembly.py`). A problem only assembly resolved counts as k = 1 wherever the challenger reads k
+(`assembly.counted`). A round's training examples carry their origin (`attempt`, `assembled`, `h0`), and the arm's
+models are trained in the order of a content hash, so that the twin of the last one is that order with rows left out.
+Its models are NOT measured round by round and it has no control: `gpu/ladder_l3d2.py` measures the last model and
+its twin, and writes the report. The steps of rounds 4 to 6 are registered there; `STEPS` here is the three rounds'.
 """
 
 from __future__ import annotations
@@ -54,6 +62,8 @@ from pathlib import Path
 import numpy as np
 
 from rlvr_lean.data.ladder_round_export import BASE_MAP_SET
+from rlvr_lean.domain.ladder_round.assembly import counted
+from rlvr_lean.domain.ladder_round.l4 import LOOP, MAP_FILE, MAP_STEP, START_MODEL, check_start_map, half_of, map_summary, refuse_the_other_half
 from rlvr_lean.domain.ladder_round.challenger import SCORED, expected_rewards, fact_features, feature_names, fit_pass_rate_model, fit_projection
 from rlvr_lean.domain.ladder_round.read import arm_reward, group_ids, paired_change, stop_rule
 from rlvr_lean.domain.ladder_round.rounds import (
@@ -81,6 +91,16 @@ L2_PROBLEMS_VARIABLE = "RLVR_LEAN_LADDER_L2_PROBLEMS"    # another `round.proble
 L2_BATCHES_VARIABLE = "RLVR_LEAN_LADDER_L2_BATCHES"      # another `round.batches` (the same)
 L2_ARM_VARIABLE = "RLVR_LEAN_LADDER_L2_ARM"              # an ARM of the stage (L2t): `ladder_loop.l2_arms.<arm>`, in a run directory of its own
 ARM_SETTINGS = ("target_rate",)                          # what an arm may change, each a setting of `ladder_loop.challenger`
+ASSEMBLY_ARMS = "l2_assembly_arms"                       # `ladder_loop.l2_assembly_arms`: the arms with assembly in the round (L3d Step 2)
+ASSEMBLY_ARM_SETTINGS = ("target_rate", "rounds")        # what such an arm says: the challenger's target rate, and how many rounds it runs
+# ... and what one MAY say besides (L4's arm; the base arm says none of them): the stored adapter its models are trained from
+# in the place of the base, the half of the pool its candidates are, whether it reads H0, and whose map of pass rates its
+# challenger starts from (the map of the model the arm starts from, in the place of the base's stored one).
+ASSEMBLY_ARM_OPTIONS = {"start": ("pre",), "candidates": ("loop_half",), "h0": (True, False), "map": (START_MODEL,)}
+L4_PRETRAIN_RUN_VARIABLE = "RLVR_LEAN_LADDER_L4_PRETRAIN_RUN"   # another run directory of the pretraining stage than `ladder_l4_pretrain_seed<seed>`
+START_REQUEST_ID = 100                                   # the start adapter as vLLM serves it: an id no round's model has
+L2_ROUNDS_VARIABLE = "RLVR_LEAN_LADDER_L2_ROUNDS"        # another number of rounds for an arm with assembly (a smoke run: two)
+MOST_ROUNDS = 6                                          # the most rounds an arm may run: the rounds a step exists for
 PACKAGE_L2_DATA = Path(__file__).resolve().parents[1] / "data" / "ladder_l2"
 ROUNDS = (1, 2, 3)                                       # the stage's steps; `round.rounds` must give these
 PREPARE, EMBED, CONTROL_STEP, REPORT = "ladder_l2_prepare", "ladder_l2_embed", "ladder_l2_control", "ladder_l2_report"
@@ -115,6 +135,9 @@ def arm_settings(config: dict) -> dict:
     name = arm_name()
     if name is None:
         return {}
+    with_assembly = assembly_arm(config)
+    if with_assembly is not None:
+        return {"target_rate": with_assembly["target_rate"]}
     arms = config["ladder_loop"].get("l2_arms") or {}
     if name not in arms:
         raise ValueError(f"{L2_ARM_VARIABLE} names the arm {name!r} and ladder_loop.l2_arms has {sorted(arms)}: refused")
@@ -122,6 +145,85 @@ def arm_settings(config: dict) -> dict:
     if not settings or set(settings) - set(ARM_SETTINGS):
         raise ValueError(f"ladder_loop.l2_arms.{name} is {settings}: an arm changes {list(ARM_SETTINGS)} and nothing else")
     return settings
+
+
+def assembly_arm(config: dict) -> dict | None:
+    """This task's arm when it is one WITH ASSEMBLY (`ladder_loop.l2_assembly_arms.<arm>`): its target rate and its
+    number of rounds (a smoke run's own by `RLVR_LEAN_LADDER_L2_ROUNDS`). None for no arm and for an arm of
+    `l2_arms`: those run three rounds with no assembly, as they always did."""
+    name, arms = arm_name(), config["ladder_loop"].get(ASSEMBLY_ARMS) or {}
+    if name is None or name not in arms:
+        return None
+    settings = dict(arms[name] or {})
+    options = {key: value for key, value in settings.items() if key in ASSEMBLY_ARM_OPTIONS}
+    if set(settings) - set(options) != set(ASSEMBLY_ARM_SETTINGS) or any(value not in ASSEMBLY_ARM_OPTIONS[key] for key, value in options.items()):
+        raise ValueError(f"ladder_loop.{ASSEMBLY_ARMS}.{name} is {settings}: an arm with assembly says {list(ASSEMBLY_ARM_SETTINGS)} and nothing else, "
+                         f"but for {ASSEMBLY_ARM_OPTIONS}")
+    if options.get("map") and not options.get("start"):
+        raise ValueError(f"ladder_loop.{ASSEMBLY_ARMS}.{name} asks for the map of the model it starts from and names no start: an arm from the base reads the base's map")
+    rounds = int(os.environ.get(L2_ROUNDS_VARIABLE) or settings["rounds"])
+    if not FIRST_ROUND <= rounds <= MOST_ROUNDS:
+        raise ValueError(f"the arm {name} would run {rounds} rounds: an arm runs {FIRST_ROUND} to {MOST_ROUNDS}")
+    return {"target_rate": settings["target_rate"], "rounds": rounds, **options}
+
+
+def start_directory(config: dict) -> Path | None:
+    """The stored adapter every model of this task's arm is trained FROM and its first round is attempted by (an arm
+    with `start: pre`: the adapter the pretraining stage of this seed kept), or None: from the base."""
+    arm = assembly_arm(config)
+    if arm is None or not arm.get("start"):
+        return None
+    run = os.environ.get(L4_PRETRAIN_RUN_VARIABLE) or f"ladder_l4_pretrain_seed{training_seed(config)}"
+    return _runs(config) / run / "adapters" / arm["start"]
+
+
+def start_map_directory(config: dict) -> Path:
+    """Where the map of the model this task's arm starts from is: the pretraining run's directory (its adapter's own)."""
+    return start_directory(config).parents[1]
+
+
+def start_map(config: dict, base_map: list[dict]) -> list[dict]:
+    """The map of the model this task's arm starts from (an arm with `map: start_model`), in the shape of the base
+    map's stored rows: what the pretraining stage's step `ladder_l4_pretrain_map` stored. It is only READ. REFUSED,
+    naming the task to run, when it is not there, and when it was made with another sampling seed, number of
+    attempts or set of problems than the stored map's (`check_start_map`): the challenger would then be aimed by
+    something that is not the base map of another model."""
+    directory, settings = start_map_directory(config), config["ladder_loop"]["base_map"]
+    marker, file = directory / f"{MAP_STEP}.done.json", directory / MAP_FILE
+    seed = training_seed(config)
+    if not marker.exists() or not file.exists():
+        raise RuntimeError(f"{directory} does not hold the map of the model this arm starts from ({MAP_FILE}, and the marker of the step {MAP_STEP}). The arm's "
+                           f"challenger starts from that map, not from the base's. Run the task of stage `ladder_l4_pretrain` for seed {seed} to its end first "
+                           f"(`python -m rlvr_lean.runner.entry --stage ladder_l4_pretrain --seeds {seed}`; for the smoke run, stage `ladder_l4_pretrain_smoke`); nothing was written.")
+    rows = _rows(file)
+    try:
+        check_start_map(rows, json.loads(marker.read_text()), [row["problem_id"] for row in base_map], settings["episodes"], settings["sampling_seed"])
+    except ValueError as error:
+        raise RuntimeError(f"{file} cannot stand in the base map's place: {error}. Nothing was written.") from error
+    return rows
+
+
+def _data(config: dict) -> dict:
+    """The shipped data as this task's arm reads it: `ladder_round._data`; for an arm whose candidates are the
+    `loop` half of the pool (L4's) only those candidates: its embeddings, its scores and its proposals know no other;
+    and for an arm that reads the map of the model it starts from, THAT map's rows in the place of the base map's
+    stored ones (`base_results`, the set `base_map`): the first fit and every refit read them from here."""
+    data, arm = ladder_round._data(config, data_directory()), assembly_arm(config)
+    if arm is None:
+        return data
+    if arm.get("candidates"):
+        seed = config["ladder_loop"]["l4"]["half_seed"]
+        kept = [row for row in data["candidates"] if half_of(row["problem_id"], seed) == LOOP]
+        data = {**data, "candidates": kept, "counts": {**data["counts"], "candidates": len(kept), "candidates_of_the_whole_pool": len(data["candidates"])}}
+    if arm.get("map"):
+        data = {**data, "base_results": [row for row in data["base_results"] if row["set"] != BASE_MAP_SET] + start_map(config, data["base_map"])}
+    return data
+
+
+def rounds_of(config: dict) -> tuple[int, ...]:
+    """The rounds this task's arm runs: the stage's three, or an arm with assembly's own."""
+    arm = assembly_arm(config)
+    return ROUNDS if arm is None else tuple(range(FIRST_ROUND, FIRST_ROUND + arm["rounds"]))
 
 
 def arm_config(config: dict) -> dict:
@@ -178,7 +280,7 @@ def loop_sizes(config: dict) -> dict:
 def sampling_seeds(config: dict) -> dict:
     first = config["ladder_loop"]["round"]["sampling_seed"] + 100 * training_seed(config)
     return {"rungs": ladder_round.sampling_seed(config, f"rungs_{BASE}"), "reach": ladder_round.sampling_seed(config, f"reach_{BASE}"),
-            **{f"round_{number}": first + ROUND_SEED_PLACE + number for number in ROUNDS}, CONTROL: first + CONTROL_SEED_PLACE}
+            **{f"round_{number}": first + ROUND_SEED_PLACE + number for number in rounds_of(config)}, CONTROL: first + CONTROL_SEED_PLACE}
 
 
 def batch_set(number: int, batch: int) -> str:
@@ -210,6 +312,14 @@ def _skipped(store: ArtifactStore, what: str) -> dict | None:
     return {"skipped": f"the stop rule fired after round {stopped} ({model_name(stopped)} minus the base on the below-band rung: {below['mean']} "
                        f"[{below['low']}, {below['high']}], entirely below zero): the loop stopped for diagnosis and {what} was not run",
             "stopped_after_round": stopped}
+
+
+def _not_with_assembly(config: dict, what: str) -> None:
+    """An arm with assembly has no step of this kind: its last model and that model's twin are measured by the
+    stage `ladder_l3d2`, which also writes its report."""
+    if assembly_arm(config) is not None:
+        raise RuntimeError(f"{what} is not a step of the arm {arm_name()}: an arm with assembly is run by the stage `ladder_l3d2`, which measures its "
+                           "last model and that model's twin and writes its report (gpu/ladder_l3d2.py)")
 
 
 def _need(store: ArtifactStore, marker: str, what: str) -> None:
@@ -269,7 +379,7 @@ def ladder_l2_prepare(config: dict) -> dict:
         if stored[kind].get("problems") and (stored[kind]["sampling_seed"] != seeds[kind] or stored[kind]["episodes_each"] != episodes):
             raise RuntimeError(f"L1 measured the base on its {kind} with sampling seed {stored[kind]['sampling_seed']} and {stored[kind]['episodes_each']} "
                                f"episodes; this config gives {seeds[kind]} and {episodes}: the rounds would not pair with L1's stored results")
-    data = ladder_round._data(config, data_directory())         # refuses a candidate that is in H or in the base map (fixture 6)
+    data = _data(config)                                        # refuses a candidate that is in H or in the base map (fixture 6)
     if {row["problem_id"] for row in groups} != {row["problem_id"] for row in data["heldout"]}:
         raise RuntimeError(f"{source} placed another held-out set than this snapshot's H ({ladder_loop.data_directory()}): the candidates are held "
                            "out against the snapshot's, and the rungs and G would be measured on the run's. Nothing was written.")
@@ -277,18 +387,38 @@ def ladder_l2_prepare(config: dict) -> dict:
     def as_set(rows: list[dict], set_name: str) -> list[dict]:
         return [{**row, "set": set_name} for row in rows]
 
+    rounds, assembling, harvest = rounds_of(config), assembly_arm(config) is not None, {}
     own = [row for number in ROUNDS for row in as_set(rung_problems, f"rungs_m{number}")]
     own += [row for number in ROUNDS for row in as_set(goal_problems, f"reach_m{number}")]
     own += as_set(goal_problems, CONTROL)
+    if assembling:
+        from rlvr_lean.gpu import ladder_assembly
+
+        own = []            # no model of such an arm is measured here, and it has no control: `ladder_l3d2` adds its own sets
+        options = assembly_arm(config)
+        harvest = {"h0_file": None, "h0_rows": 0, "h0": "this arm reads no H0"}
+        if options.get("h0", True):
+            harvest = ladder_assembly.read_harvest(data["heldout"], data["base_map"])[1]      # refused with a held-out or base-map problem
+        if options.get("candidates"):       # the `loop` half alone: none of the other half, and enough of them for the arm's rounds
+            refuse_the_other_half(data["candidates"], LOOP, config["ladder_loop"]["l4"]["half_seed"], "the arm's candidates")
+            if len(rounds) * sizes["problems"] > len(data["candidates"]):
+                raise RuntimeError(f"the `loop` half holds {len(data['candidates'])} candidates and {len(rounds)} rounds of {sizes['problems']} need "
+                                   f"{len(rounds) * sizes['problems']}: refused, nothing was written")
+            harvest.update({"candidates": options["candidates"], "candidates_of_the_whole_pool": data["counts"]["candidates_of_the_whole_pool"]})
+        if options.get("start"):
+            harvest.update({"start": options["start"], "start_adapter": str(start_directory(config))})
+        if options.get("map"):          # read (and checked) by `_data` above: the challenger's first fit and every refit start from it
+            harvest.update({"map": options["map"], "map_file": str(start_map_directory(config) / MAP_FILE),
+                            "map_of_the_start_model": map_summary([row for row in data["base_results"] if row["set"] == BASE_MAP_SET])})
     store.write_rows("problems.jsonl", own)
     store.write_rows("heldout_groups.jsonl", groups)
     store.write_rows("base_rungs.jsonl", _rows(source / f"episodes_rungs_{BASE}_problems.jsonl"))
     store.write_rows("base_reach.jsonl", _rows(source / f"episodes_reach_{BASE}_problems.jsonl"))
-    wanted = len(ROUNDS) * sizes["problems"]
+    wanted = len(rounds) * sizes["problems"]
     summary = {"seed": seed, "source_run": str(source), "data_directory": str(data_directory()), "fixture": bool(data["summary"].get("fixture")),
                "stand_in_engine": _stand_in(), "lean_pin": config["ladder_loop"]["lean_pin"], "data": data["counts"],
                "candidates_exported": data["summary"].get("candidates_wanted"),
-               "rounds": list(ROUNDS), "problems_a_round": sizes["problems"], "batches": sizes["batches"], "batch_sizes": sizes["batch_sizes"],
+               "rounds": list(rounds), "problems_a_round": sizes["problems"], "batches": sizes["batches"], "batch_sizes": sizes["batch_sizes"],
                "solvers": sizes["solvers"], "candidates_short_by": max(0, wanted - data["counts"]["candidates"]),
                "goal_set": len(goal_problems), "rungs": {name: len(group_ids(groups, name)) for name in RUNGS}, "rung_problems": len(rung_problems),
                "heldout_in_neither": sum(row["group"] is None for row in groups),
@@ -299,6 +429,9 @@ def ladder_l2_prepare(config: dict) -> dict:
     if arm_name():      # an arm's run says which it is and what it changed; a run with no arm is recorded as it always was
         summary.update({"arm": arm_name(), "target_rate": config["ladder_loop"]["challenger"]["target_rate"],
                         "the_heldout_rungs_are": "L1's stored groups, read from its run directory: they do not move with the arm"})
+    if assembling:
+        summary.update({"assembly": True, **harvest, "the_models_are_measured": "after the last round only, by the stage ladder_l3d2 (no model is measured "
+                        "round by round, so the stop rule is not read, and there is no control)"})
     store.mark_done(PREPARE, summary)
     return summary
 
@@ -326,7 +459,7 @@ def _save_array(path: Path, array: np.ndarray) -> None:
 @_in_arm
 def ladder_l2_embed(config: dict) -> dict:
     store = _store(config)
-    data = ladder_round._data(config, data_directory())
+    data = _data(config)
     rows = [*data["base_map"], *data["candidates"]]
     problem_ids, statements = [row["problem_id"] for row in rows], [row["statement"] for row in rows]
     components = config["ladder_loop"]["challenger"]["embedding_components"]
@@ -387,12 +520,21 @@ def _statements(store: ArtifactStore, data: dict) -> dict:
 
 
 # ------------------------------------------------------------------------------------------------ sampling
-def _episodes(config: dict, store: ArtifactStore, set_name: str, episodes: int, seed: int, kit) -> dict:
+def _episodes(config: dict, store: ArtifactStore, set_name: str, episodes: int, seed: int, kit, keep_errors: bool = False) -> dict:
     if not any(row["set"] == set_name for row in store.read_rows("problems.jsonl")):
         store.write_rows(f"episodes_{set_name}_problems.jsonl", [])      # a set with no problem is measured as such
         return {"set": set_name, "problems": 0, "episodes_each": episodes, "attempts": 0, "statuses": {}}
     with ladder_loop.lean_sessions(config) as sessions:      # ONE client for the set: its requests in flight are `lean_in_flight`
-        return ladder_loop.run_episodes(config, set_name, episodes, seed, store, kit, sessions)
+        return ladder_loop.run_episodes(config, set_name, episodes, seed, store, kit, sessions, **({"keep_errors": True} if keep_errors else {}))
+
+
+def _start_request(start: Path):
+    """The start adapter as vLLM serves it beside the base; None for the stand-in."""
+    if _stand_in():
+        return None
+    from vllm.lora.request import LoRARequest
+
+    return LoRARequest(f"ladder_l4_{start.name}", START_REQUEST_ID, str(start))
 
 
 def _adapter(store: ArtifactStore, number: int):
@@ -415,8 +557,8 @@ def _off_the_main_thread(function, *arguments):
         return executor.submit(function, *arguments).result()
 
 
-def _batches_before(sizes: dict, number: int, batch: int) -> list[tuple[int, int]]:
-    return [(earlier, part) for earlier in ROUNDS for part in range(1, sizes["batches"] + 1) if (earlier, part) < (number, batch)]
+def _batches_before(sizes: dict, number: int, batch: int, rounds: tuple[int, ...] = ROUNDS) -> list[tuple[int, int]]:
+    return [(earlier, part) for earlier in rounds for part in range(1, sizes["batches"] + 1) if (earlier, part) < (number, batch)]
 
 
 def _propose(config: dict, store: ArtifactStore, data: dict, statements: dict, sizes: dict, number: int, batch: int) -> list[dict]:
@@ -426,11 +568,14 @@ def _propose(config: dict, store: ArtifactStore, data: dict, statements: dict, s
     marker, name = f"ladder_l2_propose_r{number}_b{batch}", f"proposals_r{number}_b{batch}.jsonl"
     if store.is_done(marker):
         return store.read_rows(name)
+    if (assembly_arm(config) or {}).get("candidates"):          # an arm of the `loop` half scores and proposes no problem of the other: refused before any fit
+        refuse_the_other_half(data["candidates"], LOOP, config["ladder_loop"]["l4"]["half_seed"], "a batch's candidates")
     challenger, seed = config["ladder_loop"]["challenger"], training_seed(config)
     position, features = statements["position"], statements["features"]
     results = {row["problem_id"]: row for row in data["base_results"] if row["set"] == BASE_MAP_SET}
-    before = _batches_before(sizes, number, batch)
-    finished = [{**row, "round": earlier, "batch": part} for earlier, part in before for row in _results(store, batch_set(earlier, part))]
+    before = _batches_before(sizes, number, batch, rounds_of(config))
+    # What the challenger is refitted on is k AS IT READS IT: a problem only assembly resolved counts as k = 1 (`counted`).
+    finished = [{**row, "round": earlier, "batch": part} for earlier, part in before for row in counted(_results(store, batch_set(earlier, part)))]
     seen = refit_observations([results[row["problem_id"]] for row in data["base_map"]], finished, number, challenger["recency_decay"])
     model, chosen = fit_pass_rate_model(seen["problem_ids"], features[[position[problem_id] for problem_id in seen["problem_ids"]]], seen["resolved"],
                                         seen["episodes"], names=statements["names"], ridge_grid=challenger["ridge_grid"], folds=challenger["folds"],
@@ -440,7 +585,7 @@ def _propose(config: dict, store: ArtifactStore, data: dict, statements: dict, s
     scores = expected_rewards(rates, sizes["solvers"], challenger["target_rate"], model.dispersion)
     proposed = {row["problem_id"] for earlier, part in before for row in store.read_rows(f"proposals_r{earlier}_b{part}.jsonl")}
     barred = {row["problem_id"] for row in data["heldout"]} | {row["problem_id"] for row in data["base_map"]}
-    picks = [{**row, "round": number, "batch": batch}
+    picks =[{**row, "round": number, "batch": batch}
              for row in propose_batch(candidate_ids, rates, scores, proposed, barred, sizes["batch_sizes"][batch - 1], challenger["random_share"], seed)]
     by_id = {row["problem_id"]: row for row in data["candidates"]}
     # Every proposed problem gets its n episodes: none is dropped or kept by a pass-rate estimate first (fixture 5).
@@ -482,31 +627,64 @@ def ladder_l2_round(config: dict, number: int) -> dict:
     skipped = _skipped(store, f"round {number}")
     if skipped:
         return skipped
-    for needed in (PREPARE, EMBED, *([f"ladder_l2_measure_{number - 1}"] if number > FIRST_ROUND else [])):
+    rounds, assembling = rounds_of(config), assembly_arm(config) is not None
+    if number not in rounds:
+        raise ValueError(f"round {number} is not one of the rounds {list(rounds)} this task's arm runs")
+    earlier_step = f"ladder_l2_{'train' if assembling else 'measure'}_{number - 1}"      # an arm with assembly measures no model between its rounds
+    for needed in (PREPARE, EMBED, *([earlier_step] if number > FIRST_ROUND else [])):
         _need(store, needed, f"round {number}")
     sizes, settings, seed = _sizes(config, store), config["ladder_loop"], training_seed(config)
     target, floor = settings["challenger"]["target_rate"], settings["challenger"]["band_reward"]
     sampling_seed = store.done_summary(PREPARE)["sampling_seeds"][f"round_{number}"]
-    data = ladder_round._data(config, data_directory())
+    data = _data(config)
+    harvest, start = ([] if assembling else None), start_directory(config)
+    if start is not None and not _stand_in() and not start.is_dir():
+        raise RuntimeError(f"{start} is not there: the models of this arm are trained from that adapter and its first round is attempted by it. Nothing was sampled")
+    if assembling:
+        from rlvr_lean.gpu import ladder_assembly
+    if assembling and assembly_arm(config).get("h0", True):       # H0 is read, and held to the one the run was prepared on, before anything is sampled
+        harvest, recorded = ladder_assembly.read_harvest(data["heldout"], data["base_map"])
+        if recorded["h0_file_sha256"] != store.done_summary(PREPARE)["h0_file_sha256"]:
+            raise RuntimeError(f"H0 has SHA-256 {recorded['h0_file_sha256']} and this run was prepared on {store.done_summary(PREPARE)['h0_file_sha256']}: "
+                               "a run keeps the H0 its prepare step checked")
     statements = _statements(store, data)
-    kit = Engines(enable_lora=number > FIRST_ROUND).kit(_adapter(store, number - 1))
+    by_the_start = start is not None and number == FIRST_ROUND        # the round's attempts are M(0)'s, and M(0) of such an arm is the start adapter, not the base
+    kit = Engines(enable_lora=True).kit(_start_request(start)) if by_the_start else Engines(enable_lora=number > FIRST_ROUND).kit(_adapter(store, number - 1))
     sets = [batch_set(number, batch) for batch in range(1, sizes["batches"] + 1)]
     batches = []
     for batch, set_name in enumerate(sets, start=1):
         batch_marker = f"ladder_l2_batch_r{number}_b{batch}"
         if not store.is_done(batch_marker):
             picks = _propose(config, store, data, statements, sizes, number, batch)
-            episodes = _episodes(config, store, set_name, sizes["solvers"], sampling_seed, kit)
-            store.mark_done(batch_marker, {"round": number, "batch": batch, "set": set_name, "problems": len(picks), "episodes": episodes,
-                                           "reward": arm_reward(_results(store, set_name), target, floor)})
+            episodes = _episodes(config, store, set_name, sizes["solvers"], sampling_seed, kit, assembling)
+            if assembling:      # the batch is not settled until its assembly is: a problem it resolves counts as k = 1 for the reward
+                assembly = ladder_assembly.assemble_batch(config, store, number, batch, set_name)
+                store.mark_done(batch_marker, {"round": number, "batch": batch, "set": set_name, "problems": len(picks), "episodes": episodes,
+                                               "assembly": assembly, "reward": arm_reward(counted(_results(store, set_name)), target, floor)})
+            else:
+                store.mark_done(batch_marker, {"round": number, "batch": batch, "set": set_name, "problems": len(picks), "episodes": episodes,
+                                               "reward": arm_reward(_results(store, set_name), target, floor)})
         batches.append(store.done_summary(batch_marker))
     # The round's training set: one verified proof of every problem with k >= 1, drawn with the round's seed, on
     # whichever side was proved. The proofs are the solver's own attempts (fixtures 7 and 8).
     batch_of = {row["problem_id"]: batch for batch, set_name in enumerate(sets, start=1) for row in _results(store, set_name)}
     problems = [row for row in store.read_rows("problems.jsonl") if row["set"] in sets]
     examples = training_examples(problems, [attempt for set_name in sets for attempt in _attempts(store, set_name)], seed)
-    store.write_rows(f"training_examples_r{number}.jsonl", [{**example, "round": number, "batch": batch_of[example["problem_id"]]} for example in examples])
-    results = [row for set_name in sets for row in _results(store, set_name)]
+    extra = {}
+    if assembling:
+        # With assembly: the round's one-shot rows, the minimised proof of each problem only assembly resolved, and H0's rows for
+        # the problems the rounds so far have not resolved themselves; each row says where it is from.
+        rows = ladder_assembly.round_examples(store, number, sets, examples, batch_of, rounds, harvest)
+        store.write_rows(f"training_examples_r{number}.jsonl", rows)
+        counts = [entry["assembly"] for entry in batches]
+        extra = {"training_rows_by_origin": ladder_assembly.by_origin(rows),
+                 "assembly": {key: sum(entry[key] for entry in counts) for key in ("unresolved_problems", "sides_replayed", "attempts_replayed",
+                                                                               "a_pool_stood_on", "resolved_by_assembly", "lean_checks")}}
+        if start is not None:       # an arm from a stored adapter says so: its M(0) is that adapter
+            extra.update({"start_adapter": str(start), "attempted_by_the_start_adapter": by_the_start})
+    else:
+        store.write_rows(f"training_examples_r{number}.jsonl", [{**example, "round": number, "batch": batch_of[example["problem_id"]]} for example in examples])
+    results = counted([row for set_name in sets for row in _results(store, set_name)])       # k as the challenger reads it
     summary = {"round": number, "attempted_by": model_name(number - 1), "seed": seed, "sampling_seed": sampling_seed,
                "problems": len(results), "attempt_episodes": sum(row["episodes"] for row in results),
                "reward": arm_reward(results, target, floor), "training_set": training_summary(examples),
@@ -514,7 +692,7 @@ def ladder_l2_round(config: dict, number: int) -> dict:
                "attempts": sum(entry["episodes"]["attempts"] for entry in batches),
                "generated_tokens": sum(entry["episodes"].get("generated_tokens", 0) for entry in batches),
                "generation_seconds": round(sum(entry["episodes"].get("generation_seconds", 0) for entry in batches), 1),
-               "stand_in_engine": _stand_in()}
+               "stand_in_engine": _stand_in(), **extra}
     store.mark_done(marker, summary)
     return summary
 
@@ -531,6 +709,15 @@ def ladder_l2_train(config: dict, number: int) -> dict:
     if skipped:
         return skipped
     _need(store, f"ladder_l2_round_{number}", f"the training of {model_name(number)}")
+    if assembly_arm(config) is not None:        # its own set, order and record (`gpu/ladder_assembly.py`); the adapter is where every arm's is
+        from rlvr_lean.gpu import ladder_assembly
+
+        start = start_directory(config)
+        summary = ladder_assembly.train_round(config, store, number, rounds_of(config), arm_name(), **({"start": start} if start is not None else {}))
+        store.mark_done(marker, summary)
+        if summary.get("allocated_after_cleanup_gb", 0) > MAX_LEFTOVER_GB:
+            raise RuntimeError(f"{summary['allocated_after_cleanup_gb']} GB is still allocated on the GPU after {model_name(number)}'s adapter was trained and released")
+        return summary
     seed = training_seed(config)
     by_round = {earlier: store.read_rows(f"training_examples_r{earlier}.jsonl") for earlier in ROUNDS if earlier <= number}
     examples = [example for earlier in sorted(by_round) for example in by_round[earlier]]
@@ -564,6 +751,7 @@ def ladder_l2_measure(config: dict, number: int) -> dict:
     """M(number) on the three held-out rungs and on G, with L1's sampling seeds: the same problems, the same random
     numbers and the same sides as L1's base measurement and as every other round, so each pairs by problem with
     them. The stop rule is read here, on the below-band rung against the base."""
+    _not_with_assembly(config, f"the measurement of {model_name(number)}")
     store, marker = _store(config), f"ladder_l2_measure_{number}"
     if store.is_done(marker):
         return store.done_summary(marker)
@@ -590,6 +778,7 @@ def ladder_l2_control(config: dict) -> dict:
     """The equal-compute control, after the last round: the BASE gets every attempt episode the rounds ran, the
     same number on each problem of G, with a sampling seed of its own. They are read on top of the episodes of
     its fresh reach measurement (L1's)."""
+    _not_with_assembly(config, "the equal-compute control")
     store = _store(config)
     if store.is_done(CONTROL_STEP):
         return store.done_summary(CONTROL_STEP)
@@ -631,6 +820,7 @@ def ladder_l2_control_trained(config: dict) -> dict:
     as the base has with the control's: the two models at equal attempts. It does not replace the control. A run
     that finished before this step existed gets it alone when its task is queued again: every other step
     returns what is stored."""
+    _not_with_assembly(config, "the last model's extra attempts on G")
     store, last = _store(config), ROUNDS[-1]
     if store.is_done(CONTROL_TRAINED_STEP):
         return store.done_summary(CONTROL_TRAINED_STEP)
@@ -662,6 +852,7 @@ def ladder_l2_control_trained(config: dict) -> dict:
 def ladder_l2_report(config: dict) -> dict:
     from rlvr_lean.reporting.ladder_l2 import build_l2_report
 
+    _not_with_assembly(config, "the L2 report")
     store = _store(config)
     sizes, prepare = _sizes(config, store), store.done_summary(PREPARE)
     rounds = {}

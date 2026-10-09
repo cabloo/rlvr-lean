@@ -254,6 +254,7 @@ class CheckSession:
         self._pool = pool
         self._futures: list[Future] = []
         self._lexical: dict[str, VerificationResult] = {}
+        self.raw: dict[str, dict] = {}              # Lean's own answers, as `results` read them: positions are in these and in nothing classified
 
     def submit(self, attempts: list[ProofAttemptToVerify]) -> None:
         sources = {}
@@ -271,5 +272,6 @@ class CheckSession:
         combined = dict(self._lexical)
         for future in self._futures:
             for raw in future.result():
+                self.raw[raw["id"]] = raw
                 combined[raw["id"]] = pin.classify(raw["id"], raw)
         return combined

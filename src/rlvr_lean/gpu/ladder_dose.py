@@ -43,6 +43,7 @@ from rlvr_lean.domain.training.target_format import NATIVE
 from rlvr_lean.domain.verification.pin import lean_pin_from_config
 from rlvr_lean.gpu import ladder_loop, ladder_round, pipeline
 from rlvr_lean.gpu.ladder_round import BASE, Engines, _attempts, _stand_in, _write_json, distinct_attempts, training_seed
+from rlvr_lean.infrastructure.adapter_files import ADAPTER_FILE, compared
 from rlvr_lean.infrastructure.artifact_store import ArtifactStore
 
 DOSE_RUN_VARIABLE = "RLVR_LEAN_LADDER_DOSE_RUN"          # another run directory than `ladder_l1b_seed<seed>` (a smoke run)
@@ -213,10 +214,19 @@ def _stand_in_calls(examples: int, sample: list[int], pairs: list[dict]):
 
 
 def _train_with_readings(config: dict, examples: list[dict], sample: list[int], pairs: list[dict], schedule: dict, seed: int,
-                         directory: Path, tensorboard_run: str) -> dict:
+                         directory: Path, tensorboard_run: str, orders: list[list[int]] | None = None, per_example: bool = False,
+                         positions: bool = False, start: Path | None = None) -> dict:
     """The training of `ladder_round._train` (same model, adapter, optimizer, warm-up and order of examples), for
     `dose.passes` passes, with the per-step loss by part, the readings on the fixed pairs and the checkpoints.
-    EVERY GPU object is a local of this function, so nothing outlives it."""
+    EVERY GPU object is a local of this function, so nothing outlives it. `orders`, `per_example` and `positions`
+    are `run_dose`'s: another order of the examples than the round's, each example's own loss beside its step's,
+    and the positions of the examples each step was made on. `start` (L4's arm): a stored adapter the training goes
+    on FROM, in the place of a fresh one on the base; its weights are loaded into the adapter just attached, and the
+    training is refused, before its first step, unless the B matrices the model then holds are the file's (a fresh
+    adapter's are zero, a pretrained one's are not: their absolute sum is compared with the file's). After the pass,
+    each adapter it SAVED is compared with the start adapter's, file against file and bit for bit
+    (`against_the_start_adapter`, by `infrastructure.adapter_files.compared`: how many of its numbers are not the
+    same): a trained adapter that IS the one it started from is a training that did not happen."""
     import torch
 
     from rlvr_lean.runner.heartbeat import ScalarEventWriter
@@ -225,6 +235,18 @@ def _train_with_readings(config: dict, examples: list[dict], sample: list[int], 
     training = config["training"]
     model, tokenizer = load_nf4_base(pipeline.NF4_DIR)
     peft_model = attach_lora(model, config["lora"], seed=seed)
+    if start is not None:
+        from peft import set_peft_model_state_dict
+        from safetensors.torch import load_file
+
+        stored = load_file(str(Path(start) / ADAPTER_FILE))
+        set_peft_model_state_dict(peft_model, stored)
+        of_the_file = sum(float(tensor.float().abs().sum()) for key, tensor in stored.items() if "lora_B" in key)
+        loaded = sum(float(parameter.detach().float().abs().sum()) for name, parameter in peft_model.named_parameters() if "lora_B" in name)
+        if of_the_file <= 0 or abs(loaded - of_the_file) > 1e-3 * of_the_file:
+            raise RuntimeError(f"the adapter {start} did not load: its B matrices sum to {of_the_file} in absolute value and the model to train holds {loaded} "
+                               "(a fresh adapter on the base holds 0). Nothing was trained")
+        start_loaded = {"adapter": str(start), "b_matrices_absolute_sum_of_the_file": round(of_the_file, 4), "b_matrices_absolute_sum_loaded": round(loaded, 4)}
     peft_model.train()          # gradient checkpointing is applied in training mode only (see `ladder_round._train`)
     optimizer = torch.optim.AdamW([parameter for parameter in peft_model.parameters() if parameter.requires_grad],
                                   lr=training["learning_rate"], weight_decay=0.0)
@@ -293,9 +315,13 @@ def _train_with_readings(config: dict, examples: list[dict], sample: list[int], 
     torch.cuda.reset_peak_memory_stats()
     started = time.monotonic()
     result = run_dose(len(encoded), training["effective_batch"], schedule["passes"], seed, schedule["reading_steps"],
-                      schedule["checkpoint_steps"], train_step, read, save)
+                      schedule["checkpoint_steps"], train_step, read, save, orders=orders, per_example=per_example, positions=positions)
     seconds = time.monotonic() - started
+    # What was SAVED against what the training started from, file against file and bit for bit: a count of the numbers
+    # that are not the same, so nothing here passes or fails by rounding.
+    against = {name: compared(directory / name / ADAPTER_FILE, Path(start) / ADAPTER_FILE) for name in schedule["checkpoint_steps"]} if start is not None else {}
     return {**result, "target_format": NATIVE, "sequence_start_token_id": int(tokenizer.bos_token_id),
+            **({"start_adapter_loaded": start_loaded, "against_the_start_adapter": against} if start is not None else {}),
             "seconds": round(seconds, 1), "seconds_in_readings": round(sum(reading_seconds), 1),
             "seconds_per_reading": round(sum(reading_seconds) / len(reading_seconds), 2) if reading_seconds else None,
             "seconds_training": round(seconds - sum(reading_seconds), 1),

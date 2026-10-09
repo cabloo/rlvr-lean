@@ -3,7 +3,8 @@
 Every problem of the round with k >= 1 gives ONE example: one of its verified proofs, chosen at random with the
 round's seed, on whichever side was proved. A proof here is always an attempt this run's solver wrote and Lean
 verified. A published proof cannot get in: this function is given the solver's attempts and nothing else, and the
-data that reaches the GPU box holds no published proof.
+data a round reads on the GPU box holds no published proof. (The one file beside the code that does is the ceiling's
+training file, a labelled diagnostic's input that no round reads: `domain/ladder_round/ceiling.py`.)
 """
 
 from __future__ import annotations

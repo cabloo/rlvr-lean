@@ -122,11 +122,17 @@ def epoch_orders(examples: int, passes: int, seed: int) -> list[list[int]]:
 
 
 def run_dose(examples: int, batch: int, passes: int, seed: int, readings: Sequence[int], checkpoints: Mapping[str, int],
-             train_step: Callable[[list[int]], Sequence[Sequence[float]]], read: Callable[[int], dict], save: Callable[[str, int], None]) -> dict:
+             train_step: Callable[[list[int]], Sequence[Sequence[float]]], read: Callable[[int], dict], save: Callable[[str, int], None],
+             orders: Sequence[Sequence[int]] | None = None, per_example: bool = False, positions: bool = False) -> dict:
     """The training loop as a schedule. `train_step(batch of example positions)` makes ONE optimizer step and
     returns each example's per-position losses as they were BEFORE the update; `read(step)` reads the fixed pairs
     (it is called at step 0, before any update, and after the update of every other reading step); `save(name,
-    step)` saves the adapter after the update of a checkpoint's step."""
+    step)` saves the adapter after the update of a checkpoint's step.
+
+    `orders`: the order of the examples in each pass when it is not `epoch_orders`' (the ceiling trains in its
+    file's order). `per_example`: a step's row also holds each of its examples' own mean loss per target token
+    (`example_losses`, in the step's order). `positions`: and the positions of the examples it was made on
+    (`example_positions`, in the step's order): the record of what was trained on."""
     per_pass, at = steps_per_pass(examples, batch), set(readings)
     by_step: dict[int, list[str]] = {}
     for name, step in checkpoints.items():
@@ -134,12 +140,16 @@ def run_dose(examples: int, batch: int, passes: int, seed: int, readings: Sequen
     step_rows, reading_rows, saved, step = [], [], [], 0
     if 0 in at:
         reading_rows.append({"step": 0, "pass": 0.0, **read(0)})
-    for order in epoch_orders(examples, passes, seed):
+    for order in (epoch_orders(examples, passes, seed) if orders is None else orders):
         for start in range(0, len(order), batch):
             losses = train_step(order[start:start + batch])
             step += 1
             # The loss of step s is read BEFORE its update: it describes the model after s - 1 updates.
             step_rows.append({"step": step, "pass": pass_of(step, per_pass), "updates_before": step - 1, **parts_row(losses)})
+            if per_example:
+                step_rows[-1]["example_losses"] = [round(sum(one) / len(one), 5) for one in losses]
+            if positions:
+                step_rows[-1]["example_positions"] = list(order[start:start + batch])
             for name in by_step.get(step, ()):
                 save(name, step)
                 saved.append({"checkpoint": name, "step": step, "pass": pass_of(step, per_pass)})

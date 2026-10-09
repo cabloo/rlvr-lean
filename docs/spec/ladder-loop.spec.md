@@ -863,7 +863,9 @@ size of the gain against the number of proofs says how many assembled proofs L3d
 not training text. This trains once on them, on a branch, as a diagnostic. No model trained this way is used
 in a round or kept, its training file is not published, and its result is always labelled "ceiling".
 
-**The training file** (`data/ladder_ceiling/training.jsonl`, built on the dev machine with Lean checks only):
+**The training file** (`data/ladder_ceiling/training.jsonl`, built on the dev machine with Lean checks only, by
+`python -m rlvr_lean.tools.ladder_ceiling_set`, which holds every rule below; its `--dry-run` selects and
+counts and sends nothing):
 
 - **Eligible:** pool candidates (never a held-out problem, never one of the base map's) on the side `true`,
   whose pass rate the challenger predicted for the base below 0.05 (round 1 of L2's seed 0): 4,190 Lean
@@ -871,7 +873,11 @@ in a round or kept, its training file is not published, and its result is always
 - **Chosen:** every Lean Workbook one, and a random 4,800 of the STP ones.
 - **The proof:** of a problem's published proofs (as published, and as the pool build rewrote them for
   Mathlib's lemma renames), the one with the fewest lines that verifies under v4.27 as a solver's attempt is
-  checked.
+  checked. A published proof is tried only if `len(statement) + len(proof) <= 2400` characters, so that no
+  row can be refused for its length on the box: stored model proofs of 150 tokens or more measure at least
+  1.25 characters a token (6,178 of them; 1% at 1.52, the median 1.96), so such a row is at most 1,920 tokens
+  and the prompt's fixed part, under the 2,048 a training example is cut at. Of the proofs that pass, at most
+  the three shortest by lines are sent to Lean.
 - **Written:** 8,000 rows in a shuffled order: every chosen Lean Workbook problem with a verified proof, and
   STP ones to make up the number. The first 2,000 rows are the smaller dose.
 
@@ -885,25 +891,821 @@ base's stored 93 attempts and with the three-round model at t = 1/10.
 problems solved as gained against lost.
 
 - **Primary: the goal problems whose shortest published proof is 4 lines or more (230), successes per attempt
-  over 93 attempts, the 8,000-proof model minus the base.** Beside it the same for the three-round model at
-  t = 1/10 minus the base (from stored results: 3.9 per 1,000 against 2.9 at 4 to 7 lines, 0.3 against 0.4
-  at 8 or more), which is what the loop's own training reaches.
+  over 93 attempts, the 8,000-proof model minus the base.** It is read against **the loop's own gain** there,
+  ONE number, computed on 2026-10-08 from the stored three-seed rows, before the run: the model after three
+  rounds at t = 1/10 minus the base on the same 230 problems, the three seeds pooled (279 attempts a
+  problem), paired by problem: +0.00064 per attempt [−0.00025, +0.00162] (176 successes against the base's
+  135 in 64,170 attempts, 2.74 against 2.10 per 1,000; by seed −0.00019, +0.00192, +0.00019). It is what the
+  loop's own training reaches. Beside the primary the report also shows this seed's three-round model minus
+  the base, from its stored rows: information that decides nothing.
 - **Secondary:** the same by length group (1, 2 to 3, 4 to 7, 8 or more) and for the 2,000-proof model; goal
   problems solved at 93 attempts, gained against lost, by length group; the three rungs; the line counts of
   the proofs each model verifies; the share of distinct attempts.
-- **Branches.** The primary above zero with an interval clear of zero, and at least twice the three-round
-  model's own gain there: the model can learn longer proofs from examples; L3d is worth building, and the
-  two doses say how the gain scales with proofs. Above zero but not twice the loop's own: longer proofs help
-  about as the loop's own do; L3d's case rests on assembled proofs being better aimed than published ones,
-  which this cannot tell. Interval through zero at 8,000 proofs: for this model and recipe, one-shot writing
+- **Branches.** The primary above zero with an interval clear of zero, and at least twice the loop's own gain
+  (a point of +0.00128 or more): the model can learn longer proofs from examples; L3d is worth building, and
+  the two doses say how the gain scales with proofs. Above zero with an interval clear of zero but not twice
+  the loop's own (a point under +0.00128): longer proofs help about as the loop's own do; L3d's case rests on
+  assembled proofs being better aimed than published ones, which this cannot tell. Interval through zero at
+  8,000 proofs (and a point not above the loop's own gain): for this model and recipe, one-shot writing
   of longer proofs is not shown to be learnable at this size; L3d as plain training is unlikely to pay, and
   reach stays in the episode (a larger pool, more generations, or training the continuing step).
 - **Can this run see a win (else INCONCLUSIVE).** The training took: the mean training loss over the last 500
   rows is below the mean over the first 500. The model still writes proofs: its share of attempts without an
   answer on the rungs stays under 5%. And training on other provers' proofs has not broken it: its pass rate
   on the above-band rung is at least half the base's.
-- **One seed:** a diagnostic that sizes the next step. If the primary's interval touches zero and its point
-  is above the loop's own gain, two more seeds are run before anything is concluded.
+- **One seed:** a diagnostic that sizes the next step. If the primary's interval holds zero and its point is
+  above the loop's own gain (+0.00064), two more seeds are run before anything is concluded.
+
+**Made exact by the build (2026-10-08, before any run).**
+
+- **The training set and its order.** The first 8,000 rows of the file (the last checkpoint is the end of the
+  pass), in the file's order. Nothing is shuffled: a round shuffles its examples, and here the file's order is
+  the order. A file with fewer rows is refused; rows past the last checkpoint would not be read.
+- **A row as a training example.** The round's own builder: the theorem is `statement`, the completion is
+  `proof`, the target is the proof and the closing fence, in the native format (the sequence-start token
+  between prompt and proof).
+- **The recipe is the round's.** Batch 8, learning rate 1e-4 after a warm-up of 5 steps and constant from
+  there, the LoRA settings, gradient checkpointing, the adapter drawn from the task's seed. No loss is read
+  on held-out proofs during training (L1b's readings): the read asks for the training loss only.
+- **Checkpoints by rows.** A checkpoint is saved after the first optimizer step at or after its number of
+  rows, and the rows seen by then are recorded (2,000 and 8,000 fall on steps 250 and 1,000). They are named
+  `small` and `full`.
+- **What the prepare step refuses,** with nothing written: a row of a held-out problem (the snapshot's H, and
+  the groups of the L1 run it reads) or of the base map, anywhere in the file; a row not on the side `true`;
+  a problem that appears twice; a file with fewer rows than the last checkpoint; a row longer than the 2,048
+  tokens the round's recipe cuts an example at (`training.max_sequence_tokens`, counted with the model's
+  tokenizer as the training step encodes the row), which would be trained on without its end. The training
+  file's character rule keeps every row under that; the count on the box stays, as the check of it.
+- **The training loss.** Each row's mean loss per target token, read before the update of the step it was in,
+  stored for every row. The first check compares the mean over the last 500 rows with the mean over the first
+  500. A run of fewer than 1,000 rows (the smoke run) compares its two halves.
+- **The 93 attempts are two samplings of G:** 32 episodes with L1's sampling seed for G (1001 at seed 0) and
+  61 with the seed of L2's control (1020), the number read from what that control stored. The base's are L1
+  seed 0's `reach_base` and `ladder_l2_seed0`'s `control`; the three-round model's are
+  `ladder_l2_t010_seed0`'s `reach_m3` and `control_m3`. One base for every comparison: the arm's run sampled
+  the control again (it differs by one success on one problem), and that copy is not read. The rungs get 8
+  episodes with L1's seed for them (1002). Stored rows sampled with another seed, another number of episodes
+  or on other problems are refused. An attempt is one episode, as in L2's read at equal attempts.
+- **The loop's own gain is ONE fixed number,** the three seeds pooled, and not this seed's: +0.00064 per
+  attempt (`ladder_loop.ceiling.loops_own_gain`; the Primary bullet says where it comes from). This seed's
+  three-round model would not do as the reference: at seed 0 it has 52 successes against the base's 56 in
+  21,390 attempts on the 230 problems, −0.00019 [−0.00140, +0.00112], so twice its gain would lie below zero
+  and every primary clear of zero would pass. The branches are arithmetic on the primary and the fixed
+  number: an interval clear of zero and a point of at least +0.00128; an interval clear of zero and a point
+  under +0.00128; an interval that holds zero and a point above +0.00064 (two more seeds); an interval that
+  holds zero and a point at or under +0.00064 (not shown). The report shows this seed's three-round model
+  beside the primary as information, says that it decides nothing, and reads its branch just the same when
+  no stored three-round model was read.
+- **A case the branches did not name:** the primary's interval entirely below zero. It is reported as "the
+  model trained on the published proofs solves fewer of these problems per attempt than the base". An interval
+  that ends at zero holds zero.
+- **The second check's "without an answer":** an attempt that reached the token cap (it is never sent to
+  Lean) or on which Lean gave no verdict, as a share of the model's attempts on the three rungs. The two
+  counts are printed apart.
+- **The second and third checks are read on the 8,000-proof model,** the one the primary is read on. The
+  2,000-proof model's numbers stand beside them and decide nothing. The third check's pass rate is the mean
+  over the above-band problems.
+- **When a check fails** the report prints the three checks and INCONCLUSIVE, and nothing else. What was
+  measured stays in the report file under `measured_and_not_read`, for whoever repairs the run.
+- **The secondary reads.** The three-round model is read like the two ceiling models, from its stored rows:
+  by length group, problems solved, the rungs, lines, distinct attempts. The lines of a verified proof are
+  counted as a published proof's are, on G over all 93 attempts and on the three rungs, with the shares of 4
+  lines or more and of 8 or more. Distinct attempts are counted as in L1 and L2, on the rungs and on G.
+- **Nothing is kept, and the adapters go only after a report that can be read.** The report step deletes
+  both adapters once a report that can be read is written, and records that it did. A report that is not to
+  be read (Lean gave no verdict on more than 2% of a set's attempts, the rule of every report here) leaves
+  the adapters where they are, says that they were kept and why, and fails its step as before. Queued again,
+  the task measures again the sets of its own that Lean did not answer, and no other, from the kept adapters,
+  with no new training; the first report that can be read deletes them. A STORED set (the base's, the
+  three-round model's) that Lean did not answer is refused by the prepare step, before anything is trained:
+  no report could be read against it. A run whose report is written is not trained again. The run directory
+  holds no statement and no proof of the training file (ids, kinds, line counts and token counts only); the
+  training step reads the file again and refuses one whose hash the prepare step did not record.
+- **Names.** Stage `ladder_ceiling`, run directory `ladder_ceiling_seed<N>`. Every file it writes has
+  `ceiling` in its name but `problems.jsonl`, which the shared episode step reads by that name (its sets are
+  `ceiling_...`).
+- **The smoke stage** (`ladder_ceiling_smoke`) reads `ladder_l1_smoke` alone: a 24-row fixture
+  (`data/ladder_ceiling_fixture`, rows of the trial sample) in the training file's place, checkpoints after 12
+  and 24 rows (saved after steps 2 and 3). No L2 smoke run holds the stored attempts the real run reads, so
+  none are read: G gets its first sampling only and no three-round model stands beside. The fixture's goal
+  problem has no shipped proof length, so the primary has no problem and no branch is named.
+- **The file as built** (2026-10-08, by the tool, before the run; SHA-256 `b8d7444c…adf98c`). 19,421 checks:
+  15,405 verified, 3,974 rejected, 42 timed out at 60 s; 5 published proofs were not tried for their length.
+  8,000 rows: 4,123 Lean Workbook problems and 3,877 STP ones. Proof lines: median 8, mean 9.4, nine tenths
+  within 18; by length group 264 of 1 line, 942 of 2 to 3, 2,603 of 4 to 7 and 4,191 of 8 or more. The first
+  2,000 rows: 1,025 Lean Workbook; 68, 234, 642 and 1,056 by group. The longest row is 2,310 characters. A
+  rebuild can differ in the few problems whose checks time out (three builds this day left 63, 47 and 42
+  timeouts, under a pool that other work was using): the committed file is the one trained on.
+- **The smoke run** (`ladder_ceiling_smoke_r1`, 3 minutes, the real model, from c456e161c). The prepare step
+  counted the fixture with the model's tokenizer (the longest row 869 tokens for 1,746 characters; 9,518
+  tokens for 16,221 characters with the prompt's fixed part, 1.7 characters a token); three steps trained
+  (peak 9.2 GB); both adapters were measured through Lean; the three checks passed and no branch was named.
+
+**Outcome (seed 0, 2026-10-08; `ladder-ceiling-RESULT.md`): THE MODEL CAN LEARN LONGER PROOFS FROM EXAMPLES.**
+The three checks pass. Primary +0.0478 [+0.0380, +0.0584]: 50.4 successes per 1,000 attempts against the
+base's 2.62 on the 230 goal problems of 4 lines or more, 75 times the loop's own gain there. Goal problems
+solved at 93 attempts: 245 against the base's 59 (gained 187, lost 1), 209 with 2,000 proofs; the loop's
+three-round model at this seed 59 (gained 20, lost 20). Solved reliably (at least half of 11 episodes of 8
+attempts): 106, against 3 for the base and 15 for the loop's model. No goal problem's statement is in the
+training file, and on the 123 problems of the primary with no near statement there the gain is +0.0438
+[+0.0296, +0.0596]. Both adapters were deleted by the report step. What it puts to the owner (the named
+fallback: start the loop from a model pretrained on published proofs) is in the note; L3d's first step runs
+in any case.
+
+### L3d: train on what the episode reaches — direction APPROVED by the owner 2026-10-08 ("Yes to all, keep pushing"); the read fixed here before any run
+
+**The aim, as a count.** The owner's aim is to do reliably what could not be done before. On the goal set
+that can be counted: **a goal problem is solved reliably when it is resolved in at least half of its
+episodes**, an episode being 8 one-shot attempts (with assembly after them where the system has it). From
+stored one-shot attempts, each model on its own fresh samples (11, 7 and 11 episodes a problem at seeds 0, 1
+and 2):
+
+| | Solved at least once | Reliably (at least half of its episodes) |
+|---|---|---|
+| The base | 57, 37, 55 | 3, 1, 3 |
+| Three rounds at t = 1/4 | 61, 47, 52 | 7, 12, 5 |
+| Three rounds at t = 1/10 | 59, 62, 55 | 15, 13, 8 |
+
+Training makes problems reliable and does not reach more of them. The episode's assembly reaches (94 goal
+problems against 65 over 18 episodes, base model) and makes none reliable (2 against 2 at half). L3d asks
+whether training on what the assembly finds turns its reach into reliability.
+
+**Measured before designing it (2026-10-08; Lean only, no generation).**
+
+1. **The form of the episode** (`ladder-l3c-RESULT.md`, addendum). The blind arm's own 8 attempts with the
+   episode's Lean-only part resolve 1,373 hard episodes of 10,044, against 1,294 for the accumulate arm as
+   run and 1,190 blind. So an episode here is 8 one-shot attempts with assembly after them, and no
+   generation continues from a pool.
+2. **What a round yields.** The same replay on the stored rounds at t = 1/10 (seeds 0 and 1): of the 375 to
+   565 problems a round leaves with no verified attempt, assembly resolves 10, 12, 14 and 11, 19, 27 (2.4%
+   to 5.1%, rising with the rounds as the solver is trained), with proofs of median 7 lines (longest 16).
+   That is about 15 new proofs a round beside about 600: a round as it stands holds too few to show whether
+   they teach anything.
+3. **What is stored.** The training-side sets of L1, L2 and L2 at t = 1/10 hold attempts at 8,141 pool
+   problems. No stored attempt verified 3,516 of them, and 91,956 failed attempts at those are kept (a
+   problem's median 24).
+
+**Step 1: do assembled proofs teach? One seed, about 70 GPU-minutes.**
+
+- **The harvest H0** (Lean only; `tools/ladder_harvest.py`). For every pool problem that no stored
+  training-side attempt verified, each side's stored failed attempts (a text once; in the order run, set,
+  attempt; at most 48) are checked again for Lean's error positions and put through the episode's Lean-only
+  part, with L3c's rules and sizes. Held-out problems are never read.
+- **A harvested proof is minimised before it is trained on.** An assembled proof holds every pooled lemma,
+  those of unrelated failed attempts with it. Its pool blocks are taken out one at a time, from the last to
+  the first, and a block stays out when the proof still verifies. What is left is checked once more as a
+  solver's attempt is, and that text is the training text; if that check fails, the proof as it was
+  assembled is used. Names are left as the pool made them.
+- **Two models from the base, the round's recipe, one pass, seed 0.** `without`: the training examples of
+  seed 0's three-round model at t = 1/10 (its `training_examples_r1` to `_r3`), in a seeded order. `with`:
+  the same rows in the same relative order, with H0's proofs at seeded places among them. Both are trained
+  in this run by the same code, so that what differs between them is H0 and not the run.
+- **Measured** as the ceiling's models are: 8 episodes on the three rungs and 93 one-shot attempts on each
+  goal problem with L2's sampling seeds, so each pairs by problem with the stored base and the stored
+  three-round model. After the run, Lean only: each model's stored goal attempts cut into episodes of 8 in
+  the order drawn, with assembly (item 1's replay), for the reliable count.
+
+**The read, fixed before the run.** Paired by problem, 95% bootstrap over problems; totals over the same
+problems and the same number of attempts.
+
+- **Primary: the goal problems whose shortest published proof is 4 lines or more (230), successes per
+  attempt over 93 one-shot attempts, `with` minus `without`.** It is the ceiling's primary, so the two can
+  be set side by side per proof trained on.
+- **The noise floor:** `without` minus the stored three-round model on the same quantity. They have the same
+  training examples and differ by the run and the order: this is what two trainings on the same data differ
+  by, and no primary within it is read as an effect.
+- **Secondary:** the same by length group and on all of G; the three rungs; goal problems solved at least
+  once and reliably, by attempts alone and with assembly, for `with`, `without`, the stored three-round
+  model and the base; the lines of the proofs each model verifies and the share of its attempts that open
+  with a `have` (whether it writes differently).
+- **Branches.** Interval clear of zero and outside the noise floor: assembled proofs teach; a matched
+  control is trained first (`without` and as many more ONE-SHOT proofs as H0 holds, from verified attempts
+  stored in other runs at pool problems outside the training set), to tell assembled proofs from more
+  proofs, and then Step 2 goes to three seeds. Interval holds zero: not shown at H0's size; with the
+  ceiling's two doses beside it the note says whether a gain of the size the ceiling shows for each proof
+  could have been seen here, and if it could not, the verdict is UNDETECTABLE AT THIS SIZE and what follows
+  (a larger harvest by generation, or none) is decided on the ceiling's read. Interval below zero: the
+  assembled proofs cost one-shot attempts; Step 2 is not run as designed.
+- **Can this run see a win (else INCONCLUSIVE).** H0 holds at least 100 proofs (with fewer, Step 1 is not
+  run on it and the harvest is enlarged by generation first). Both trainings took: the mean training loss
+  over the last tenth of the rows is below the mean over the first tenth. Both models still write proofs:
+  under 5% of attempts on the rungs without an answer. And `with` was trained on H0: every one of its rows
+  is counted in the training step's record.
+
+**Step 2: the loop with assembly in the round (three seeds; built and sized only on Step 1's and the
+ceiling's read).** The L2 stage's arm at t = 1/10 with one more setting: after a batch's attempts, the
+Lean-only assembly over the 8 attempts of each problem none of them resolved. A problem an assembled proof
+resolves is resolved, and its minimised proof is its training example. For the challenger's reward k stays
+the number of verified attempts, and a problem with k = 0 that assembly resolves counts as k = 1: the
+episode found one proof. (Behaviour is shaped through the reward: this pays the challenger for problems at
+the edge of what the episode can do, which is where assembled proofs come from.) The size of a round (1,000
+problems, or more by the same ranking) is fixed before the run from Step 1 and the ceiling. Its read: the
+goal set by proof length, by attempts alone and by episode with assembly, and the reliable count, against
+the stored arm at t = 1/10 of the same seed.
+
+**Made exact by the build (2026-10-08, before any run; Step 1 only, Step 2 is not built).**
+
+*The harvest (`tools/ladder_harvest.py`; the episode's Lean-only part is `domain/repair/replay.py`).*
+
+- **What is read.** Under `--runs-root`, the task directories whose name starts `ladder_l` and holds neither
+  `smoke` nor `pilot`, in the order of their names; their `steps/episodes_*_attempts_*.jsonl`. A run pulled
+  more than once (`<run>_r1`, `<run>_r2`) gives each file once. A file is left at its first row that is a
+  held-out problem or is not a pool candidate (`data/ladder_l2/candidates.jsonl`: the whole pool), so a
+  held-out problem is never read; no base-map problem is a candidate either. "In the order run, set,
+  attempt" is the order (run, file name, row).
+- **What is replayed.** Each SIDE of a problem is an episode of its own (the negation's statement is the
+  exact negation, built as the pool builds it). Its attempts are the stored ones with status `lean_error`
+  and a completion: a text once (as it stands in the checked file), none with a forbidden token, at most 48
+  (`ladder_loop.l3d.harvest.attempts`). Sizes are L3c's (12 pool blocks, 8 kept closers); a proof's Lean
+  limit is an episode's (30 s); every check is background work; a file is named by a hash of its text.
+- **A stored failure that verifies when it is checked again** is counted apart and is no assembled proof: it
+  is not written to H0.
+- **One proof a problem.** A proof Lean verifies on the side a problem's published answer rules out is the
+  soundness alarm: the tool stops with exit code 3, and what it held is kept in `<out>.partial.json`. So no
+  problem can resolve on both sides, and the rule "if both sides resolve, the first resolved" has no case;
+  two rows of one problem would be refused as a proof of both sides.
+- **Minimisation.** Every pool block is tried, the ones the closing step names too: one check a block, from
+  the last block to the first, each time on what is left. The proofs go together, one place from the end a
+  batch. The text that is left is checked once more, read as a solver's attempt is at the loop's pin. A row
+  records the blocks and lines before and after, the checks, and `minimised: false` when that last check
+  failed and the proof as assembled is the training text.
+- **What is written.** One row a problem: `problem_id`, `side`, `theorem`, `completion` (a round's training
+  example), and `kind`, `published_side`, `assembled: true`, `resolved_after_attempt`, `attempts_replayed`,
+  `stored_attempts`, `pooled_attempts`, `runs`, `blocks_before`, `blocks_after`, `lines_before`,
+  `lines_after`, `minimise_checks`, `minimised`. Beside it `harvest_h0.summary.json` (counts, the task
+  directories read, every check status, timeouts). While it runs, what is resolved so far is written to
+  `<out>.partial.json` every 4 attempts and removed at the end. The tool keeps nothing else between runs: a
+  rerun sends the same files and the pool answers them from its cache.
+
+*The goal set's replay (`tools/ladder_goal_assembly.py`; the count is `domain/ladder_round/reliable.py`).*
+
+- **An episode** is one side's 8 attempts of one stored sampling, in the order drawn (a row's `episode`);
+  each sampling is cut on its own and the attempts left over are no episode (32 give 4, 61 give 7: 11 a
+  problem, 5 attempts left over). It ends at its first verified attempt; the failed attempts before that are
+  checked again and replayed. A stored failure that verifies on the re-check is not replayed and is no
+  success. A PROBLEM's episode is resolved when either side's is.
+- **The counts:** goal problems resolved in at least one, a quarter, half ("reliably": 6 of 11) and nine
+  tenths of their episodes, by attempts alone and with assembly, on all of G, by the length group of the
+  shortest published proof and on the problems of 4 lines or more. A problem with no episode is counted in
+  none. `report` prints several models' outputs side by side. The alarm is the harvest's.
+
+*The stage (`ladder_l3d1`, and `ladder_l3d1_smoke`; `gpu/ladder_l3d1.py`).*
+
+- **Names.** Run directory `ladder_l3d1_seed<N>`. Steps `ladder_l3d1_prepare`, `_train_without`,
+  `_train_with`, `_measure_without`, `_measure_with`, `_report`. Sets `l3d1_rungs_<model>`,
+  `l3d1_reach_<model>`, `l3d1_more_<model>`. Every file it writes has `l3d1` in its name but
+  `problems.jsonl`, which the shared episode step reads by that name.
+- **It is the ceiling's code, not a copy.** The reading of the stored runs, the one pass and the measurement
+  are functions of `gpu/ladder_ceiling.py` that both stages call (`read_stored_runs`, `one_pass`,
+  `measure_model`). The ceiling stage does what it did: its tests pass unchanged, and its prepare and
+  stand-in training write the same 13 files byte for byte on the stored rows of seed 0.
+- **What is read on the box,** never written: what the ceiling reads (L1's run of the seed; L2's run, for
+  the base's control attempts; the run of the arm `l3d.step_1.loop_arm`, t010, for its three-round model),
+  and from that last run its `training_examples_r1.jsonl`, `_r2` and `_r3`, which are `without`'s rows. At
+  seed 0 they hold 590, 595 and 500 rows: 1,685, one a problem. The report alone also reads, if it is there,
+  the ceiling's report of the seed (`ladder_ceiling_seed<N>/report_ladder_ceiling.json`).
+- **H0 travels in the snapshot** (`data/ladder_l3d/harvest_h0.jsonl`). The prepare step refuses, before
+  anything is trained: a snapshot without it; fewer than 100 rows (`minimum_h0`); a row that is not an
+  assembled proof with its statement; a problem twice; a held-out problem (the snapshot's set, and the held-
+  out groups of the L1 run read); a base-map problem; a problem the rounds' training examples hold already
+  (a problem in both); a row longer than the 2,048 tokens an example is cut at.
+- **The two orders, by the TASK's seed** (0 at seed 0), each a content hash, so that a rerun gives the same
+  order whatever order the files are read in. `without`: the rounds' rows sorted by
+  SHA-256 of `<seed>:l3d1_order:<attempt id>`. `with`: those rows in that order, none moved, and each row of
+  H0 put in one of the rows + 1 gaps (before the first row, between two, after the last): the gap is
+  SHA-256 of `<seed>:l3d1_place:<problem id>#h0` taken modulo rows + 1, and rows of H0 in one gap stand in
+  the order of their hashes. Both orders are stored with their texts (`l3d1_training_without.jsonl`,
+  `l3d1_training_with.jsonl`); a training step reads its own run's file and no other.
+- **The two trainings** are two steps, each a process of its own: from the base, one pass in the prepared
+  order with nothing shuffled, the round's recipe, the SAME adapter seed (the task's), one adapter saved at
+  the end. Each stores every row's loss, read before its step's update, and the training loop's own record of
+  the rows each optimizer step was made on (`rows_trained` in `l3d1_loss_<model>.json`).
+- **Both adapters are kept** (`adapters/without`, `adapters/with`): they are the loop's own models.
+- **The measurements** are the ceiling's: 8 episodes on the rungs with L1's seed for them, 32 attempts on
+  each goal problem with L1's seed for G and as many more as L2's control gave the base with the control's
+  seed (61: 93 a goal problem, 42,817 generations a model). A report that is not to be read (Lean gave no
+  verdict on more than 2% of a set's attempts) fails its step; queued again, the task measures that set,
+  and no other, again from the kept adapter. A stored set Lean did not answer is refused by the prepare step.
+- **The four checks.** (1) H0's rows against `minimum_h0`: the prepare step has refused fewer already, and
+  the report prints the count. (2) For EACH training, the mean loss over its last tenth of rows below the
+  mean over its first tenth; a tenth is the rows times 0.1 rounded down, at least one (168 of 1,685). (3) For
+  EACH model, the ceiling's second check: under 5% of its attempts on the three rungs reached the token cap
+  or got no verdict. (4) Every row of H0 stands exactly once in the record of the rows `with` was trained
+  on, none stands in `without`'s, and each record is the prepared order and nothing else. Any FAIL: the
+  report prints the four checks and INCONCLUSIVE and nothing else; what was measured stays in the file under
+  `measured_and_not_read`.
+- **The noise floor is read as a size.** `without` minus the stored three-round model has no natural sign
+  (which training is subtracted from which is arbitrary), so the floor is ONE number: the end of its 95%
+  interval farthest from zero. The primary is read as an effect only when its interval is clear of zero AND
+  its point is farther from zero than that. (A point outside the floor's own interval but inside its size,
+  say +0.0004 against a floor of −0.0005 [−0.0012, +0.0002], is not read as an effect.)
+- **The branches,** in this order. A check failed: INCONCLUSIVE. Interval above zero and the point outside
+  the noise floor: ASSEMBLED PROOFS TEACH. Interval below zero and the point outside it: THE ASSEMBLED PROOFS
+  COST ONE-SHOT ATTEMPTS. Interval clear of zero and the point within the noise floor, a case the Branches
+  bullet does not name: WITHIN WHAT TWO TRAININGS ON THE SAME DATA DIFFER BY, and no effect is read. Interval
+  holds zero (one that ends at zero holds it): NOT SHOWN AT H0'S SIZE, or UNDETECTABLE AT THIS SIZE by the
+  note below. No goal problem of 4 lines or more, or no stored three-round model (a smoke run): NOT READ.
+- **The note beside an interval that holds zero.** From the ceiling's report of the seed, when it is on the
+  box, can be read and is not inconclusive: each of its two models' primary over the rows it had seen
+  (2,000; 8,000) is the gain the ceiling shows for each proof; times H0's rows it is the gain expected here.
+  This run resolves half the width of its primary's interval, or the noise floor's size when that is larger.
+  If the expected gain reaches that at either dose, a gain of the ceiling's size could have been seen: NOT
+  SHOWN AT H0'S SIZE. If at neither: UNDETECTABLE AT THIS SIZE. With no ceiling report to read, the verdict
+  is NOT SHOWN AT H0'S SIZE and the report says the note was not made.
+- **The secondary reads.** By length group and on all of G for five pairs: `with` minus `without`, the
+  noise floor, and `with`, `without` and the stored three-round model each minus the base. The three rungs
+  for the first two. Goal problems solved at least once and reliably BY ATTEMPTS ALONE, for the four
+  models, from each one's attempts cut into episodes of 8 as the replay tool cuts them (no Lean); the counts
+  WITH ASSEMBLY are not in the stage's report, the replay tool makes them afterwards. Goal problems solved
+  at 93 attempts, `with` against `without`, gained and lost. The lines of the proofs each model verifies, as
+  the ceiling counts them. The share of a model's attempts whose first step is a `have`: of every attempt,
+  whatever became of it, the first line that is neither empty nor a comment begins with the word `have`.
+- **The smoke stage** reads `ladder_l1_smoke` alone. `without`'s rows are that run's own stored training
+  examples (`training_examples_challenger.jsonl`, 12 rows in the pulled copy); no L2 run is read, so G gets
+  its first sampling only and there is no noise floor. H0 is an 8-row fixture (`data/ladder_l3d_fixture`:
+  8 of the 36 proofs the round replay of item 2 assembled, the model's own, not minimised), with the least
+  number of rows lowered to 8 by the stage's environment. The fixture's goal problem has no shipped proof
+  length, so no branch is named.
+- **Measured on the stored rows before the run** (no GPU, no Lean; the prepare step and the report against
+  the pulled copies of seed 0). `without` is 1,685 rows, 211 optimizer steps. The report's count by attempts
+  alone gives the table above at seed 0 (the base 57 and 3, t = 1/4 61 and 7, t = 1/10 59 and 15). And the
+  size this read resolves: the primary's quantity between two STORED three-round models of seed 0 (t = 1/4
+  minus t = 1/10, 50 successes against 52 in 21,390 attempts) is −0.00009 [−0.00140, +0.00112], a half-width
+  of about 0.0013 per attempt where the base's rate is 0.0026. An interval of `with` minus `without` of that
+  width is clear of zero only for a difference of about half the base's rate.
+
+**H0 as harvested (2026-10-08, by the tool, Lean only): 92 proofs. Step 1 is not run on it.** Of the 3,496
+pool problems no stored attempt verified (3,643 sides, 65,789 failed attempts, at most 48 a side), a pool
+stood on 1,598 and an assembled proof resolved 92 (76 Lean Workbook, 16 STP; all on the statement's side).
+The yield flattens with attempts: 45 after 8 attempts a side, 67 after 12, 79 after 16, 88 after 24, 92 after
+48. Minimised, the proofs have a median of 4 lines and the longest 12 (593 pool blocks before, 248 after; 80
+of the 92 were made shorter; none had to be used as assembled). 843 closer checks timed out and count as
+failures. 92 is under the 100 fixed above as Step 1's first check, so Step 1 as designed is not run: what the
+loop can supply of its own from what is stored is too thin for one training to show. That is a finding of
+itself. H0 is kept (`data/ladder_l3d/harvest_h0.jsonl`): its proofs are the loop's own and go into Step 2.
+
+**The stored models with assembly (2026-10-08, Lean only, `tools/ladder_goal_assembly.py`; seed 0, the goal
+set, 11 episodes of 8 attempts a problem).** Attempts alone, then with assembly. The base: 117 then 164
+episodes resolved (48 by an assembled proof), 57 then 77 goal problems solved at least once, 3 then 3
+reliably. The loop's three-round model at t = 1/10: 193 then 232 (45), 59 then 77, 15 then 15. Training gives
+the reliability and assembly the reach, and today neither moves the other: that is the gap Step 2 tests. (The
+ceiling's 8,000-proof model, its stored attempts only: 1,280 then 1,412, 171 by an assembled proof, 242 then
+262, 106 then 119: the search finds more with a stronger model.)
+
+**Step 2, made exact before it is built (2026-10-08): the loop with assembly in the round, six rounds, and a
+twin trained without the assembled proofs.** It goes ahead on the ceiling's read (a proof of a problem
+beyond the model is worth many of its own: `ladder-ceiling-RESULT.md`) and is the enlargement by generation
+that Step 1's first check asks for. One seed first, by the seed rule.
+
+- **What it is.** The L2 stage's arm at t = 1/10 again (the same candidates, batches, seeds and sampling
+  seeds), with two changes: SIX rounds in place of three, and after each batch's attempts the Lean-only
+  assembly (`domain/repair/replay.py`, L3c's rules and sizes) over the 8 attempts, in the order drawn, of
+  every side of every problem that none of its attempts resolved. No generation is added.
+- **What counts.** A problem an assembled proof resolves is resolved. For the challenger's reward and its
+  refit, k stays the number of verified attempts, and a problem with k = 0 that assembly resolved counts as
+  k = 1. A proof verified on the side a published answer rules out is the soundness alarm, as everywhere.
+- **The training set of a round** is the L2 arm's (one verified proof for each problem resolved in the
+  rounds so far, the model trained from the base on all of them), and with it: the minimised assembled proof
+  of each problem only assembly resolved (minimised as H0's are: blocks out one at a time from the last, the
+  text that is left checked once more, the proof as assembled if that fails), and, from round 1, H0's rows
+  for problems the rounds have not resolved themselves (a problem has one proof: the round's own when there
+  is one).
+- **The twin.** After round six one more model is trained from the base, by the same code and in the same
+  seeded order with rows only left out: `without`, on the six rounds' one-shot proofs alone (no assembled
+  proof of a round, none of H0). The round-six model is `with`. What differs between them is the assembled
+  proofs and nothing else.
+- **Measured** after round six, `with` and `without` alike, as the ceiling's and L2's models are: 8 episodes
+  on the three rungs, 93 one-shot attempts on each goal problem with L2's sampling seeds. Afterwards, Lean
+  only: each one's goal attempts in episodes of 8 with assembly (`tools/ladder_goal_assembly.py`).
+- **Primary: the goal problems whose shortest published proof is 4 lines or more (230), successes per attempt
+  over 93 one-shot attempts, `with` minus `without`,** paired by problem, 95% bootstrap over problems.
+- **Secondary:** the same on all of G and by length group; the three rungs; goal problems solved at least
+  once and reliably (at least half of 11 episodes of 8), by attempts alone and with assembly, for `with`,
+  `without`, the stored three-round model at t = 1/10 and the base; by round: problems resolved by an
+  attempt, problems only assembly resolved, the share of the unresolved it resolved (does the yield grow as
+  the model is trained), the mean pass rate of the picks; the lines of the proofs each model verifies and the
+  share of its attempts that open with a `have`.
+- **Branches.** Interval clear of zero and above: ASSEMBLED PROOFS TEACH, at the rate the loop makes them;
+  two more seeds, and the loop with assembly is the loop from here. Interval holds zero: with the ceiling's
+  figures beside it (a proof of the first 2,000 is worth about +0.000013 per attempt on this quantity), the
+  note says whether a gain of that size for each assembled proof trained on could have been seen; if it
+  could, NOT SHOWN (assembled proofs teach less than published ones, each); if not, UNDETECTABLE AT THIS
+  SIZE. Interval below zero: THE ASSEMBLED PROOFS COST ONE-SHOT ATTEMPTS.
+- **Can this run see a win (else INCONCLUSIVE).** `with` was trained on at least 150 assembled proofs (H0's
+  and the rounds') that `without` was not. Both final trainings took (the mean loss over the last tenth of
+  the rows below the mean over the first tenth). Both models still write proofs (under 5% of rung attempts
+  without an answer). Every assembled row stands once in the record of what `with` was trained on and none in
+  `without`'s.
+- **Fixed before the run, on the build's two cautions.** (1) The count may fall short on yield alone: H0
+  gives at most 92 and the stored rounds assembled 10 to 27 each. If the first check fails by the count and
+  nothing else, the verdict is INCONCLUSIVE (execution), nothing is said of the proofs, and the arm is taken
+  on two rounds at a time (the twin trained and both measured again) until `with` holds 150; no other
+  setting changes. (2) The interval is a bootstrap over problems and does not hold what two trainings differ
+  by. So a positive read at one seed is a licence to run the two other seeds and nothing more: ASSEMBLED
+  PROOFS TEACH is concluded only on three seeds, each of its own sign and the pooled interval clear of zero.
+- **Budget, for the job's estimate:** six rounds of 8,000 generations and their Lean checks, about half as
+  many checks again for assembly, six trainings of a set that grows by about 600 rows a round, one more for
+  the twin, two measurements of 42,817 generations: about four and a half GPU-hours.
+
+**Made exact by the build (Step 2) (2026-10-08, before any run).**
+
+*The arm (`gpu/ladder_l2.py` with `gpu/ladder_assembly.py`; rules in `domain/ladder_round/assembly.py`).*
+
+- **Where it is configured.** `ladder_loop.l2_assembly_arms.t010_assembly`: the target rate (0.10) and the
+  number of rounds (6). `l2_arms` is left as it is, and so are the three-round arms: the same step lists, the
+  same files (asserted). The run directory is `ladder_l2_t010_assembly_seed<N>`. Rounds 4, 5 and 6 sample
+  with the places after round 3's (1014, 1015, 1016 at seed 0). A smoke run takes its number of rounds from
+  `RLVR_LEAN_LADDER_L2_ROUNDS`.
+- **No model is measured between the rounds,** so round r needs the training of M(r − 1) and not its
+  measurement, the stop rule (which is read on a round's measurement) is not read, and there is no control.
+  The stage's measurements, its control and its report refuse to run for this arm.
+- **The error positions cost no check.** The round's checker has every rejected attempt's answer in hand: a
+  check session now keeps Lean's raw answers, and the episode step of this arm stores, beside a block's
+  attempts, the positioned errors of each attempt Lean rejected (`episodes_<set>_errors_<block>.jsonl`). No
+  attempt is checked again. A rejected attempt whose errors were not kept is refused, not passed over.
+- **What is replayed.** For every problem of the batch with k = 0, each side that was sent to Lean, as an
+  episode of its own: its attempts with status `lean_error`, a completion and no forbidden token, each at its
+  place in the order drawn (1 to 8). An attempt that reached the token cap, ran into the Lean limit or got
+  no verdict has no place in it: there is nothing to cut it by. The loop over an episode's attempts is
+  `replay.assemble`, the three calls the harvest and the goal replay make. Sizes are L3c's (12 pool blocks,
+  8 kept closers).
+- **Assembly's own checks are the solver's:** the round's client settings (its requests in flight, the 30 s
+  Lean limit of an episode, no priority of its own). A file whose Lean header timed out is asked once more; a
+  check the pool did not take is asked again and, if it is still refused, the step fails with nothing of the
+  batch's assembly recorded. Every episode, and then every proof being minimised, advances as its own checks
+  come back, so a closing step at the Lean limit holds up its own episode only; the files and their number
+  are what one episode after another would send. The batch is marked done only after its assembly.
+- **What the checks are expected to number.** The replay of seed 0's stored rounds at t = 1/10 (item 2 above)
+  made, over three rounds and 1,315 unresolved problems, 10,693 re-checks, 1,390 pool checks and 3,499 closer
+  checks. The re-checks are the ones not made here. With about 7 checks to minimise each assembled proof
+  that is about 1,700 checks a round, a fifth of a round's 8,140 attempt checks.
+- **What is stored.** `assembly_r<r>_b<b>.jsonl`: one row for every assembled resolution (problem, side,
+  round, batch, the attempt it came after, the proof as assembled and as minimised, blocks and lines before
+  and after, the checks). The step `ladder_l2_assembly_r<r>_b<b>` records the batch's counts: unresolved
+  problems, sides and attempts replayed, pools that stood, resolved by assembly, checks by kind, timeouts.
+  `episodes_<set>_problems.jsonl` gets `resolved_by_assembly` beside its counts: true only for a problem
+  with k = 0 that an assembled proof resolved.
+- **The alarm** is raised before anything of the batch's assembly is recorded, with the proof in its message.
+  One problem cannot have an assembled proof on both sides without it.
+- **Where k = 1 is read.** `resolved` stays the number of verified attempts in every stored row. The
+  challenger reads it through one function (`assembly.counted`): the labels of every refit, the batch's and
+  the round's reward, the report's mean reward by round. The picks' mean pass rate in the report is the
+  solver's own (verified attempts over attempts) and counts no assembled problem.
+- **The training examples of a round** (`training_examples_r<r>.jsonl`) hold, each row with an `id` and its
+  `origin`: the round's one-shot rows (`attempt`), the minimised proof of each problem only assembly resolved
+  (`assembled`), and H0's rows for the problems rounds 1 to r have not resolved themselves (`h0`). M(r) is
+  trained on the `attempt` and `assembled` rows of rounds 1 to r and on round r's `h0` rows: one proof a
+  problem. An H0 problem a round proposes and does not resolve keeps its H0 row. H0 is read from the
+  snapshot, refused with a held-out or base-map problem, a problem twice or a row that is not an assembled
+  proof, and held to the file the run was prepared on.
+- **The order of training** for all of this arm's models is a content hash (SHA-256 of
+  `<seed>:l3d2_order:<row id>`, the task's seed), not the round's seeded shuffle: in a shuffle, leaving rows
+  out moves the rest, and here a row's place among the others does not depend on which others there are.
+  The trainings are the ceiling's one pass (the round's recipe, the task's seed for the adapter, every row's
+  loss, the training loop's own record of the rows). Stored: `training_set_m<r>.jsonl` (the rows in the order
+  trained) and `training_loss_m<r>.json`; the adapter is where every arm's is (`adapters/m<r>`).
+
+*The twin, the measurements and the report (stage `ladder_l3d2`; `gpu/ladder_l3d2.py`; rules in
+`domain/ladder_round/l3d2.py`; report in `reporting/ladder_l3d2.py`).*
+
+- **The stage** runs, in the arm's run directory: the arm's prepare step; `ladder_l3d2_prepare`; the
+  embedding; `ladder_l2_round_<r>` and `ladder_l2_train_<r>` for r = 1 to 6; `ladder_l3d2_train_without`;
+  `ladder_l3d2_measure_with`; `ladder_l3d2_measure_without`; `ladder_l3d2_report`. Every task of the stage
+  names the arm, and a step run for another arm is refused. The steps of rounds 4 to 6 are registered by this
+  stage: the L2 stage's own table of steps is the three rounds'.
+- **`ladder_l3d2_prepare` comes before anything is sampled.** It reads what the ceiling reads (L1's run of
+  the seed; `ladder_l2_seed<N>` for the base's control attempts; `ladder_l2_t010_seed<N>` for the stored
+  three-round model) and refuses, with the task to run, when one is missing or would not pair. It puts the
+  two models' sets (`l3d2_rungs_<model>`, `l3d2_reach_<model>`, `l3d2_more_<model>`) beside the arm's own.
+- **`with` is M(6)** (the last round's model, where the arm saved it). **`without`** is trained from the base
+  by the same function on the rows of origin `attempt` of M(6)'s training set, in that set's order with the
+  other rows left out, with the same seed (`l3d2_training_without.jsonl`, `l3d2_loss_without.json`,
+  `adapters/without`). Every adapter is kept.
+- **The four checks.** (1) The assembled proofs `with` was trained on and `without` was not are counted from
+  the two training records: the rows of origin `assembled` or `h0` that stand in `with`'s record and not in
+  `without`'s; at least 150 (`minimum_assembled`). (2) and (3) are Step 1's, on these two trainings and
+  models. (4) is Step 1's fourth with "assembled row" for "row of H0": each once in `with`'s record, none in
+  `without`'s, and each record the order that was prepared.
+- **The branch** is read on the primary alone, as the Branches bullet says: this step names no noise floor.
+  An interval that ends at zero holds zero. The note takes `gain_of_a_published_proof` (+0.000013) times
+  the count of check (1) as the gain expected, and half the width of the primary's interval as what the run
+  resolves: NOT SHOWN when the first reaches the second, UNDETECTABLE AT THIS SIZE when it does not.
+- **The report prints the four checks first,** then the primary and the branch, then the secondary reads.
+  The table by round gives: the picks; the problems an attempt resolved; the problems only assembly resolved
+  and their share of what the attempts left unresolved; the picks' mean pass rate; the mean reward as the
+  challenger reads k; the round's training rows by origin; the share of its own rows that are refutations.
+  The reliable counts by attempts alone are Step 1's function; the counts with assembly are the replay
+  tool's, afterwards.
+- **The smoke stage** (`ladder_l3d2_smoke`) is the L2 smoke run's world (the fixtures, `ladder_l1_smoke`,
+  four problems a round in two batches) with two rounds, assembly on, the 8-row H0 fixture, and 8 assembled
+  proofs asked for in place of 150. No L2 smoke run holds what the real run reads beside its models, so
+  none is read: G gets its first sampling only and no stored model stands beside. `with` is M(2).
+- **Measured before the run** (no GPU, no Lean): both prepare steps against the pulled copies of seed 0
+  accept the stored runs, the whole pool as candidates (51,631; six rounds of 1,000 leave none short) and
+  H0's 92 rows.
+
+**Step 2's outcome (seed 0, 2026-10-08; `ladder-l3d2-RESULT.md`): NOT SHOWN, and the run could have seen
+it.** The four checks pass (156 assembled proofs between the two models: 98 of the rounds, 58 of H0). Primary,
+`with` minus `without` on the 230 goal problems of 4 lines or more: −0.00019 [−0.00122, +0.00061], 2.66
+against 2.85 per 1,000; at a published proof's worth 156 proofs would have given +0.0020 and the run resolves
+about ±0.0009, so an assembled proof is worth under a third of a published one. Why: minimised, the assembled
+proofs are as short as the model's own (median 3 lines; the ceiling's published proofs 8). The yield did not
+grow with training (8 to 24 a round, 98 in six). Six rounds stand above the stored three on the goal set
+(13.0 and 13.6 successes per 1,000 against 7.2; reliably 19 and 23 against 15), all of it at 1 to 3 lines.
+With assembly at inference the six-round model solves 92 goal problems at least once and 26 reliably. No
+further seed is run for this read: it is not positive and it is bounded.
+
+### L4: the loop from a model pretrained on published proofs — APPROVED by the owner 2026-10-08 ("3": both as arms)
+
+**The decision.** After the ceiling (`ladder-ceiling-RESULT.md`) and L3d's Step 2 (`ladder-l3d2-RESULT.md`)
+the owner was put three options and chose the third: the loop from the base AND the loop from a model
+pretrained on published proofs, so that what the loop adds on top of pretraining is itself measured. This is
+the fallback the owner named on 2026-10-04. The base arm exists: `ladder_l3d2_seed0` (six rounds at t = 1/10
+with assembly). This section is the other arm. Everything it produces is labelled **pretrained on published
+proofs**: distillation of other provers, followed by the loop.
+
+**What changes in the rules, and what does not.** A model pretrained on published proofs may now be kept and
+used in the rounds of this arm. No held-out problem is in any training text, as ever. The training text
+(other people's published proofs) is not exported. The base arm stays what it is.
+
+**The pool is cut in two, by problem, before anything is trained.** A model pretrained on a problem's
+published proof and then asked to prove that problem is being asked to remember. So the loop of this arm never
+draws a problem whose proof the pretraining saw: each pool candidate goes to one half by a hash of its id
+(SHA-256 of `<seed>:l4_half:<problem id>`, even or odd, seed 0), `pretrain` or `loop`. The pretraining file is
+made from the `pretrain` half alone; the rounds' candidates are the `loop` half alone. Near variants of a
+problem can still fall on both sides, as they do between the pool and the held-out set (the ceiling's note
+measures what that is worth).
+
+**The pretraining file** (`data/ladder_l4/pretraining.jsonl`; `tools/ladder_ceiling_set.py` with this
+stage's settings; Lean checks only):
+
+- **Eligible and chosen:** every candidate of the `pretrain` half on the side `true` (about 25,000 of the
+  50,188; no cut by predicted pass rate: the whole of what is published there, easy and hard).
+- **The proof** (changed 2026-10-08 before any run; the first version re-checked up to three published proofs
+  a problem, as the ceiling's file does, and at the pool's daytime pace its 56,000 checks would have taken
+  most of a day): **the certificate the pool build verified for the problem.** Every pool problem is in the
+  pool because one of its published proofs, as published or as renamed, verified under v4.27 when the pool
+  was built, and `pool.jsonl` names that proof by the hash of its Lean file. That file is the one a solver's
+  attempt is checked in (the same header, theorem, proof and axiom report). So the proof is taken from the
+  problem's published proofs by that hash and is not checked again. A problem whose certificate and statement
+  together pass 2,400 characters is left out.
+- **A control, by Lean:** a seeded sample of 300 rows of the file is checked as a solver's attempt is. At
+  least 98% must verify (the ceiling's file found a verified proof for 98.2% of its problems), or the file is
+  not used.
+- **Written:** one row a problem, in a seeded shuffled order. All of them are trained on.
+
+**The run, seed 0, in two tasks.**
+
+1. **Pretraining** (`ladder_l4_pretrain`). From the base, the round's recipe, one pass over the file in its
+   order: the adapter `pre`, KEPT. Measured as every model here is (8 episodes on the rungs, 93 one-shot
+   attempts on each goal problem with L2's sampling seeds). **And `pre`'s own map** (added 2026-10-08 before
+   any run, on the build's caution): the challenger starts from a map of pass rates, 8 attempts on each of
+   the base map's problems, and the map the pool build stored is the BASE's. An arm whose solver is `pre`
+   from its first attempt would be aimed by a map of a much weaker model: its early picks would be far too
+   easy and the rounds' proofs with them, and a null or a loss could then be the aim's and not the loop's. The
+   rule is one rule for both arms, the map of the model the arm starts from. So this task attempts the base
+   map's problems again with `pre` (the same problems, sides, 8 attempts and sampling seed as the stored
+   map) and the arm's challenger reads that map wherever the base arm's reads the base's.
+2. **The loop from it** (`ladder_l4`). The arm of L3d's Step 2 again (t = 1/10, six rounds of 1,000, assembly
+   after each batch, a problem only assembly resolves counted as k = 1), with two differences and no other:
+   the candidates are the `loop` half, and every model of the arm is trained FROM `pre` in place of from the
+   base (round r's model: `pre` trained one more pass on the proofs of rounds 1 to r). No H0 (its proofs came
+   from the base arm's history and half its problems are in the `pretrain` half). After round six the twin
+   (`without`: from `pre` on the rounds' one-shot proofs alone) and the two measurements, as in Step 2.
+
+**The read, fixed before any run.** Paired by problem, 95% bootstrap over problems, fresh samples on both
+sides of every difference.
+
+- **The goal set is drawn again for the stronger model:** G′ is the goal problems (of the 392) that `pre`
+  does not solve in its 32-attempt sampling. Its other sampling (61 attempts) is fresh for those problems.
+- **Primary: on G′, successes per attempt over the 61 fresh attempts, the round-six model (`with`) minus
+  `pre`.** It is the loop's own question asked of the pretrained model: does the loop take it to problems it
+  could not solve.
+- **Beside it, the base arm's own:** the same quantity for the base arm from stored rows (the goal problems
+  the base does not solve in its 32-attempt sampling; the base arm's round-six model minus the base, over the
+  61), so the two arms' gains stand side by side.
+- **Secondary:** all of G by proof length and the three rungs, for `pre`, `with` and `without`, each against
+  the base and `with` against `pre`; goal problems solved at least once and reliably, by attempts alone and
+  with assembly; G′ by proof length; `with` minus `without` (do assembled proofs teach at this strength: the
+  rounds' count of them, their lines once minimised); by round: resolved by an attempt, only by assembly, the
+  picks' mean pass rate; the share of distinct attempts (does pretraining plus rounds narrow the model).
+- **Branches.** Primary's interval clear of zero and above: THE LOOP ADDS ON TOP OF PRETRAINING; two more
+  seeds of the arm (the pretraining is not repeated: the same `pre`), and this is the loop from here.
+  Interval holds zero: NOT SHOWN ON TOP OF PRETRAINING at this size; the note says what the base arm's own
+  gain would have looked like here (its size against this interval's half-width). Interval below zero: THE
+  ROUNDS COST THE PRETRAINED MODEL on what it could not solve (the rounds' own proofs, easier than what it was
+  pretrained on, pull it back): the loop is then not run on top of pretraining as it stands.
+- **Can this run see a win (else INCONCLUSIVE).** The pretraining took: `pre` solves at least 150 goal
+  problems in its 93 attempts (the ceiling's models solved 209 and 245). G′ holds at least 80 problems. The
+  two measured trainings of the arm ran (changed 2026-10-08 before any run, on the build's caution: a model
+  that starts from `pre` is trained on proofs it or its like wrote, so its loss need not fall, and "the loss
+  fell" in each of seven trainings would fail by noise: in the base arm the first training's fall was 0.028
+  against a standard error of 0.027. What the check is for is a training that did not happen or went wrong.
+  So, for `with` and for `without`: the adapter's weights differ from `pre`'s, and the mean loss over the last
+  tenth of its rows is not above the mean over the first tenth by more than two standard errors of their
+  difference. The other five trainings are reported the same way and decide nothing) and each measured
+  model still writes proofs (under 5% of rung attempts without an answer). No row of any training of this arm
+  is a problem of the `pretrain` half or a held-out problem.
+- **One seed first.** A positive read licenses the two other seeds and nothing more, as in Step 2.
+
+**Budget, for the jobs' estimates** (brought up to date 2026-10-08 with the three changes above). The file:
+no Lean check, and 300 for its control. The pretraining task: 24,866 rows (two hours at the ceiling's pace),
+one measurement and the map (32,464 generations): about three and a half hours. The loop: six rounds with
+assembly, six trainings and the twin (each a pass over at most a few thousand rows), two measurements: four
+to seven hours, by how much longer the pretrained model's proofs are.
+
+**The file as built (2026-10-08).** All 24,867 true-side candidates of the `pretrain` half matched the
+certificate the pool build verified (3,627 of them a renamed one); one was left out for its length. 24,866
+rows: 8,155 Lean Workbook, 16,711 STP; proof lines median 7, mean 9.2, 12,420 of 8 lines or more. The control:
+300 of 300 sampled rows verified as a solver's attempt.
+
+**Made exact by the build (2026-10-08, before any run).**
+
+*The pretraining file (`tools/ladder_ceiling_set.py --file l4_pretrain`; settings
+`ladder_loop.l4.pretraining_file`).*
+
+- **How the certificate is found.** The pool build's own functions form the check, as its plan forms it: a
+  problem's stored row of `candidates.jsonl` is read into a candidate (`candidate_from_row`), the renamed
+  certificates of `renamed.jsonl` follow its published ones (`certificate_from_entry`), and
+  `selection.steps` gives one check a certificate: for a problem on the side `true`, the file
+  `certificate_source(certificate, with_fingerprint=True)`, whose SHA-256 is the check's hash. The
+  certificate whose check has the hash the problem's row of `pool.jsonl` names is the row's proof. No Lean
+  file is written by hand and none is sent.
+- **Left out, each counted:** a problem with no such certificate; one whose statement, as L2 reads it, is not
+  the theorem that certificate proves (the file the pool build verified held that theorem; a pair that was
+  not verified as it stands is not trained on); one whose proof holds a forbidden token; one whose statement
+  and proof together pass 2,400 characters. When more than 1% of the chosen problems have no such
+  certificate the tool stops with nothing written: the hash is then not rebuilt as the pool build made it.
+- **A row** is the ceiling file's fields (no predicted rate), `half`, and the certificate's `certificate_sha`
+  and `certificate_renamed`; its `certificate_source` is the matched certificate's. The summary holds what
+  matched by source, how many by a renamed certificate, and what each rule left out; no check status.
+- **On the real inputs** (a dry run, nothing sent or written): 24,867 eligible, all 24,867 matched (STP
+  18,228, Goedel 3,337, InternLM's proofs 3,246, InternLM's rows 56; 3,627 by a renamed certificate); no
+  statement differs from the pool row's or from its certificate's theorem; no forbidden token; 1 problem too
+  long. 24,866 rows (8,155 Lean Workbook, 16,711 STP); proof lines median 7, mean 9.2, half of them 8 or
+  more: the certificate is the first of a problem's proofs that verified when the pool was built, not its
+  shortest.
+- **The control** (`--control 300`): the sample is seeded (`control.seed`) over the rows of the WRITTEN file,
+  in the file's order; each is the file a solver's attempt is checked as
+  (`imports_first(build_proof_source(statement, proof))`), sent as background work with a 60 s Lean limit
+  and judged as an attempt is. Stored beside the file (`pretraining.control.json`): the file's SHA-256, the
+  rows sampled, how many verified, the statuses, and the id and status of every one that did not. It passes
+  at 98% or more of the sample and exits non-zero under it. The stage does not read that file: whether the
+  pretraining file is used is the operator's to hold to it.
+
+*The pretraining (stage `ladder_l4_pretrain`; `gpu/ladder_l4.py`; rules in `domain/ladder_round/l4.py`; report
+in `reporting/ladder_l4.py`).*
+
+- **The stage** is the ceiling's shape with one model, in a run directory of its own
+  (`ladder_l4_pretrain_seed<N>`): `ladder_l4_pretrain_prepare`, `_train`, `_measure`, `_map`, `_report`. It reads on
+  the box what the ceiling reads (L1's run of the seed; `ladder_l2_seed<N>` for the base's control attempts;
+  `ladder_l2_t010_seed<N>` for the stored three-round model) and refuses, with the task to run, when one is
+  missing or would not pair.
+- **The file is refused,** with nothing written, when it is not in the snapshot, holds no row, or holds a row
+  that is a held-out problem (the snapshot's, or the run's), a base-map problem, not of the `pretrain` half
+  by `half_of`, not on the side `true`, a problem twice, or longer as a training example than the 2,048
+  tokens the recipe cuts at (counted with the model's tokenizer). Recorded: the rows by kind and by the
+  length group of their own proofs, their tokens, the file's SHA-256. The run's own copy of the rows holds
+  no statement and no proof. The training step refuses a file that changed since.
+- **The training** is the ceiling's one pass (`one_pass`): from the base, the file's order, nothing shuffled,
+  the task's seed for the adapter, every row's loss stored, ONE adapter saved at the end: `adapters/pre`.
+  No step of the stage deletes it.
+- **A re-queue during the training starts the pass again from the base.** The pass is one optimizer and one
+  schedule, and only the adapter is ever written. A resume from an adapter alone would restart the
+  optimizer's moments and the warm-up in the middle of the file, which is not the one pass asked for; an
+  exact one needs the optimizer's state written and read back on the GPU, which nothing here can test. Cost:
+  up to the whole pass (about two hours). Everything else resumes: the prepare step, a finished training,
+  and the measurement block by block.
+- **The measurement** is the ceiling's (`measure_model`): 8 episodes on the rungs, G's two samplings with
+  L2's seeds (32, then 61), so `pre` pairs by problem with every stored model.
+- **`pre`'s own map** (`ladder_l4_pretrain_map`, after the measurement; `l4_map_pre.jsonl`). The base map's
+  problems are the snapshot's (`data/ladder_l0/base_map.jsonl`, 4,000), and the stored map is the BASE's rows
+  the challenger reads (`data/ladder_l2/base_results.jsonl`, the set `base_map`). The stored map was made by
+  `ladder_l0b` with `base_map.episodes` (8) and `base_map.sampling_seed` (101): the step takes both from
+  there. Each problem gets its exact negation by the rule that gave the stored map's (L0's, as every round
+  uses it: 4,000 exactness checks, the solver's priority). THE SIDES: before anything is sampled, the sides
+  the episode step would attempt for each problem (one, or two when the audit rule names it and its negation
+  is exact) are held to the `sides` of its stored row, and a problem that differs stops the step with nothing
+  sampled. A fixture's stored rows are hand-made and are not held to (the step records that). The episodes
+  are a set of the run, resumable by block; the rows written are the stored map's fields, in the base map's
+  order. A map on which Lean gave no verdict for more than 2% of its attempts is not kept: the step fails
+  and a rerun samples it again. The report prints it beside the base's: problems by k of 8, mean pass rate.
+  Checked without Lean: with today's settings and the negations the stored rows imply, the plan is the stored
+  map's for all 4,000 problems (3,942 on one side, 58 on two: 32,464 attempts, the stored map's own number).
+- **G′ is drawn from the FIRST sampling** (the 32 attempts with L1's seed for G): the goal problems with no
+  verified attempt there, in the goal set's order. Its ids are stored (`l4_goal_set_again.jsonl`, and in the
+  report) and the arm reads them from there: it does not draw them again.
+- **The two checks are read here,** on `pre`: it solves at least 150 goal problems in all its 93 attempts;
+  G′ holds at least 80. A FAIL does not fail the task: the report is written and says so, and the arm's own
+  prepare step then refuses to run. The training's loss (first tenth of the rows against the last) and the
+  share of `pre`'s rung attempts without an answer are printed beside them for information.
+- **Beside `pre`** stand the base, the stored three-round model, and the ceiling's two models when the
+  ceiling's run of the seed is on the box (`ladder_ceiling_seed<N>`: its report readable, its six sets
+  sampled as this run samples); they are read as stored models are, from their rows and attempts. That run
+  is not needed: when it is absent or would not pair, it is not read, the reason is recorded, and nothing is
+  refused.
+- **Every printed line** of both stages begins `l4 (pretrained on published proofs):`, and every stored
+  summary and report carries the label.
+- **The smoke stage** (`ladder_l4_pretrain_smoke`) reads `ladder_l1_smoke` alone, with a 12-row fixture in
+  the file's place (`data/ladder_l4_fixture`: rows of the ceiling's fixture that fall in the `pretrain`
+  half; published proofs, never exported) and both minimums at zero, so that the arm's smoke run can stand
+  on it. Its data are the L2 smoke run's fixtures, so its map is of the fixture's four base-map problems:
+  the ones the arm's smoke run reads.
+
+*The arm (stage `ladder_l4`; `gpu/ladder_l2.py`, `gpu/ladder_assembly.py` and `gpu/ladder_l3d2.py` as for
+Step 2, with `gpu/ladder_l4.py`).*
+
+- **Where it is configured.** `ladder_loop.l2_assembly_arms.t010_assembly_pre`: the base arm's target rate
+  and rounds, and four settings the base arm does not have: `start: pre`, `candidates: loop_half`,
+  `h0: false`, `map: start_model`. The base arm's entry, step lists, files and summaries are what they were
+  (asserted). The run directory is `ladder_l2_t010_assembly_pre_seed<N>`.
+- **The stage is Step 2's steps again,** in the arm's run directory, with two of its own:
+  `ladder_l4_prepare` right after the arm's prepare step and before anything is sampled, and
+  `ladder_l4_report` in the place of Step 2's report. The sets and files Step 2's steps write keep their
+  names there (`l3d2_rungs_with`, `l3d2_training_without.jsonl`, and so on); this arm's own are `l4_...`.
+- **`ladder_l4_prepare` refuses,** with nothing written: a pretraining run of the seed whose report, file of
+  G′, measurement or map is not there; one whose report is not to be read or whose two checks failed; and, on
+  the GPU, a missing `adapters/pre`. It copies into the arm's run what the report reads of that run (G′,
+  `pre`'s per-problem rows and what it wrote).
+- **The candidates are the `loop` half and nothing else knows another:** the embeddings (the base map's
+  statements and that half's, under a key of their own), the scores, the proposals. The arm's prepare step
+  refuses a candidate of the other half and a half too small for the arm's rounds; every batch's proposal
+  refuses one again before any fit. Of the pool's 51,631 candidates the arm keeps 26,029 (25,321 true, 708
+  false); six rounds use 6,000.
+- **Round 1 is attempted by `pre`:** the engine serves the stored adapter beside the base (a request id of
+  its own, 100; a round's own models have 1 to 6). Rounds 2 to 6 are attempted by M(1) to M(5) as in every
+  arm.
+- **Every model is trained from `pre`:** a fresh adapter is attached as for every training, `pre`'s weights
+  are loaded into it, and the pass goes on from there with the round's recipe (a new optimizer, the same
+  warm-up). M(r) is `pre` and one pass over the rows of rounds 1 to r; it does not start from M(r − 1). The
+  twin is `pre` and one pass over the one-shot rows of M(6)'s set. Before its first step a training
+  compares the B matrices the model holds with the file's (their absolute sum; a fresh adapter's is zero)
+  and refuses when they differ; both sums are recorded. After its pass the adapter it SAVED is compared with
+  `pre`'s, file against file: how many numbers there are and how many are not the same
+  (`against_the_start_adapter`, in the training's summary).
+- **No H0:** the arm reads no harvest file, and its training rows are of origin `attempt` or `assembled`.
+- **The challenger starts from `pre`'s own map** (`map: start_model`; the spec's "And `pre`'s own map"). The
+  arm's data are read through one function, and it puts the rows of `l4_map_pre.jsonl` in the place of the
+  base map's stored rows: the first fit and every refit read them from there, with the weights the base map
+  has in every arm (as old as round 1). The arm's OWN prepare step reads the map before anything else and
+  refuses, naming the task to run, when it is not there, when the step that made it recorded another
+  sampling seed or number of attempts than `base_map`'s, or when it is not exactly the base map's problems
+  with that number of attempts each. An arm that asks for the map and names no start is a configuration
+  error. The base arm reads the base's stored map as it did (asserted on every one of its fits).
+
+*The read (`reporting/ladder_l4.py`).*
+
+- **The checks, in this order.** (1) and (2) are the pretraining report's, carried over as it read them.
+  (3) The two measured trainings ran (below). (4) `pre`, `with` and `without`: under 5% of each one's rung
+  attempts without an answer. (5) No row of any of the seven trainings is a problem of the `pretrain` half
+  or a held-out problem, read from the training loop's own record of the rows.
+- **The two measured trainings ran** (`with`'s, M(6), and `without`'s; both must pass). *The adapter differs
+  from `pre`'s:* at the end of a training the file of the adapter it saved and the file of `pre` are compared
+  BIT FOR BIT, over the tensors both hold under one name with one type and one shape
+  (`infrastructure/adapter_files.py`, which reads the two files and needs no model; tested on hand-written
+  files); the check passes when at least one number is not the same. It is a count of unequal numbers between
+  two stored files, so it cannot pass or fail by rounding: the sums of the B matrices, which a training
+  records rounded, are not what it reads; a tensor held with another type or shape, whose numbers could
+  differ by their rounding alone, is not compared and counts for nothing; and an adapter that IS `pre`'s
+  gives zero. A training that recorded no comparison (the stand-in trains nothing) does not pass.
+  *The loss did not rise:* the first and the last tenth of the training's rows (a tenth rounded down, at
+  least one row; a row's loss is its mean loss per target token, read before the update of its step); the
+  STANDARD ERROR of the difference of the two means is the square root of the first tenth's sample variance
+  over its number of rows plus the last tenth's over its own (the two tenths hold different rows, taken as
+  independent); the check passes when the last mean is not above the first by more than 2 of them
+  (`standard_errors_allowed`). A tenth of one row has no variance, and nothing is then allowed. No fall is
+  asked for. The other five trainings are read by the same function, printed on a line of their own and kept
+  in the report beside the checks (`the_other_trainings`); they decide nothing.
+- **The primary** is read on G′ over the SECOND sampling alone (the 61 attempts with the seed of L2's
+  control): the first chose G′. `with` minus `pre`, paired by problem, bootstrap over the problems of G′.
+- **Beside it,** read only when the base arm's run of the seed is on the box
+  (`ladder_l2_t010_assembly_seed<N>`): the base's own G′ (the goal problems the base does not solve in its
+  32 attempts), and over the same 61 attempts the base arm's last model minus the base. From the stored
+  rows at seed 0 this is +0.0066 per attempt [+0.0031, +0.0108] on 355 problems.
+- **The note** beside an interval that holds zero: the size of the base arm's gain against half the width
+  of the primary's interval ("would have been seen here" when it reaches it). An interval that ends at zero
+  holds zero.
+- **Secondary.** All of G over the 93 attempts by proof length, and the three rungs, for `pre`, `with` and
+  `without` against the base, `with` against `pre`, `with` against `without`, and the stored three-round
+  model; solved at least once and reliably by attempts alone for each; G′ by proof length; `with` minus
+  `without` on G′ with the count of assembled proofs trained on and the lines of the rounds' assembled
+  proofs once minimised; the table by round; the share of distinct attempts. The counts with assembly are
+  the replay tool's, after the run, as in Step 2.
+- **The smoke stage** (`ladder_l4_smoke`) is Step 2's smoke world from the pretraining smoke run's adapter:
+  two rounds of two problems in two batches of one (five of the fixture's twelve candidates are of the
+  `loop` half). It has one sampling of G, so its primary is not read.
+- **Measured before the run** (no GPU, no Lean): both stages' prepare steps against the pulled copies of
+  seed 0 accept the stored runs, the ceiling's two models and the base arm's rows (the arm's with a stand-in
+  map of the 4,000 base-map problems in the pretraining run's place: the arm's data then hold those 4,000
+  rows and no row of the base's map). The pretraining's prepare step accepts the COMMITTED file: 24,866
+  rows, 3,109 optimizer steps, the SHA-256 its control checked (the tokens were counted by the stand-in
+  there; the model's tokenizer counts them on the box). With the ceiling's
+  8,000-proof model standing in for `pre`, the two checks pass (245 goal problems solved; G′ of 190, of
+  which 125 with a published proof of 4 lines or more), and an interval on G′ is about 0.002 per attempt
+  wide each way, so a gain of the base arm's size would be seen. The loss check on the base arm's seven
+  stored trainings: the standard error is 0.028 at M(1) (68 rows a tenth) and 0.010 at M(6) and the twin
+  (336 and 320), so what is allowed at the two measured trainings is a rise of about 0.02 on a loss near 0.2;
+  all seven fell (by 0.028 to 0.063).
 
 ## Fixtures (these become the tests)
 

@@ -58,6 +58,7 @@ from rlvr_lean.domain.problem_pool.episodes import (
 )
 from rlvr_lean.domain.problem_pool.selection import SoundnessAlarm
 from rlvr_lean.domain.proving import build_prover_prompt, completion_from_output
+from rlvr_lean.domain.repair.cut import errors_of
 from rlvr_lean.domain.verification import VerificationStatus, find_forbidden_token
 from rlvr_lean.domain.verification.pin import lean_pin_from_config
 from rlvr_lean.gpu import pipeline
@@ -310,17 +311,24 @@ def sample_block(engine, parameters_of: Callable, config: dict, problems: list[d
                         first_submitted if first_submitted is not None else time.monotonic())
 
 
-def settle_block(sampled: SampledBlock, config: dict, service_factory: Callable) -> tuple[list[dict], dict]:
+def settle_block(sampled: SampledBlock, config: dict, service_factory: Callable, errors: dict | None = None) -> tuple[list[dict], dict]:
     """Wait for a sampled block's checks and give every attempt its status. An attempt whose Lean header timed
     out is asked once more. An attempt the POOL did not take is asked again, up to `episode.pool_refusal_rounds`
-    times, and is never recorded as a failed proof or as no answer: if the pool still refuses, `LeanPoolRefused`."""
+    times, and is never recorded as a failed proof or as no answer: if the pool still refuses, `LeanPoolRefused`.
+
+    `errors` (a dict to fill; default: nothing is kept): for every attempt Lean rejected, the errors of ITS answer
+    that carry a position (`cut.errors_of`), from the answers the sessions hold (`CheckSession.raw`). They are what
+    an episode's assembly cuts a failed proof by, at no check of its own."""
     settings = config["ladder_loop"]["episode"]
     results = sampled.service.results()
+    answers = dict(getattr(sampled.service, "raw", None) or {}) if errors is not None else None
 
     def ask_again(identifiers: list[str]) -> None:
         again = service_factory()
         again.submit([sampled.sent[identifier] for identifier in identifiers])
         results.update(again.results())
+        if answers is not None:
+            answers.update(getattr(again, "raw", None) or {})
 
     cold = [identifier for identifier, result in results.items() if _header_timed_out(result)]
     if cold:
@@ -344,6 +352,9 @@ def settle_block(sampled: SampledBlock, config: dict, service_factory: Callable)
             attempt["status"] = _status(result)
             attempt["seconds"] = result.verification_seconds
             attempt["first_error"] = next((message for message in result.messages if message.startswith("error")), result.detail)[:300]
+    if errors is not None:
+        errors.update({attempt["attempt_id"]: errors_of(answers[attempt["attempt_id"]]) for attempt in sampled.attempts
+                       if attempt["status"] == VerificationStatus.LEAN_ERROR.value and attempt["attempt_id"] in answers})
     statuses = Counter(attempt["status"] for attempt in sampled.attempts)
     return sampled.attempts, {"problems": len(sampled.problems), "attempts": len(sampled.attempts), "statuses": dict(statuses),
                               "generated_tokens": sampled.generated_tokens, "generation_seconds": round(sampled.generation_seconds, 1),
@@ -372,7 +383,7 @@ def episode_results(problems: list[dict], attempts: list[dict], episodes: int, p
 
 
 def run_episodes(config: dict, set_name: str, episodes: int, sampling_seed: int, store: ArtifactStore,
-                 engine_kit: Callable, service_factory: Callable) -> dict:
+                 engine_kit: Callable, service_factory: Callable, keep_errors: bool = False) -> dict:
     """Every problem of one set, as a pipeline that rolls across blocks.
 
     The calling thread samples block after block. A sampled block is settled by a finaliser thread as soon as its
@@ -381,7 +392,10 @@ def run_episodes(config: dict, set_name: str, episodes: int, sampling_seed: int,
     finish; a kill loses at most the blocks in flight. At most `episode.blocks_in_flight` blocks are sampled and
     not yet settled: beyond that the generator waits for Lean. A failure in a finaliser (a soundness alarm, a
     pool that refuses) stops the sampling at the next chunk; the blocks already sampled are settled, then the
-    failure is raised (an alarm before anything else)."""
+    failure is raised (an alarm before anything else).
+
+    `keep_errors` (L3d's round with assembly, and no other caller): each block also stores, beside its attempts,
+    the positioned errors Lean gave each attempt it rejected (`<set>_errors_<block>.jsonl`; `settle_block`)."""
     marker = f"episodes_{set_name}"
     if store.is_done(marker):
         store.mirror(f"{marker}_problems.jsonl")      # a rerun is another task: its out/ gets the results too
@@ -402,8 +416,11 @@ def run_episodes(config: dict, set_name: str, episodes: int, sampling_seed: int,
     def finalise(index: int, sampled: SampledBlock) -> None:
         block_marker = f"{marker}_block_{index:04d}"
         try:
-            attempts, stats = settle_block(sampled, config, service_factory)
+            errors = {} if keep_errors else None
+            attempts, stats = settle_block(sampled, config, service_factory, *([errors] if keep_errors else []))
             store.write_rows(f"{marker}_attempts_{index:04d}.jsonl", attempts)
+            if keep_errors:
+                store.write_rows(f"{marker}_errors_{index:04d}.jsonl", [{"attempt_id": key, "errors": found} for key, found in errors.items()])
             store.write_rows(f"{marker}_problems_{index:04d}.jsonl", episode_results(
                 sampled.problems, attempts, episodes, lambda problem: side_plan(problem, episode_settings, sampling_seed)))
             store.mark_done(block_marker, stats)

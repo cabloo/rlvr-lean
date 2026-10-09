@@ -64,6 +64,11 @@ Where a fresh attempt usually works the episode neither helps nor is shown to co
 For scale: the base with 279 attempts a problem solved 82 of these, and the models after three rounds at
 t = 1/10, with 279, solved 94. The accumulating episode solves 92 with 144 generations of the untrained model.
 
+The first row as one figure with its interval (a summary added 2026-10-08, after the run; not a pre-registered
+read; 95% bootstrap over the 392 problems): the share solved, accumulate minus blind, **+0.069 [+0.043,
++0.097]**; the ratio of the counts, 92 / 65 = **1.42 [1.25, 1.64]**, that is 42% more problems, from 25% to
+64%. Both arms are the untrained model with the same number of generations.
+
 By the length of the shortest published proof:
 
 | Shortest published proof | Goal problems | Accumulate | Blind | Gained / lost | Hard episodes, accumulate minus blind |
@@ -127,6 +132,51 @@ longest is 21; the blind arm's, 4 and 11 (seed 0).
    diagnostic (the spec's section "The ceiling"). It says how far training can take this model on long
    proofs at all, which bounds what 1 can reach. Nothing trained this way is kept or used in a round.
 3. **Target for the rounds:** 1/10 (`ladder-l2t-RESULT.md`).
+
+## Addendum, 2026-10-08: the blind arm's own attempts with assembly alone (a replay, no generation)
+
+The accumulate arm spends about half of its later generations continuing from the pool, and the untrained
+model does little with them. A replay asked what the BLIND arm's eight attempts get when only the episode's
+Lean-only part is added to them: after each failed attempt its harvest into the pool, the pool's check, and
+the kept closing steps tried when the pool has grown. No generation is added or changed: every generation is
+the blind arm's stored sample. The package's rules and this stage's sizes (12 pool blocks, 8 kept closers).
+The replay was checked against the run first: after the first generation its pool and kept closer are the
+run's own in 9,844 of 9,844 episodes.
+
+Hard problems, three seeds, 10,044 episodes, resolved within k generations:
+
+| Within | Blind | Accumulate as run | Blind with assembly |
+|---|---|---|---|
+| 1 generation | 200 | 200 | 200 |
+| 2 | 390 | 393 | 410 |
+| 3 | 546 | 577 | 592 |
+| 4 | 690 | 740 | 761 |
+| 5 | 818 | 889 | 925 |
+| 6 | 964 | 1,052 | 1,102 |
+| 7 | 1,080 | 1,178 | 1,235 |
+| 8 | 1,190 | 1,294 | 1,373 |
+
+- **Paired by problem:** blind with assembly minus blind +0.0182 [+0.0136, +0.0233]; minus the accumulate arm
+  as run +0.0079 [+0.0041, +0.0116]. By seed 440, 466 and 467 episodes against the accumulate arm's 423, 438
+  and 433 (blind 385, 400, 405).
+- **The goal set by problem, 18 episodes each: 94** (blind 65, accumulate 92). Against blind: gained 29, lost
+  0; it cannot lose, being the blind arm's attempts and more candidates. Against the accumulate arm: gained
+  11, lost 9; one form or the other solves 103.
+- **By the shortest published proof** (1, 2 to 3, 4 to 7, 8 or more lines): 18, 38, 31, 7 against blind's 12,
+  25, 24, 4 and the accumulate arm's 19, 37, 30, 6. At 4 lines or more: 38 against 28 (gained 10, lost 0).
+- **Won in at least 2, 5 and 9 of the 18 episodes:** 60, 23 and 2 goal problems (accumulate 52, 21, 2; blind
+  41, 13, 2).
+- **201 episodes were resolved by an assembled proof:** median 8 lines, nine tenths within 13, the longest 19.
+- **Cost:** no generation. 15,521 pool checks and 27,923 closer checks beside the blind arm's 64,271 checks
+  (1.7 times the Lean checks). 657 closer checks timed out, the pool being shared with other work that day,
+  and count as failures.
+
+What it says: for the untrained model the continuing generations cost more than they return (they take the
+place of fresh attempts), and the recombination is what reaches. An episode in a round can therefore stay
+what it is, 8 one-shot attempts, with assembly after them: no change to the sampling, no order between the
+generations, and the reward's k of 8 as it was. What it does not say: this is a replay read after the run,
+not an arm fixed before it. Against blind it is a strict addition on the same samples, so the sign is not in
+question; its size against the accumulate arm is one setting, this stage's, and was not tuned.
 
 ## Points the build made exact
 

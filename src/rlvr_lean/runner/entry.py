@@ -264,6 +264,148 @@ STAGES["ladder_l3c_pilot"] = [(environment, step, _LADDER_L3C_PILOT) for environ
 # five rung problems), in a run directory of its own, with the stage's own episodes (6 on a hard problem, 2 on the others).
 _LADDER_L3C_SMOKE = {"environment": {"RLVR_LEAN_LADDER_L3C_SOURCE": "ladder_l1_smoke", "RLVR_LEAN_LADDER_L3C_RUN": "ladder_l3c_smoke"}}
 STAGES["ladder_l3c_smoke"] = [(environment, step, _LADDER_L3C_SMOKE) for environment, step in _LADDER_L3C]
+
+# The ceiling: a labelled diagnostic (spec ladder-loop, "The ceiling: a labelled diagnostic"; `gpu/ladder_ceiling.py`). AN
+# EXCEPTION to the rule that published proofs are certificates and not training text: ONE training from the base, one pass
+# over the published proofs of `data/ladder_ceiling/training.jsonl` in the file's order (the round's recipe otherwise),
+# an adapter saved after the smaller dose and at the end, and each measured in one-shot attempts: 8 episodes on the three
+# held-out rungs and 93 attempts on every goal problem, with the sampling seeds L2 used for its models. It READS, in the
+# box's store, the L1 run directory of its seed (G, the rungs, the base's fresh results) and L2's two (the base's control
+# attempts on G; the three-round model at target 1/10), and writes a run directory of its own. The report step deletes the
+# adapters once a report that can be read is written: no model trained this way is kept. (A report that is not to be read,
+# Lean having answered too little of a set, keeps them and fails: queued again, the task measures that set again from
+# them.) One seed per task (`--seeds 0`). No parts: a failure, or a soundness alarm, ends the stage; a rerun resumes at
+# the first step (and, inside a measurement, the first block) not done, and a run whose report is written is not trained
+# again.
+_LADDER_CEILING = [("sync", "gpu"), ("gpu", "fix_tokenizers"), ("gpu", "ladder_ceiling_prepare"), ("guard", None), ("gpu", "ladder_ceiling_train")]
+for _checkpoint in ("small", "full"):
+    _LADDER_CEILING += [("guard", None), ("gpu", f"ladder_ceiling_measure_{_checkpoint}")]
+_LADDER_CEILING += [("guard", None), ("gpu", "ladder_ceiling_report")]
+STAGES["ladder_ceiling"] = list(_LADDER_CEILING)
+# The same steps on what the L1 SMOKE run left in the box's store (`ladder_l1_smoke`: the fixture's one goal problem and five
+# rung problems), in a run directory of its own, with a 24-row fixture in the training file's place (`data/ladder_ceiling_fixture`:
+# published proofs, not distributed with this copy) and its two checkpoints
+# after 12 and 24 rows (the first is saved after the second optimizer step, 16 rows seen). No L2 smoke run holds the stored
+# attempts the real run reads, so none are read: the goal problem gets its first sampling only.
+_LADDER_CEILING_SMOKE = {"environment": {"RLVR_LEAN_LADDER_CEILING_SOURCE": "ladder_l1_smoke", "RLVR_LEAN_LADDER_CEILING_RUN": "ladder_ceiling_smoke",
+                                         "RLVR_LEAN_LADDER_CEILING_STORED": "none",
+                                         "RLVR_LEAN_LADDER_CEILING_TRAINING": str(PACKAGE_DIR / "data" / "ladder_ceiling_fixture" / "training.jsonl"),
+                                         "RLVR_LEAN_LADDER_CEILING_CHECKPOINTS": "12,24"}}
+STAGES["ladder_ceiling_smoke"] = [(environment, step, _LADDER_CEILING_SMOKE) for environment, step in _LADDER_CEILING]
+
+# L3d Step 1: do assembled proofs teach? (spec ladder-loop, "L3d: train on what the episode reaches", Step 1; `gpu/ladder_l3d1.py`).
+# The ceiling stage's shape with two trainings in the place of two checkpoints. TWO models from the base, one pass each, the
+# round's recipe: `without` (the training examples the three rounds at target 1/10 stored at this seed, in a seeded order)
+# and `with` (the same rows in the same relative order, with the assembled proofs of `data/ladder_l3d/harvest_h0.jsonl` at
+# seeded places among them). Each is measured as the ceiling's models are: 8 episodes on the three held-out rungs and 93
+# attempts on every goal problem, with the sampling seeds L2 used for its models. It READS, in the box's store, the L1 run
+# directory of its seed and L2's two (the base's control attempts on G; the run at target 1/10: its three-round model and its
+# three rounds' training examples), and writes a run directory of its own. Both adapters are KEPT: they are the loop's own
+# models. One seed per task (`--seeds 0`). No parts: a failure, or a soundness alarm, ends the stage; a rerun resumes at the
+# first step (and, inside a measurement, the first block) not done; a report that is not to be read fails its step, and the
+# task queued again measures the set Lean did not answer again from the kept adapter.
+_LADDER_L3D1 = [("sync", "gpu"), ("gpu", "fix_tokenizers"), ("gpu", "ladder_l3d1_prepare")]
+for _model in ("without", "with"):
+    _LADDER_L3D1 += [("guard", None), ("gpu", f"ladder_l3d1_train_{_model}")]
+for _model in ("without", "with"):
+    _LADDER_L3D1 += [("guard", None), ("gpu", f"ladder_l3d1_measure_{_model}")]
+_LADDER_L3D1 += [("guard", None), ("gpu", "ladder_l3d1_report")]
+STAGES["ladder_l3d1"] = list(_LADDER_L3D1)
+# The same steps on what the L1 SMOKE run left in the box's store (`ladder_l1_smoke`: the fixture's one goal problem and five
+# rung problems), in a run directory of its own. No L2 smoke run holds what the real run reads, so none is read: `without`'s
+# rows are the L1 smoke run's OWN stored training examples (`training_examples_challenger.jsonl`), the goal problem gets its
+# first sampling only and no three-round model stands beside. H0 is the 8-row fixture (`data/ladder_l3d_fixture`: assembled
+# proofs of pool problems from the round replay of 2026-10-08, the model's own), with the least number of rows lowered to 8.
+_LADDER_L3D1_SMOKE = {"environment": {"RLVR_LEAN_LADDER_L3D1_SOURCE": "ladder_l1_smoke", "RLVR_LEAN_LADDER_L3D1_RUN": "ladder_l3d1_smoke",
+                                      "RLVR_LEAN_LADDER_L3D1_STORED": "none",
+                                      "RLVR_LEAN_LADDER_L3D1_H0": str(PACKAGE_DIR / "data" / "ladder_l3d_fixture" / "harvest_h0.jsonl"),
+                                      "RLVR_LEAN_LADDER_L3D1_MINIMUM": "8"}}
+STAGES["ladder_l3d1_smoke"] = [(environment, step, _LADDER_L3D1_SMOKE) for environment, step in _LADDER_L3D1]
+
+# L3d Step 2: the loop with assembly in the round, and a twin trained without the assembled proofs (spec ladder-loop, "L3d:
+# train on what the episode reaches", Step 2; `gpu/ladder_l3d2.py` on the L2 stage's arm `t010_assembly`, `gpu/ladder_assembly.py`).
+# The arm: the target rate 1/10, SIX rounds, and after each batch's attempts the Lean-only assembly over every problem none
+# of them resolved (a problem it resolves counts as k = 1 for the challenger, and its minimised proof is its training example);
+# M(r) is trained from the base after each round on the rounds' own proofs and the harvest H0's. No model is measured between
+# the rounds. After round six: the TWIN, trained from the base on the rounds' one-shot proofs alone in the same order; then
+# `with` (M(6)) and `without` (the twin) are each measured as the ceiling's models are: 8 episodes on the three held-out rungs
+# and 93 attempts on every goal problem. It READS, in the box's store, the L1 run directory of its seed and L2's two (the base's
+# control attempts on G; the three-round model at target 1/10), and writes the arm's run directory. Every adapter is KEPT. One
+# seed per task (`--seeds 0`). No parts: a failure, or a soundness alarm, ends the stage; a rerun resumes at the first step,
+# batch and block not done.
+def _l3d2_steps(rounds: int) -> list:
+    steps = [("sync", "gpu"), ("gpu", "fix_tokenizers"), ("gpu", "ladder_l2_prepare"), ("guard", None), ("gpu", "ladder_l3d2_prepare"),
+             ("guard", None), ("gpu", "ladder_l2_embed")]
+    for number in range(1, rounds + 1):
+        steps += [("guard", None), ("gpu", f"ladder_l2_round_{number}"), ("guard", None), ("gpu", f"ladder_l2_train_{number}")]
+    steps += [("guard", None), ("gpu", "ladder_l3d2_train_without")]
+    for model in ("with", "without"):
+        steps += [("guard", None), ("gpu", f"ladder_l3d2_measure_{model}")]
+    return steps + [("guard", None), ("gpu", "ladder_l3d2_report")]
+
+
+_LADDER_L3D2 = {"environment": {"RLVR_LEAN_LADDER_L2_ARM": "t010_assembly"}}
+STAGES["ladder_l3d2"] = [(environment, step, _LADDER_L3D2) for environment, step in _l3d2_steps(6)]
+# The same steps as the L2 smoke run does them (the fixtures; what the L1 SMOKE run left in the box's store), with TWO rounds of
+# four problems in two batches of two, assembly on, the 8-row fixture as H0 and the least number of assembled proofs lowered
+# to 8. No L2 smoke run holds what the real run reads beside its models, so none is read: the goal problem gets its first
+# sampling only and no three-round model stands beside. `with` is M(2).
+_LADDER_L3D2_SMOKE = {"environment": {**_LADDER_L2_SMOKE["environment"], "RLVR_LEAN_LADDER_L2_RUN": "ladder_l3d2_smoke",
+                                      "RLVR_LEAN_LADDER_L2_ARM": "t010_assembly", "RLVR_LEAN_LADDER_L2_ROUNDS": "2",
+                                      "RLVR_LEAN_LADDER_L3D2_STORED": "none", "RLVR_LEAN_LADDER_L3D2_MINIMUM": "8",
+                                      "RLVR_LEAN_LADDER_L3D2_H0": str(PACKAGE_DIR / "data" / "ladder_l3d_fixture" / "harvest_h0.jsonl")}}
+STAGES["ladder_l3d2_smoke"] = [(environment, step, _LADDER_L3D2_SMOKE) for environment, step in _l3d2_steps(2)]
+
+# L4, the loop from a model PRETRAINED ON PUBLISHED PROOFS (spec ladder-loop, "L4: the loop from a model pretrained on published
+# proofs"; `gpu/ladder_l4.py`). TWO stages, two tasks. Everything they produce is labelled pretrained on published proofs.
+#
+# `ladder_l4_pretrain`: the ceiling stage's shape with one model. From the base, the round's recipe, ONE pass over the published
+# proofs of `data/ladder_l4/pretraining.jsonl` (the `pretrain` half of the pool) in the file's order; the adapter `pre` is KEPT
+# (`ladder_l4_pretrain_seed<N>/adapters/pre`); it is measured as the ceiling's models are (8 episodes on the three rungs, 93
+# attempts on every goal problem); then `pre`'s OWN MAP is made (the base map's problems attempted again by `pre`, 8 attempts
+# each with the stored map's sides and sampling seed: what the arm's challenger starts from); and its report stores the goal
+# set drawn again (G') and the two checks the arm stands on. It READS, in the box's store, the L1 run directory of its seed
+# and L2's two, and the ceiling's run when its report is there. A training that did not finish starts again from the base: the
+# pass is one schedule and one optimizer, kept only as the adapter.
+_LADDER_L4_PRETRAIN = [("sync", "gpu"), ("gpu", "fix_tokenizers"), ("gpu", "ladder_l4_pretrain_prepare"), ("guard", None), ("gpu", "ladder_l4_pretrain_train"),
+                       ("guard", None), ("gpu", "ladder_l4_pretrain_measure"), ("guard", None), ("gpu", "ladder_l4_pretrain_map"),
+                       ("guard", None), ("gpu", "ladder_l4_pretrain_report")]
+STAGES["ladder_l4_pretrain"] = list(_LADDER_L4_PRETRAIN)
+# The same steps on what the L1 SMOKE run left in the box's store (`ladder_l1_smoke`), in a run directory of its own, with the
+# 12-row fixture in the pretraining file's place (`data/ladder_l4_fixture`: published proofs of the `pretrain` half, not
+# distributed with this copy) and the two checks' minimums at zero (the fixture's world has one goal problem). No L2 run is read. The data are
+# the L2 smoke run's fixtures, so that the map is of the fixture's four base-map problems: the ones the arm's smoke run reads.
+_LADDER_L4_PRETRAIN_SMOKE = {"environment": {"RLVR_LEAN_LADDER_DATA": _LADDER_L2_SMOKE["environment"]["RLVR_LEAN_LADDER_DATA"],
+                                             "RLVR_LEAN_LADDER_L2_DATA": _LADDER_L2_SMOKE["environment"]["RLVR_LEAN_LADDER_L2_DATA"],
+                                             "RLVR_LEAN_LADDER_L4_SOURCE": "ladder_l1_smoke", "RLVR_LEAN_LADDER_L4_PRETRAIN_RUN": "ladder_l4_pretrain_smoke",
+                                             "RLVR_LEAN_LADDER_L4_STORED": "none", "RLVR_LEAN_LADDER_L4_MINIMUMS": "0,0",
+                                             "RLVR_LEAN_LADDER_L4_FILE": str(PACKAGE_DIR / "data" / "ladder_l4_fixture" / "pretraining.jsonl")}}
+STAGES["ladder_l4_pretrain_smoke"] = [(environment, step, _LADDER_L4_PRETRAIN_SMOKE) for environment, step in _LADDER_L4_PRETRAIN]
+
+
+# `ladder_l4`: L3d Step 2's steps again as the arm `t010_assembly_pre` (six rounds at the target rate 1/10 with assembly after
+# each batch, the twin, the two measurements), with a start adapter: round 1 is ATTEMPTED by `pre` and every model of the arm
+# (M(1) to M(6), and the twin) is trained FROM `pre`; the candidates are the `loop` half of the pool; no H0. Two steps of its
+# own: `ladder_l4_prepare`, before anything is sampled (it refuses a pretraining run whose report is not written or whose two
+# checks failed, and a missing adapter), and `ladder_l4_report`. It READS, in the box's store, the pretraining run of its seed,
+# the L1 run and L2's two, and the base arm's run when it is there; it writes the arm's run directory
+# (`ladder_l2_t010_assembly_pre_seed<N>`). Every adapter is KEPT. Resumes as Step 2 does.
+def _l4_steps(rounds: int) -> list:
+    steps = _l3d2_steps(rounds)
+    after = steps.index(("gpu", "ladder_l2_prepare")) + 1
+    return steps[:after] + [("guard", None), ("gpu", "ladder_l4_prepare")] + steps[after:-1] + [("gpu", "ladder_l4_report")]
+
+
+_LADDER_L4 = {"environment": {"RLVR_LEAN_LADDER_L2_ARM": "t010_assembly_pre"}}
+STAGES["ladder_l4"] = [(environment, step, _LADDER_L4) for environment, step in _l4_steps(6)]
+# The same steps in the L2 smoke run's world, reading the pretraining SMOKE run (`ladder_l4_pretrain_smoke`: its adapter, its
+# report): TWO rounds of two problems in two batches of one (five of the fixture's twelve candidates are of the `loop` half).
+# No L2 smoke run holds what the real run reads beside its models, and no base arm's run is read: the goal problem gets its
+# first sampling only, so the primary has no fresh attempts and is not read.
+_LADDER_L4_SMOKE = {"environment": {**_LADDER_L2_SMOKE["environment"], "RLVR_LEAN_LADDER_L2_RUN": "ladder_l4_smoke", "RLVR_LEAN_LADDER_L2_ARM": "t010_assembly_pre",
+                                    "RLVR_LEAN_LADDER_L2_ROUNDS": "2", "RLVR_LEAN_LADDER_L2_PROBLEMS": "2", "RLVR_LEAN_LADDER_L3D2_STORED": "none",
+                                    "RLVR_LEAN_LADDER_L4_PRETRAIN_RUN": "ladder_l4_pretrain_smoke"}}
+STAGES["ladder_l4_smoke"] = [(environment, step, _LADDER_L4_SMOKE) for environment, step in _l4_steps(2)]
 SOUNDNESS_ALARM_EXIT = 3        # `gpu.__main__`'s code for a proof of both sides of one statement (it cannot be imported here)
 
 
