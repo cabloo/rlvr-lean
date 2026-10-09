@@ -1,0 +1,390 @@
+{
+ "what": "L3d Step 2 (seed 0): the loop at a target rate of 1/10 for six rounds of 1,000 problems with the Lean-only assembly after every batch, and after round six a twin: `with` is the round-six model, `without` is trained from the base on its one-shot rows alone, in the same order with the others left out; each measured with 93 one-shot attempts on every goal problem and 8 episodes on the three held-out rungs. Verdict by the read fixed before the run: NOT SHOWN. Every number is copied from docs/spec/ladder-l3d2-RESULT.md",
+ "seed": 0,
+ "what_was_run": {
+  "rounds": 6,
+  "problems_a_round": 1000,
+  "training_rows": {
+   "with": 3362,
+   "without": 3206
+  },
+  "assembled_proofs_between_the_two": {
+   "all": 156,
+   "assembled_in_the_rounds": 98,
+   "of_h0": 58,
+   "h0_holds": 92
+  },
+  "h0_problems_the_challenger_proposed": 72,
+  "h0_problems_the_rounds_resolved_themselves": {
+   "all": 34,
+   "by_an_attempt": 26,
+   "of_those_once_in_8": 16,
+   "by_assembly_again": 8
+  }
+ },
+ "the_four_checks": {
+  "assembled_proofs_between_the_two": {
+   "found": 156,
+   "asked": 150
+  },
+  "both_trainings_took_mean_loss_last_tenth_against_first": {
+   "with": [
+    0.179,
+    0.229
+   ],
+   "without": [
+    0.182,
+    0.238
+   ]
+  },
+  "rung_attempts_without_an_answer": {
+   "attempts_each": 5832,
+   "the_two_models": [
+    0,
+    1
+   ]
+  }
+ },
+ "primary": {
+  "what": "the 230 goal problems whose shortest published proof is 4 lines or more, successes per attempt over 93 one-shot attempts, `with` minus `without`",
+  "problems": 230,
+  "difference": [
+   -0.00019,
+   -0.00122,
+   0.00061
+  ],
+  "successes_per_1000_attempts": {
+   "with": 2.66,
+   "without": 2.85
+  },
+  "successes": {
+   "with": 57,
+   "without": 61,
+   "attempts_each": 21390
+  }
+ },
+ "could_it_have_seen_a_gain": {
+  "the_ceilings_figure_for_a_published_proof_per_attempt": 1.3e-05,
+  "what_156_proofs_would_give_at_that_figure": 0.002,
+  "this_run_resolves_about_plus_or_minus": 0.0009,
+  "the_intervals_upper_end": 0.0006
+ },
+ "with_against_without": {
+  "goal_set_per_1000_attempts": {
+   "4_or_more": {
+    "problems": 230,
+    "without": 2.85,
+    "with": 2.66,
+    "difference": [
+     -0.00019,
+     -0.00122,
+     0.00061
+    ]
+   },
+   "all": {
+    "problems": 392,
+    "without": 13.0,
+    "with": 13.6,
+    "difference": [
+     0.00058,
+     -0.00069,
+     0.00181
+    ]
+   },
+   "1": {
+    "problems": 37,
+    "without": 38.4,
+    "with": 39.5,
+    "difference": [
+     0.0012,
+     -0.0055,
+     0.0081
+    ]
+   },
+   "2-3": {
+    "problems": 125,
+    "without": 24.2,
+    "with": 26.0,
+    "difference": [
+     0.0018,
+     -0.001,
+     0.0048
+    ]
+   },
+   "4-7": {
+    "problems": 156,
+    "without": 4.1,
+    "with": 3.9,
+    "difference": [
+     -0.0003,
+     -0.0018,
+     0.0008
+    ]
+   },
+   "8+": {
+    "problems": 74,
+    "without": 0.15,
+    "with": 0.15,
+    "difference": 0
+   }
+  },
+  "goal_problems_solved_at_93_attempts": {
+   "without": 68,
+   "with": 72,
+   "gained": 13,
+   "lost": 9,
+   "p": 0.52
+  },
+  "solved_reliably_half_of_11_episodes_of_8": {
+   "without": 19,
+   "with": 23
+  },
+  "rungs_pass_rate": {
+   "below": {
+    "without": 0.115,
+    "with": 0.111,
+    "difference": -0.005
+   },
+   "in": {
+    "without": 0.431,
+    "with": 0.44,
+    "difference": 0.008
+   },
+   "above": {
+    "without": 0.87,
+    "with": 0.877,
+    "difference": 0.007
+   },
+   "each_interval_holds_zero": true
+  },
+  "share_of_attempts_on_the_goal_set_that_open_with_a_have": {
+   "without": 0.183,
+   "with": 0.238
+  }
+ },
+ "training_rows_of_the_round_six_model": {
+  "what": "proof lines: median, nine tenths within, longest; and the mean loss when trained on",
+  "the_models_own_one_shot_proofs": {
+   "rows": 3206,
+   "proof_lines": [
+    3,
+    6,
+    16
+   ],
+   "mean_loss": 0.189
+  },
+  "assembled_in_the_rounds": {
+   "rows": 98,
+   "proof_lines": [
+    3,
+    6,
+    38
+   ],
+   "mean_loss": 0.336,
+   "median_lines_as_assembled_before_minimising": 7
+  },
+  "h0_assembled_from_stored_attempts": {
+   "rows": 58,
+   "proof_lines": [
+    4,
+    9,
+    12
+   ],
+   "mean_loss": 0.299
+  },
+  "the_ceilings_published_proofs_for_scale": {
+   "rows": 8000,
+   "proof_lines": [
+    8,
+    18,
+    98
+   ],
+   "mean_loss_at_the_start": 0.265
+  }
+ },
+ "the_six_rounds_by_round": {
+  "what": "solved by an attempt; only assembly solved; that as a share of the unsolved; the picks' mean pass rate; refutations among the round's training rows",
+  "1": {
+   "solved_by_an_attempt": 585,
+   "only_assembly_solved": 12,
+   "share_of_the_unsolved": 0.029,
+   "picks_mean_pass_rate": 0.25,
+   "refutations_among_training_rows": 0.27
+  },
+  "2": {
+   "solved_by_an_attempt": 655,
+   "only_assembly_solved": 19,
+   "share_of_the_unsolved": 0.055,
+   "picks_mean_pass_rate": 0.35,
+   "refutations_among_training_rows": 0.08
+  },
+  "3": {
+   "solved_by_an_attempt": 472,
+   "only_assembly_solved": 17,
+   "share_of_the_unsolved": 0.032,
+   "picks_mean_pass_rate": 0.24,
+   "refutations_among_training_rows": 0.05
+  },
+  "4": {
+   "solved_by_an_attempt": 427,
+   "only_assembly_solved": 24,
+   "share_of_the_unsolved": 0.042,
+   "picks_mean_pass_rate": 0.19,
+   "refutations_among_training_rows": 0.06
+  },
+  "5": {
+   "solved_by_an_attempt": 567,
+   "only_assembly_solved": 8,
+   "share_of_the_unsolved": 0.018,
+   "picks_mean_pass_rate": 0.29,
+   "refutations_among_training_rows": 0.11
+  },
+  "6": {
+   "solved_by_an_attempt": 500,
+   "only_assembly_solved": 18,
+   "share_of_the_unsolved": 0.036,
+   "picks_mean_pass_rate": 0.24,
+   "refutations_among_training_rows": 0.1
+  },
+  "only_assembly_solved_in_six_rounds": 98,
+  "problems_the_attempts_left_unsolved": 2794,
+  "share_of_those_assembly_solved": 0.035,
+  "a_pool_stood_on": 1470,
+  "assemblys_lean_checks": {
+   "pool": 4132,
+   "closer": 10345,
+   "minimisation": 639,
+   "closer_checks_that_ran_to_the_30_s_limit": 900
+  },
+  "minutes_the_whole_run": 229
+ },
+ "six_rounds_against_three": {
+  "what": "not this stage's question and not a paired read of more rounds (the picks and the order differ too): the goal set, seed 0, successes per 1,000 attempts by the shortest published proof, and problems solved at least once and reliably (11 episodes)",
+  "proofs_trained_on": {
+   "three_rounds_stored": 1685,
+   "six_rounds": 3206
+  },
+  "all": {
+   "base": 4.0,
+   "three_rounds_stored": 7.2,
+   "six_rounds_without": 13.0,
+   "six_rounds_with": 13.6
+  },
+  "1": {
+   "base": 9.9,
+   "three_rounds_stored": 23.0,
+   "six_rounds_without": 38.4,
+   "six_rounds_with": 39.5
+  },
+  "2-3": {
+   "base": 4.7,
+   "three_rounds_stored": 11.4,
+   "six_rounds_without": 24.2,
+   "six_rounds_with": 26.0
+  },
+  "4-7": {
+   "base": 3.5,
+   "three_rounds_stored": 3.4,
+   "six_rounds_without": 4.1,
+   "six_rounds_with": 3.9
+  },
+  "8+": {
+   "base": 0.9,
+   "three_rounds_stored": 0.4,
+   "six_rounds_without": 0.15,
+   "six_rounds_with": 0.15
+  },
+  "solved_at_least_once": {
+   "base": 57,
+   "three_rounds_stored": 59,
+   "six_rounds_without": 68,
+   "six_rounds_with": 72
+  },
+  "solved_reliably": {
+   "base": 3,
+   "three_rounds_stored": 15,
+   "six_rounds_without": 19,
+   "six_rounds_with": 23
+  }
+ },
+ "with_assembly_on_top": {
+  "what": "Lean only, after the run: each model's stored goal attempts in 11 episodes of 8, attempts alone and then with the episode's Lean-only assembly",
+  "episodes": 4312,
+  "base": {
+   "episodes_resolved": [
+    117,
+    164
+   ],
+   "by_an_assembled_proof": 48,
+   "solved_at_least_once": [
+    57,
+    77
+   ],
+   "reliably": [
+    3,
+    3
+   ],
+   "4_lines_or_more_solved_at_least_once": [
+    22,
+    29
+   ]
+  },
+  "three_rounds_stored": {
+   "episodes_resolved": [
+    193,
+    232
+   ],
+   "by_an_assembled_proof": 45,
+   "solved_at_least_once": [
+    59,
+    77
+   ],
+   "reliably": [
+    15,
+    15
+   ],
+   "4_lines_or_more_solved_at_least_once": [
+    21,
+    26
+   ]
+  },
+  "six_rounds_without": {
+   "episodes_resolved": [
+    281,
+    333
+   ],
+   "by_an_assembled_proof": 58,
+   "solved_at_least_once": [
+    68,
+    84
+   ],
+   "reliably": [
+    19,
+    21
+   ],
+   "4_lines_or_more_solved_at_least_once": [
+    18,
+    23
+   ]
+  },
+  "six_rounds_with": {
+   "episodes_resolved": [
+    302,
+    366
+   ],
+   "by_an_assembled_proof": 69,
+   "solved_at_least_once": [
+    72,
+    92
+   ],
+   "reliably": [
+    23,
+    26
+   ],
+   "4_lines_or_more_solved_at_least_once": [
+    20,
+    29
+   ]
+  }
+ }
+}

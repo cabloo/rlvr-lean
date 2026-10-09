@@ -1,0 +1,379 @@
+{
+ "what": "the ceiling, a labelled diagnostic (seed 0): ONE training from the base on published proofs of pool problems the base cannot solve (one pass, the round's recipe), an adapter measured after 2,000 and after 8,000 proofs, each with 93 one-shot attempts on every goal problem and 8 episodes on the three held-out rungs. Trained on other provers' published proofs: an exception to the loop's rule, not a result of the loop. Both adapters were deleted by the report step and the training file is not distributed. Every number is copied from docs/spec/ladder-ceiling-RESULT.md",
+ "seed": 0,
+ "published_proofs_trained_on": {
+  "small": 2000,
+  "full": 8000
+ },
+ "the_three_checks": {
+  "the_training_took": {
+   "mean_loss_over_the_first_500_rows": 0.265,
+   "mean_loss_over_the_last_500_rows": 0.176
+  },
+  "the_model_still_writes_proofs": {
+   "rung_attempts": 5832,
+   "without_an_answer": 0
+  },
+  "not_broken_on_easy_problems": {
+   "above_band_rung": 0.768,
+   "base": 0.769
+  }
+ },
+ "primary": {
+  "what": "the 230 goal problems whose shortest published proof is 4 lines or more; successes per attempt over 93 one-shot attempts; the 8,000-proof model minus the base",
+  "problems": 230,
+  "difference": [
+   0.0478,
+   0.038,
+   0.0584
+  ],
+  "successes_per_1000_attempts": {
+   "published_8000": 50.4,
+   "base": 2.62
+  },
+  "successes": {
+   "published_8000": 1078,
+   "base": 56,
+   "attempts_each": 21390
+  },
+  "times_the_base": 19
+ },
+ "the_reference_fixed_before_the_run": {
+  "the_loops_own_gain_over_three_seeds": 0.00064,
+  "twice_it": 0.00128,
+  "the_primary_is_this_many_times_the_loops_own_gain": 75,
+  "this_seeds_three_round_model_beside_it": [
+   -0.0002,
+   -0.0014,
+   0.0011
+  ]
+ },
+ "goal_set_successes_per_1000_attempts_by_shortest_published_proof": {
+  "1": {
+   "problems": 37,
+   "base": 9.9,
+   "three_rounds_of_the_loop": 23.0,
+   "published_2000": 82.5,
+   "published_8000": 97.1
+  },
+  "2-3": {
+   "problems": 125,
+   "base": 4.7,
+   "three_rounds_of_the_loop": 11.4,
+   "published_2000": 62.3,
+   "published_8000": 81.4
+  },
+  "4-7": {
+   "problems": 156,
+   "base": 3.5,
+   "three_rounds_of_the_loop": 3.4,
+   "published_2000": 37.8,
+   "published_8000": 64.6
+  },
+  "8+": {
+   "problems": 74,
+   "base": 0.9,
+   "three_rounds_of_the_loop": 0.4,
+   "published_2000": 7.6,
+   "published_8000": 20.5
+  },
+  "all": {
+   "problems": 392,
+   "base": 4.0,
+   "three_rounds_of_the_loop": 7.2,
+   "published_2000": 44.1,
+   "published_8000": 64.7
+  }
+ },
+ "goal_problems_solved_at_least_once_in_93_attempts": {
+  "problems": 392,
+  "problems_of_4_lines_or_more": 230,
+  "problems_of_8_lines_or_more": 74,
+  "base": {
+   "solved": 59,
+   "4_lines_or_more": 22,
+   "8_lines_or_more": 2
+  },
+  "three_rounds_of_the_loop": {
+   "solved": 59,
+   "gained_lost_against_the_base": [
+    20,
+    20
+   ],
+   "4_lines_or_more": 21,
+   "8_lines_or_more": 2
+  },
+  "published_2000": {
+   "solved": 209,
+   "gained_lost_against_the_base": [
+    154,
+    4
+   ],
+   "4_lines_or_more": 103,
+   "8_lines_or_more": 15
+  },
+  "published_8000": {
+   "solved": 245,
+   "gained_lost_against_the_base": [
+    187,
+    1
+   ],
+   "4_lines_or_more": 126,
+   "8_lines_or_more": 25
+  }
+ },
+ "held_out_rungs_pass_rate": {
+  "below": {
+   "problems": 166,
+   "base": 0.064,
+   "three_rounds_of_the_loop": 0.095,
+   "published_2000": 0.179,
+   "published_8000": 0.209
+  },
+  "in": {
+   "problems": 155,
+   "base": 0.268,
+   "three_rounds_of_the_loop": 0.363,
+   "published_2000": 0.358,
+   "published_8000": 0.406
+  },
+  "above": {
+   "problems": 391,
+   "base": 0.769,
+   "three_rounds_of_the_loop": 0.836,
+   "published_2000": 0.746,
+   "published_8000": 0.768
+  },
+  "above_published_8000_minus_base": [
+   -0.001,
+   -0.022,
+   0.02
+  ]
+ },
+ "is_it_a_leak": {
+  "what": "read after the run, not part of the fixed read: each goal problem set against the 8,000 training statements (the statement without its name; shared character 5-grams over all of either); the primary again on the goal problems of 4 lines or more whose nearest training statement is under a given overlap",
+  "goal_problems_whose_statement_is_in_the_training_file": 0,
+  "nearest_statements_overlap": {
+   "median": 0.47,
+   "nine_tenths_under": 0.73,
+   "goal_problems_with_a_near_variant_at_0.8_or_more": 21
+  },
+  "primary_by_nearest_training_statement": {
+   "any": {
+    "problems": 230,
+    "base_per_1000": 2.6,
+    "published_8000_per_1000": 50.4,
+    "difference": [
+     0.0478,
+     0.0379,
+     0.0583
+    ]
+   },
+   "under_0.8": {
+    "problems": 212,
+    "base_per_1000": 2.6,
+    "published_8000_per_1000": 51.1,
+    "difference": [
+     0.0484,
+     0.0382,
+     0.0595
+    ]
+   },
+   "under_0.6": {
+    "problems": 157,
+    "base_per_1000": 3.0,
+    "published_8000_per_1000": 49.5,
+    "difference": [
+     0.0465,
+     0.0345,
+     0.0591
+    ]
+   },
+   "under_0.5": {
+    "problems": 123,
+    "base_per_1000": 3.4,
+    "published_8000_per_1000": 47.2,
+    "difference": [
+     0.0438,
+     0.0296,
+     0.0596
+    ]
+   },
+   "under_0.4": {
+    "problems": 83,
+    "base_per_1000": 4.4,
+    "published_8000_per_1000": 41.8,
+    "difference": [
+     0.0374,
+     0.0228,
+     0.0543
+    ]
+   },
+   "under_0.3": {
+    "problems": 42,
+    "base_per_1000": 6.4,
+    "published_8000_per_1000": 32.3,
+    "difference": [
+     0.0259,
+     0.0077,
+     0.0489
+    ]
+   }
+  },
+  "share_of_goal_attempts_timed_out_at_30_s_and_counted_as_failures": {
+   "published_8000": 0.02,
+   "published_2000": 0.029
+  }
+ },
+ "problems_solved_reliably": {
+  "what": "read after the run: a goal problem is solved reliably when it is resolved in at least half of its episodes of 8 one-shot attempts (11 episodes a problem, from the same 93 attempts in the order drawn)",
+  "episodes_a_problem": 11,
+  "base": {
+   "at_least_one_episode": 57,
+   "a_quarter": 20,
+   "half_reliably": 3,
+   "nine_tenths": 0
+  },
+  "three_rounds_of_the_loop": {
+   "at_least_one_episode": 59,
+   "a_quarter": 25,
+   "half_reliably": 15,
+   "nine_tenths": 1
+  },
+  "published_2000": {
+   "at_least_one_episode": 208,
+   "a_quarter": 120,
+   "half_reliably": 70,
+   "nine_tenths": 26
+  },
+  "published_8000": {
+   "at_least_one_episode": 242,
+   "a_quarter": 174,
+   "half_reliably": 106,
+   "nine_tenths": 39
+  },
+  "of_the_106_the_base_won_no_episode_on": 69,
+  "of_the_106_the_base_won_at_most_one_episode_on": 88,
+  "reliably_by_shortest_published_proof": {
+   "1": {
+    "problems": 37,
+    "published_8000": 14,
+    "three_rounds_of_the_loop": 5
+   },
+   "2-3": {
+    "problems": 125,
+    "published_8000": 42,
+    "three_rounds_of_the_loop": 8
+   },
+   "4-7": {
+    "problems": 156,
+    "published_8000": 44,
+    "three_rounds_of_the_loop": 2
+   },
+   "8+": {
+    "problems": 74,
+    "published_8000": 6,
+    "three_rounds_of_the_loop": 0
+   }
+  },
+  "on_the_goal_problems_with_no_near_statement_in_the_training_file": {
+   "problems": 220,
+   "overlap_under": 0.5,
+   "published_8000": 53,
+   "base": 3,
+   "three_rounds_of_the_loop": 9
+  }
+ },
+ "with_assembly_on_top": {
+  "what": "Lean only, after the run: the same stored attempts in the same 11 episodes of 8, attempts alone and then with the episode's Lean-only assembly added",
+  "episodes": 4312,
+  "base": {
+   "episodes_resolved": [
+    117,
+    164
+   ],
+   "by_an_assembled_proof": 48,
+   "solved_at_least_once": [
+    57,
+    77
+   ],
+   "reliably": [
+    3,
+    3
+   ]
+  },
+  "three_rounds_of_the_loop": {
+   "episodes_resolved": [
+    193,
+    232
+   ],
+   "by_an_assembled_proof": 45,
+   "solved_at_least_once": [
+    59,
+    77
+   ],
+   "reliably": [
+    15,
+    15
+   ]
+  },
+  "published_8000": {
+   "episodes_resolved": [
+    1280,
+    1412
+   ],
+   "by_an_assembled_proof": 171,
+   "solved_at_least_once": [
+    242,
+    262
+   ],
+   "reliably": [
+    106,
+    119
+   ]
+  }
+ },
+ "what_the_model_writes": {
+  "share_of_distinct_attempts_on_the_goal_set": {
+   "both_ceiling_models": 0.92,
+   "base": 0.81,
+   "three_rounds_of_the_loop": 0.75
+  },
+  "share_of_distinct_attempts_on_the_rungs": {
+   "both_ceiling_models": 0.97,
+   "base": 0.95,
+   "three_rounds_of_the_loop": 0.89
+  },
+  "verified_proofs_on_the_goal_set": {
+   "base": {
+    "proofs": 145,
+    "median_lines": 5
+   },
+   "published_8000": {
+    "proofs": 2358,
+    "median_lines": 4,
+    "share_of_4_lines_or_more": 0.63,
+    "share_of_8_lines_or_more": 0.2,
+    "longest": 25
+   },
+   "three_rounds_of_the_loop": {
+    "proofs": 263,
+    "median_lines": 2,
+    "share_of_4_lines_or_more": 0.35
+   }
+  },
+  "the_dose_on_the_primary_per_1000_proofs": {
+   "the_first_2000": 0.0127,
+   "the_next_6000": 0.0037
+  },
+  "training_loss": {
+   "rows_1500_to_2000": 0.194,
+   "the_last_500": 0.176
+  },
+  "examples_trained_on": {
+   "published_small": 2000,
+   "the_loops_three_rounds": 1685
+  },
+  "a_published_proof_is_worth_per_attempt_on_the_primary_at_the_2000_proof_dose": 1.3e-05
+ }
+}
