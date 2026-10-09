@@ -1707,6 +1707,694 @@ Step 2, with `gpu/ladder_l4.py`).*
   (336 and 320), so what is allowed at the two measured trainings is a rise of about 0.02 on a loss near 0.2;
   all seven fell (by 0.028 to 0.063).
 
+**Further seeds of the arm, made exact before they run (2026-10-09).** The branch for a positive read is
+"two more seeds of the arm (the pretraining is not repeated: the same `pre`)". What follows fixes, from the
+code as it is, what a seed of the arm changes and what it does not, for seeds 1 and 2. It adds no branch and
+no threshold, and the two tasks are queued only on that branch.
+
+- **One pretraining for every seed of the arm** (`ladder_loop.l4.pretraining_seed`: 0, read in one function,
+  `ladder_l2.pretraining_seed`). The arm of seed N reads the pretraining run of the SETTING's seed,
+  `ladder_l4_pretrain_seed0`, wherever seed 0's arm reads it, and writes nothing there: the adapter `pre`
+  (round 1's attempts, and the start of all seven trainings); `pre`'s own map (the challenger's first fit and
+  every refit; it was made with `base_map.sampling_seed`, which no task's seed moves); G′
+  (`l4_goal_set_again.jsonl`, 210 problems: ONE G′, so every seed's primary is read on the same problems);
+  the pretraining report's two checks, carried into every seed's report as read; and `pre`'s stored
+  per-problem rows on the rungs and on G's two samplings, which are the `pre` side of every difference at
+  every seed (8, 32 and 61 attempts, sampled with seed 0's sampling seeds 1002, 1001 and 1020). A task that
+  names another run (the smoke run) still reads that one. The pretraining stage is not changed: its run
+  directory is its own task's seed's, and there is no job for a seed other than 0.
+- **The arm's prepare steps refuse as at seed 0,** before anything is sampled and naming the pretraining
+  task of seed 0, never one of seed N: a pretraining run whose map, report, file of G′, measurement or
+  adapter is missing, or whose checks failed. **One refusal more:** a pretraining run whose prepare step
+  recorded another seed than `pretraining_seed`.
+- **What the seed moves:** everything the arm's steps draw with the task's seed N.
+  - The rounds' attempts: sampling seeds 1000 + 100 N + 11 to 16 (seed 0: 1011 to 1016; seed 1: 1111 to
+    1116; seed 2: 1211 to 1216).
+  - The challenger's proposals: the folds of its fit and the random tenth of each batch's places are seeded
+    by N, and from the second batch on its refits read what that seed's attempts gave. Round 1's first fit is
+    on the same map at every seed.
+  - The rounds' training proofs: which of a problem's verified attempts is its training proof.
+  - The seven trainings (M(1) to M(6) and the twin): the order of the rows, a content hash of N and each
+    row's id. The adapter seed is N too; by the code it moves nothing here, since it initialises the fresh
+    adapter that `pre`'s weights are then loaded over and dropout is 0 (read from the code, not measured).
+  - The two measurements, of `with` and of `without`: the rungs with sampling seed 1000 + 100 N + 2, G's
+    first sampling (32) with + 1, its second (61) with + 20: 1102, 1101 and 1120 at seed 1; 1202, 1201 and
+    1220 at seed 2. They are the seeds of that seed's L1 run (`ladder_l1_seed<N>`) and of its L2 control
+    (`ladder_l2_seed<N>`), which the arm reads with the stored three-round model (`ladder_l2_t010_seed<N>`):
+    the base and that model stand beside `with` and `without` from seed N's own stored rows. All three ran at
+    seeds 0, 1 and 2. The 2% of problems whose ruled-out side is still attempted also follow the sampling
+    seed; that side resolves nothing, so no count moves with it.
+- **What the seed does not move.** Checked on the pulled copies of the three seeds: the held-out groups, G's
+  392 problems and the rungs' 712, the same and in the same order in the L1 runs of seeds 0, 1 and 2 (L0
+  placed them); and the second sampling's size, 61 attempts a goal problem at each seed. By the code: the
+  candidates (the `loop` half) and their embeddings, which seed 0's arm made (the key holds no seed).
+- **The primary of seed N is still paired by problem, on fresh attempts.** `with` of seed N over the 61
+  attempts of its second sampling, minus `pre` over its own 61, problem by problem of G′. `pre`'s FIRST
+  sampling alone chose G′: nothing `with` sampled, at any seed, chose it, and `pre`'s second sampling is as
+  fresh as it was. What seed 0 has and seeds 1 and 2 do not is one sampling seed on both sides: there the
+  two sides share the problems and not the random numbers. And the `pre` side is the same 61 attempts in
+  every seed's difference: three arms against ONE measurement of `pre` (open question 1).
+- **Beside the primary at seeds 1 and 2: nothing.** The base arm ran at seed 0 only
+  (`ladder_l2_t010_assembly_seed0`). The arm of seed N looks for the base arm's run of seed N and does not
+  find it: the report says so where the base arm's gain would stand, nothing is refused, and no check reads
+  it. The base arm's own gain is what seed 0's report reads.
+- **A further seed's report says what it stands on:** one line after the checks' lines and one entry
+  (`a_further_seed`): the pretraining's seed and run, what was read from it, and this seed's sampling seeds
+  beside `pre`'s. Seed 0's report has neither, and the arm at seed 0 writes what it wrote (asserted).
+- **The read over the three seeds, fixed now** (`reporting/ladder_l4.py`, `over_seeds`; the command
+  `python -m rlvr_lean.tools.ladder_l4_seeds` on the three pulled task directories; no GPU, no Lean). Per
+  seed: the primary as that seed's report reads it, computed again from the stored rows and held to the
+  report's figure. Pooled: for each problem of G′ the mean over the seeds of its difference, 95% bootstrap
+  over the problems of G′ (the form of the three-seed reads of L1b, L2 and L2t), by the function the
+  primary is read with, on each problem's attempts added over the seeds (three times 61 of `with`, and
+  `pre`'s 61 once for each seed: with the same number of attempts at every seed that is the mean of the
+  three differences). Beside it: each seed's sign, and how many seeds have their own interval clear of
+  zero, above and below. Refused: seeds that do not hold one G′ or one `pre`. A seed whose report is
+  INCONCLUSIVE, is not to be read or has no primary is named, its primary is not given, and nothing is
+  pooled. No verdict is named from these figures: the branches above stand (open question 2).
+- **Budget:** each further seed is one task of the arm's size (four to seven hours); nothing is pretrained,
+  mapped or embedded again.
+- **Made exact by the build, and measured before any run** (2026-10-09; no GPU, no Lean, nothing queued).
+  The setting is read by `ladder_l2.pretraining_seed` alone; `ladder_l2.pretraining_run` names the run an arm
+  reads and `ladder_l4.pretrain_directory` stays the pretraining stage's own. A further seed's own prepare
+  step records `a_further_seed` (the two seeds, `pre`'s sampling seeds, the base arm's run it looked for);
+  the report's line and entry are made from it, and a seed that is not a further one records and prints what
+  it did. The command takes each seed's pulled task directory (or its `steps` directory) and reads four
+  files of it: the report, G′, `with`'s rows and `pre`'s rows on the second sampling. Holding a seed's
+  primary to its report's figure, interval included, refuses no honest run: four intervals the box wrote
+  (`pre` minus the base on all of G and on the three rungs) come out the same to the last place when
+  computed again here from the pulled rows.
+  *Seed 0 is what it was:* in the scripted world, the arm's stage at seed 0 (two rounds, the base arm's run
+  beside) writes the same 119 files with the code before the build and after it, and the pretraining the
+  same 41; on the pulled copies of seed 0, the arm's three prepare steps write the same 22 files (paths and
+  wall-clock figures aside). *Seed 2, on the pulled copies:* the three prepare steps run to their end from
+  seed 0's pretraining run: 26,029 candidates, the map's 4,000 problems (mean pass rate 0.237), G′ of 210
+  problems all within that seed's G, `pre`'s 61 attempts on the same 392 problems as that seed's base, the
+  sampling seeds 1202, 1201 and 1220 (rounds 1211 to 1216); seed 0's base arm's run is in the store and is
+  not read; no pretraining directory of seed 2 is looked for or made; G′, `pre`'s rows, the held-out groups
+  and the measured problems are byte for byte seed 0's. *Seed 1:* the arm looks for the pretraining at
+  `ladder_l4_pretrain_seed0` and reads and checks its map; its own prepare step could not be run to its end
+  here, because the pulled copy of L1's seed-1 run lacks its two measurement markers and the base's attempts
+  (they were on the box when the L2 tasks of seed 1 read them; not confirmed since). Not shown without the
+  box: the adapter `pre` served and loaded at a further seed (seed 0's run does both), and the embeddings
+  found again.
+
+### L4r: is the pretrained model capped by the size of its adapter? (a labelled check of the pretraining; fixed 2026-10-09 before any run)
+
+**Under the owner's word of 2026-10-08 (night): "keep iterating as much as you can on the RLVR towards getting
+it to solve never before solved math problems and at more reliable rates, without overfitting."** Everything
+this stage makes is labelled **pretrained on published proofs**, as L4's is; it trains on L4's pretraining file
+and on nothing else (the `pretrain` half of the pool: no held-out problem, no base-map problem, no problem of
+the `loop` half), and that file is never exported.
+
+**Why.** `pre` (24,866 published proofs, one pass) reaches what the ceiling's 8,000-proof model reached and no
+more (66.7 against 64.7 successes per 1,000 attempts on G; 238 goal problems against 245;
+`ladder-l4-RESULT.md`). Read from `pre`'s stored training record: the loss on rows it had not yet trained on
+(one pass, each row read before any update that saw it) fell from 0.266 over the first twentieth of the pass
+to 0.225 over the second, was 0.195 at the middle and 0.189 at the end: flat over the last two fifths. Every
+model of this project is one adapter of rank 16 on the 7B model (`lora.rank: 16`, alpha 32, 37.5 million
+trained numbers). One cause that fits all of it is that the adapter is full: then "more published proofs buy
+no more" is a fact about the adapter and not about the model or the data, and the arm's rounds, which go on
+training that same adapter, compete for room that is not there. That is a cause of the kind this repo rules
+out before a mechanism is judged (the run could not have shown the effect), and it costs one training to
+test. It also sizes the larger run the owner has named as the step after this one: an adapter, or the whole
+model.
+
+**What runs. ONE change.** From the base, one pass over the same file in the same order, the same seed,
+learning rate (1e-4), batch (8), sequence limit and target modules as `pre`; the adapter's rank is 64 and its
+alpha 128 (the ratio alpha / rank stays 2, so the adapter's scale is `pre`'s). The model is `pre_r64`, in a
+run directory of its own (`ladder_l4_pretrain_r64_seed<N>`); `pre`'s run is only read. It is measured as `pre`
+was, with `pre`'s sampling seeds: 8 episodes on the three rungs, and G twice (32 and 61 one-shot attempts),
+so that it pairs by problem with `pre`'s stored rows. No map is made (a map is made only for a model an arm
+will start from). The model server's largest adapter rank is raised to 64 for this stage alone. If the box
+cannot hold rank 64 at the sequence limit (an out-of-memory failure in the first steps), the run is VOID and
+rank 32 with alpha 64 is run in its place, under the same read; the note says which ran.
+
+**The read, fixed before the run.**
+- **Checks first (any FAIL: INCONCLUSIVE, nothing else is said).** The training took: the mean loss over the
+  last tenth of its rows is below the mean over the first tenth. It still writes proofs: under 5% of its rung
+  attempts without an answer. Lean answered: at most 2% of each measured set without an answer (a set over
+  that is sampled again by queueing the task again, as in the ceiling).
+- **Primary: all of G (392 problems), successes per attempt over the 93 attempts, `pre_r64` minus `pre`,
+  paired by problem, 95% bootstrap over problems.**
+- **Secondary:** the same by proof length (1, 2-3, 4-7, 8 or more lines; 4 or more); goal problems solved in 93
+  attempts (gained, lost, sign test); solved in at least one episode of 8 and reliably; the three rungs; the
+  loss on rows not yet trained on by twentieth of the pass, beside `pre`'s; the share of attempts that time
+  out in Lean and the share of distinct attempts; how many of the goal problems that nothing stored has ever
+  solved (81 on 2026-10-09) it solves.
+- **Branches.** Interval clear of zero and above: THE ADAPTER'S SIZE CAPPED THE PRETRAINED MODEL. The arm is
+  then run again from `pre_r64` (its own map, the same halves, every model of the arm at that rank) before
+  more seeds are bought at rank 16, and every result of this project that reads "not shown" at rank 16 is
+  marked as read under that cap. Interval holds zero: NOT THE CAP AT THIS SIZE; rank 16 stays, and the note
+  gives the interval's half-width as the size this run could have seen. Interval below zero: the larger
+  adapter is worse after one pass at this learning rate; rank 16 stays and nothing is concluded about a
+  larger adapter trained longer.
+- **What it cannot say.** Rank 64 is not the whole model: a null does not show that full training would not
+  help. One learning rate and one pass: an adapter four times the size may want either changed, and this run
+  changes neither. One seed, a first run by the seed rule; a positive read is confirmed by what is built on
+  it (the arm from `pre_r64`), not by a second pretraining.
+- **Budget.** The training is `pre`'s 3,109 steps (112 minutes at rank 16; the larger adapter adds little to
+  a step); the measurement 46 to 55 minutes as `pre`'s was: about three hours on the box, 42,817 generations
+  and as many Lean checks. Memory, corrected by the build's arithmetic before any run (the figures first
+  written here, 10.5 GiB and 13 GiB, were both wrong): `pre` peaked at 9.78 GiB allocated and a training is
+  capped at 11.94 GiB (3 GiB left for the desktop and half a GiB of overhead); rank 64 is expected to peak
+  near 11.45 GiB, 96% of the cap, so it may not fit. That is the case the fallback above is for: an
+  out-of-memory failure comes within the first 21 optimizer steps (the longest row is row 164), and rank 32
+  (about 10.3 GiB, 87%) is then queued.
+- **The adapter** `pre_r64` is kept on the box until the read: it is the arm's starting model if the first
+  branch is taken, and it is deleted otherwise.
+- **Made exact by the build, and measured before any run** (2026-10-09; no GPU, no Lean, nothing queued;
+  `gpu/ladder_l4_rank.py`, `domain/ladder_round/l4_rank.py`, `reporting/ladder_l4_rank.py`). The read and
+  the branches above are not changed.
+  *The stages.* `ladder_l4_rank` runs the check at the setting's rank (`ladder_loop.l4.rank_check`: 64 with
+  alpha 128; the model `pre_r64`, the run `ladder_l4_pretrain_r64_seed<N>`). `ladder_l4_rank_fallback` runs
+  the smaller one (32 with 64; `pre_r32`, `ladder_l4_pretrain_r32_seed<N>`) and is queued only after the
+  first failed out of memory. `ladder_l4_rank_smoke` runs the first, at the real rank, on the pretraining
+  smoke run's world. A stage names its check by a variable; the setting has one reader; the pretraining's
+  three steps became functions both stages call, and the pretraining stage reads neither the variable nor
+  the setting. *`pre`'s stage is what it was:* in the scripted world the pretraining writes the same 41
+  files (40 with the stand-in, which saves no adapter) and the arm the same 117 with the code before the
+  build and after it, key order included (paths and wall-clock figures aside), and the pretraining the same
+  again when its task carries the check's variable. No step deletes the check's adapter.
+  *The same seed.* The check is trained with its task's seed, and a task whose seed is not
+  `ladder_loop.l4.pretraining_seed` is refused: "the same seed" is `pre`'s.
+  *What of `pre`'s run is read,* each refused when missing, naming the task to run, before anything is
+  written: its report (one that is not to be read is refused); the markers of its prepare step (the seed it
+  recorded; what the one change is held against) and of its measure step (what `pre` wrote); its training
+  record (`l4_pretrain_loss.json`, one loss for each row of this file); and for each set it was measured on
+  its per-problem rows and that set's own marker. The rows, what `pre` wrote and its losses are copied into
+  the check's run by the prepare step, and the report reads those copies.
+  *The one change is held, not assumed.* The prepare step compares what it is about to record with what
+  `pre`'s prepare step recorded and refuses, naming each, anything but the adapter's rank and alpha that is
+  not the same: the file's SHA-256, its rows and their order, the seed, the batch, the steps, the sequence
+  limit, the learning rate, the warm-up, the dropout, the target modules. It refuses a rank that is not
+  above `pre`'s and an alpha / rank that is not `pre`'s. `pre`'s stored sets must also pair with what the
+  run will measure: the sampling seeds and attempts `pre`'s prepare step recorded, and each set held, as the
+  ceiling holds a stored run's, to its seed, its attempts, exactly this run's problems, and Lean having
+  answered.
+  *The adapter saved is read back* before the training step is marked done: the rank and alpha PEFT wrote
+  beside the weights (`adapter_config.json`) and the rank of every matrix in the weights file must be the
+  check's, or the step fails and nothing of the run is measured (a run the change did not reach would read
+  NOT THE CAP for no reason). The count of its numbers and the most memory the allocator held are recorded.
+  *Out of memory.* An out-of-memory error of the training (PyTorch's own, or a CUDA error that says so)
+  fails the step and names the fallback's job (`ladder_l4_rank32_seed0.json`: a job config, not shipped in this
+  copy; this copy's code names the fallback's stage and its command in its place); nothing smaller is
+  tried inside the task and the VOID run's directory is left as it is. The fallback's report says in its
+  first line that it is the fallback, and for which rank. A fallback out of memory says that no smaller rank
+  is configured.
+  *The checks.* The tenth is `l4.loss_share_of_rows` (rounded down, at least one row); "under 5%" is
+  `l4.maximum_share_without_an_answer`; "Lean answered" is read on the six sets the report reads (the
+  check's three and `pre`'s stored three), and a set at exactly 2% passes. A failing third check also makes
+  the report NOT TO BE READ: its step fails, and the task queued again samples that set of the check's model
+  again from the kept adapter.
+  *The read.* The primary is read by the function the ceiling's and L4's reports read successes per attempt
+  with (`per_attempt`), on all of G over every attempt of both samplings. An interval that ends at zero
+  holds zero. A world with no goal problem reads NOT READ (a case the read did not name). A twentieth of the
+  pass is rows `n i // 20` up to `n (i + 1) // 20`: on `pre`'s stored record this gives the figures above
+  (0.266, 0.225, 0.195 at the tenth twentieth, 0.189 at the last). Time-outs are a model's attempts that
+  timed out in Lean over its attempts, on the rungs and on G. The goal problems nothing stored has ever
+  solved are GIVEN and never computed by the stage: a file `l4_rank_never_solved.jsonl` in the run
+  directory, one `problem_id` a row. The report says how many of them are goal problems of the run, how many
+  the check's model solves in its 93 attempts and, as a check of the list, how many `pre` does (0 for a list
+  that is what it says); with no file it says "not given". The report step can be run again on a pulled
+  copy with that file beside (no GPU, no Lean). Not in the read above and not reported: the base, the stored
+  three-round model and the ceiling's models (the prepare step, being the pretraining's, still stores their
+  rows in the run).
+  *Memory, by arithmetic; the Budget bullet's figures are round, and these replace them.* The adapter holds
+  2,342,400 numbers a unit of rank (30 layers; four matrices of 4,096 + 4,096 and three of 4,096 + 11,008;
+  the box counted 37,478,400 in a rank-16 file): 149,913,600 at rank 64 and 74,956,800 at rank 32. In
+  training each is held four times as a 32-bit float (the weight, its gradient, AdamW's two moments): 1.68
+  GiB more than `pre` at rank 64, 0.56 GiB at rank 32. `pre`'s 10.5 is GB of 10^9 bytes ALLOCATED, 9.78 GiB.
+  The training's allocator is capped at 0.773 of the card's 15.45 GiB: 11.94 GiB, not 13 (the desktop's 3
+  GiB and 0.5 GiB of process overhead are taken off, `pipeline._cap_torch_memory`; the log of `pre`'s task
+  prints that fraction). Rank 64 is so expected to peak at 11.45 GiB allocated: 0.49 GiB under the cap, 96%
+  of it, BEFORE the allocator's own fragmentation, which the cap counts and `pre`'s run did not record. The
+  card's own figure for `pre`'s training (12,329 MiB at its peak, 970 MiB held by the desktop when the task
+  began) puts that process 1.31 GiB above what it had allocated, overhead and fragmentation together; with
+  the same excess rank 64 would stand 0.33 GiB over what the cap and its overhead allow, unless the
+  allocator gives back what it caches, which it tries before it fails. RANK 64 MAY NOT FIT, and that is not
+  known before it is tried. The file's longest row (1,536 tokens) is row 164, in optimizer step 21: a run
+  the box cannot hold fails in its first minutes, as the fallback rule supposes. Rank 32: 10.34 GiB, 87% of
+  the cap, and 0.79 GiB to spare by the card's figure. The model server at rank 64 holds adapter buffers
+  four times as large, taken from a sampling cache of about 2.4 GiB (5,248 tokens at rank 16) that must
+  keep 1.88 GiB for one 4,096-token sequence: not measured; the smoke run starts that engine once.
+  *Measured before the run, on the pulled copies of seed 0* (four markers of `pre`'s first task, which the
+  pulled copy of its second does not hold, were made again from that copy's own step results; whether the
+  box still holds the originals is not verified from here: the prepare step refuses, naming them, if it
+  does not). The prepare step runs to its end for both ranks: 24,866 rows, 3,109 steps, the committed
+  file's SHA-256 the one `pre` recorded. What it records is what the box recorded for `pre` in every entry
+  but the paths, the tokens (counted by the stand-in here), the recipe's rank and alpha and each stage's
+  own entry; the 712 + 392 + 392 problems it will measure are `pre`'s own with their negations, in order.
+  The stage's report step, with `pre`'s own rows standing in for `pre_r64`'s: +0.00000 [+0.00000,
+  +0.00000], NOT THE CAP AT THIS SIZE, and on the `pre` side the result note's figures (66.68 successes per
+  1,000 attempts; 238 goal problems solved; 234 in an episode of 8 and 94 reliably; 3.6% of its goal
+  attempts timed out in Lean). The smoke stage's prepare step, with the stage's own variables, runs to its
+  end on the pulled copies of the two smoke runs it reads (12 rows, 2 steps, one sampling of G). Not shown
+  without the box: a rank-64 adapter of this model trained from this config, saved by PEFT in the two files
+  the read-back reads, and served by a model server started for rank 64; and the memory of the real
+  training. The smoke run is the first three of these.
+
+### L4t: what should a round train on? Three one-change checks on the rounds already made (fixed 2026-10-09 before any run)
+
+**Under the owner's word of 2026-10-08 (night)** to keep iterating toward solving never-solved problems, more
+reliably, "without overfitting". Labelled **pretrained on published proofs**, as everything built on `pre` is.
+
+**Why.** The arm's read at seed 0 (`ladder-l4-RESULT.md`): six rounds from `pre` make the model more reliable
+and narrower. Per attempt it succeeds 17% more often on the goal set; it solves fewer distinct goal problems
+(227 against 238 in 93 attempts; the twin 216), its attempts are less varied (the share of distinct attempts on
+G falls from 0.82 to 0.71) and it verifies fewer long proofs; on the problems `pre` could not solve nothing is
+shown. Read from the stored rounds: the challenger is calibrated (its picks' predicted pass rate is 0.24 on
+average and so is the realised one), and it does not aim at 1/10, because with 8 attempts the EXPECTED reward
+is nearly flat from 0.10 to 0.25 (a problem nobody solves pays nothing); a quarter of each round's picks are
+solved by half the attempts or more, and their short proofs are four in ten of the training rows. Three causes
+of the narrowing are each one change away, and none needs a new round: the rounds' attempts and the adapters
+are stored on the box. A fourth, that the adapter is full, is L4r's.
+
+**What runs.** One stage, three checks, each a model or a measurement made from the seed-0 arm's stored run
+(`ladder_l2_t010_assembly_pre_seed0`: the rounds' training examples with each problem's k of 8, the adapter
+`with`) and from `pre`. Every model is trained FROM the start adapter, one pass, the arm's recipe, in the
+order of the content hash the arm uses, and measured as `with` was (8 episodes on the three rungs; G twice,
+32 and 61 attempts, `pre`'s sampling seeds), so that each pairs by problem with `pre`, `with` and `without`.
+The start adapter is ONE setting (`pre`; `pre_r64` if L4r's first branch is taken, every model then at that
+rank). In the order they run:
+
+1. **`rehearse`: the published proofs stay in the mix.** The twin's 3,422 one-shot rows, and with them as
+   many rows of the pretraining file (a seeded draw of rows `pre` was trained on, no row twice), one pass over
+   both in the hash's order. If the narrowing is the model leaving what it was pretrained on for its own
+   style, this keeps the breadth and the gain in reliability.
+2. **`reward_rows`: train in proportion to the reward.** Each one-shot row of the rounds enters the training
+   set with probability r(k), the challenger's reward at the arm's target rate for its problem's k of 8 (0.97
+   at k = 1, 0.48 at 2, 0.14 at 3, 0.03 at 4, about nothing above), by a hash of the task's seed and the
+   row's id; an assembled row counts as k = 1. No quota and no screen: the solver is trained on what the
+   challenger was paid for. If the narrowing comes from the easy rows, this removes them; it is also the first
+   training set made mostly of proofs at the model's limit.
+3. **`hot`: is the breadth lost only entropy?** No training. `with` and `pre` are each sampled again on G at
+   temperature 1.2 (the config's is 1.0), 93 attempts with seeds of their own, no rungs. If a trained model's
+   narrowness is a sharper distribution and nothing else, a higher temperature gives the distinct problems
+   back while it keeps more successes per attempt than `pre` at either temperature.
+
+**The read, fixed before the run.** For `rehearse` and `reward_rows`, each against the stored `without` (the
+same rounds' rows by the old rule) and against `pre`:
+- **Checks first (any FAIL: that model is INCONCLUSIVE, the others are read).** Its training ran (L4's third
+  check: the adapter is not the start adapter's, the loss did not rise by more than two standard errors);
+  under 5% of its rung attempts without an answer; at most 2% of each measured set without an answer; no row
+  it was trained on is a held-out problem or, among its rounds' rows, a problem of the `pretrain` half.
+- **Primary, breadth: the goal problems solved at least once in the 93 attempts, the model against
+  `without`, paired by problem: gained, lost, the two-sided sign test.**
+- **Beside it, reliability kept:** all of G, successes per attempt over 93 attempts, the model minus `pre`
+  (95% bootstrap over problems); `without`'s is +0.0114.
+- **Secondary:** G′ over the 61 fresh attempts against `pre` (the arm's primary); by proof length; solved
+  reliably; the three rungs; the share of distinct attempts; the lines of verified proofs; the goal problems
+  nothing stored had solved (81 on 2026-10-09) that it solves; the rows it was trained on (count, lines).
+- **Branches, each model by itself.** Gained more than lost against `without` with the sign test under
+  0.05, AND the interval for all of G against `pre` above zero: THE RULE GIVES THE BREADTH BACK AND KEEPS
+  THE GAIN; it replaces the old rule in the next arm. The first and not the second: it gives the breadth back
+  by undoing the training, and is not taken. The second and not the first (named on 2026-10-09 after the
+  build pointed out it was missing, before any run): IT KEEPS THE GAIN AND DOES NOT GIVE THE BREADTH BACK,
+  the old rule's result again by another road; it does not replace the old rule. Neither: not this lever at
+  this size. For the last two the note gives the count
+  that would have been seen (the sign test's smallest decisive split at the observed number of changed
+  problems).
+- **`hot` is read, not branched:** distinct goal problems solved in 93 attempts and successes per attempt
+  for `with` and `pre` at 1.0 (stored) and 1.2, the share of distinct attempts, and the same on G′. It says
+  how much of the breadth is sampling, and which temperature later measurements of trained models should
+  also report.
+- **What it cannot say.** The rounds were attempted by models trained the old way, so this is the training
+  rule alone and not the loop under it: a rule that wins here is confirmed by the next arm, not by this
+  stage. One seed. `rehearse` trains again on published proofs `pre` has seen: a model that only gains from
+  seeing them twice would show it against `pre`, and the note says so if `rehearse` beats `pre` on G′.
+- **Budget.** A training is seven to twenty-five minutes (about 190 to 856 optimizer steps), each full measurement 35
+  to 50 minutes, the two measurements of `hot` about 35 each without the rungs: about three and a half
+  hours, about 160,000 generations and as many Lean checks, no new round.
+
+**L4r's first branch was taken: what L4t runs (fixed 2026-10-09, after L4r's read and before any run of L4t).**
+L4r read THE ADAPTER'S SIZE CAPPED THE PRETRAINED MODEL (`pre_r64` minus `pre` on all of G: +0.0133 [+0.0077,
++0.0192]). By the setting above the start adapter is then `pre_r64` and every model is at rank 64. The stored
+`with` and `without` are rank-16 models built on `pre`, so nothing stored is the old rule at this rank, and the
+cap is itself a suspect for the narrowing. So:
+- **A third trained model, `old_rule`, runs FIRST:** from `pre_r64`, one pass over the twin's 3,422 one-shot rows
+  in the twin's order (what `without` is, at rank 64). **It takes `without`'s place in every read above:** the
+  primary of `rehearse` and of `reward_rows` is the goal problems solved in 93 attempts against `old_rule`, and
+  `pre_r64` takes `pre`'s place (reliability kept: all of G per attempt against `pre_r64`; G′ is `pre_r64`'s:
+  the goal problems it does not solve in its 32-attempt sampling, read over its 61 fresh attempts).
+- **`old_rule` is read by itself, and that is the cap's question:** `old_rule` against `pre_r64`, the goal
+  problems solved in 93 attempts (gained, lost, the sign test), the share of distinct attempts on G, the share
+  of its verified proofs with 8 lines or more, and all of G per attempt; beside each, rank 16's stored figures
+  (`without` against `pre`: 216 against 238 solved; 0.70 against 0.82 distinct; 12% against 23%; +0.0114). Named
+  outcomes: lost more than gained with the sign test under 0.05: THE OLD RULE NARROWS AT RANK 64 TOO (the cap
+  was not the cause; the training rule is). Otherwise, with all of G per attempt against `pre_r64` above zero:
+  NO NARROWING SHOWN AT RANK 64 (the old rule may stand at this rank; the note gives the smallest decisive
+  split). Otherwise: NOT READ AS EITHER.
+- **The order** is `old_rule`, `reward_rows`, `rehearse`, then `hot` (now `old_rule` and `pre_r64` at 1.2), so
+  that the cap's question is answered first and the last steps can give way to the arm.
+- **The rows are the rank-16 rounds'.** The proofs were written by models built on `pre`, and each row's k is
+  that model's. `pre_r64` is stronger, so some of what was its limit for them is not for it: this is the
+  training rule on given rows at rank 64, not the rounds `pre_r64` would have made. What it settles is
+  confirmed by the arm from `pre_r64`, which is still what follows.
+- **Budget.** Three trainings (about 15, 6 and 30 minutes at rank 64) and three full measurements (L4r's took
+  74 minutes with another job on the pool; 50 to 75), then two of `hot` (about 45 each): five to six hours,
+  about 202,000 generations.
+
+**Made exact by the build (2026-10-09; nothing queued, nothing run on a GPU; the read and the branches above are
+not changed).**
+- **The stage.** `ladder_l4_rows` (`gpu/ladder_l4_rows.py`; rules `domain/ladder_round/l4_rows.py`; report
+  `reporting/ladder_l4_rows.py`), run directory `ladder_l4_rows_seed<N>`, settings `ladder_loop.l4.rows` (one
+  reader). Eight steps, each resumable: prepare; train and measure `rehearse`; train and measure `reward_rows`;
+  measure `hot` for `with`, then for `pre`; report. Smoke: `ladder_l4_rows_smoke`, in the L4 smoke runs' world.
+- **A fact corrected, by the pre-flight on the pulled copy of the seed-0 arm.** `reward_rows` is 1,349 rows
+  (1,262 one-shot and all 87 assembled; by k: 1,009 at k = 1, 273 at 2, 62 at 3, 4 at 4, 1 at 5), which is
+  **169** optimizer steps, not "about 190": the Budget's range is 169 to 856. `rehearse` is 6,844 rows, 856 steps.
+  Of `reward_rows` 54% of the proofs have 4 lines or more and 15% have 8 or more (all the rounds' rows: 45% and
+  11%); of `rehearse` 60% and 31%.
+- **The rows the rule reads** are the last model's training set (`assembly.training_set`: the one-shot and the
+  assembled rows of every round, one proof a problem). k is the pick's verified attempts of 8 as the challenger
+  read it (`assembly.counted`: an assembled row is k = 1); r(k) is the challenger's own function
+  (`episodes.reward`) at the target rate the arm's run recorded. A row of another origin (H0) is refused: the
+  rule names no k for it.
+- **The two draws.** A row's number in [0, 1) is the first 13 hexadecimal digits (52 bits) of SHA-256 of
+  `<seed>:l4_rows_keep:<row id>` over 16^13; it is kept when that is under r(k). The rehearsal is the rows of the
+  smallest SHA-256 of `<seed>:l4_rows_rehearsal:<problem>#pretraining` among the rows `pre` was trained on. Every
+  row's k, reward and draw, kept or not, is stored (`l4_rows_reward_draws.jsonl`).
+- **The rehearsal rows' text is not stored in the run.** They are other people's published proofs: the stored
+  training set names each by its id, its problem and its place in the file, and the training step reads the text
+  from the snapshot's file, held to the SHA-256 `pre`'s prepare step recorded. Every other row is stored with
+  its text, as the twin's are.
+- **A case the branches did not name, named before any run.** The build found that the branches named both
+  conditions, the first alone, and neither. THE SECOND AND NOT THE FIRST (the breadth is not given back, the
+  gain is kept: what `without` itself is) was named on 2026-10-09 before the stage was queued: IT KEEPS THE
+  GAIN AND DOES NOT GIVE THE BREADTH BACK, reported with the same count as "neither" (the smallest decisive
+  split). With too few changed problems for any split to be decisive (fewer than six), the note says that no
+  split is.
+- **The checks' reach.** The third check reads the model's own three sets and the stored sets of `pre` and of
+  `without` it is read against (those were held to it at the prepare step too). The fourth reads the rows the
+  training loop recorded: the rehearsal rows are of the `pretrain` half by construction and are named as such;
+  a rehearsal row that is NOT of that half, like a round's row that is, fails it.
+- **`hot`.** Sampling seeds 1040 and 1041 (no other measurement's; the prepare step refuses one the two runs
+  recorded). Its sets carry `hot` in their names (`l4_reach_hot_with`). `ladder_ceiling.Model` has one new field,
+  `rungs` (true for every other caller), so that G alone is sampled. On G′ the table gives the 93 attempts and,
+  beside them, the second sampling alone: at 1.0 `pre`'s first sampling CHOSE G′ and has no success there. For
+  information, each model at 1.2 against itself at 1.0 (gained, lost; the paired difference per attempt).
+- **Pairing.** Every model here is measured with the sampling seeds `pre`'s run recorded, and the prepare step
+  refuses unless `with` and `without` were measured with the same: true at seed 0, not at a further seed of the
+  arm, where this stage is refused as it stands.
+- **From `pre_r64`: the amendment above ("L4r's first branch was taken"), made exact by its build** (2026-10-09;
+  nothing queued, nothing run on a GPU, nothing sent to Lean; the read and the outcomes are not changed; no fact
+  of the amendment was found wrong: its rank-16 figures, its 3,422 rows and its 202,000 generations are what the
+  stored rows and the arithmetic give).
+  *The stage and the setting.* `ladder_loop.l4.rows.start` STAYS `pre`, and the stage `ladder_l4_rows` and its
+  two jobs are what they were. The stage `ladder_l4_rows_r64` (smoke: `ladder_l4_rows_r64_smoke`) names the
+  start by a variable (`RLVR_LEAN_LADDER_L4_ROWS_START=pre_r64`), as the rank check's stages name their check;
+  the setting itself set to `pre_r64` is the same run. The three models of another start are a setting of their
+  own (`models_from_another_start: [old_rule, reward_rows, rehearse]`), which the stage's steps follow. Run
+  directory `ladder_l4_rows_pre_r64_seed<N>`. Ten steps: prepare; train and measure `old_rule`, `reward_rows`,
+  `rehearse`; `hot` for `old_rule`, then for the start model (the step is `ladder_l4_rows_measure_hot_start`,
+  its sets `l4_<sampling>_hot_pre_r64`: a step's name is registered without a config); report.
+  *Where the start lives, and its rank.* A start that is not `pre` is a model of `ladder_loop.l4.rank_check`,
+  found by the rank check's own functions: `ladder_l4_pretrain_r64_seed<pretraining_seed>/adapters/pre_r64`.
+  The rank and alpha every training attaches are the ones that run's prepare step RECORDED in its recipe (64 and
+  128), held to the setting's check and to the adapter that run read back; never `lora.rank`. One function
+  hands a training the config with that rank and alpha, and a measure step the same with the model server's
+  largest adapter rank raised to it (the rank stage's own `config_of`); from `pre` the config is handed on as
+  it is. The adapter each training saves is read back (the rank and alpha in its config file, the rank of every
+  matrix), and one that is not the start adapter's fails its step unmarked, so nothing of it is measured.
+  *What is read, and refused before anything is written.* Of the rank check's run: its report (refused,
+  naming `ladder_l4_rank_seed0.json` (a job config, not shipped in this copy), when it is missing, not to be read,
+  or its checks failed); the markers of
+  its prepare, train and measure steps; its seed, its model and its recorded rank; `pre_r64`'s per-problem rows
+  on its three sets with their markers, held to this run's problems, seeds and attempts and to Lean having
+  answered; and its file's SHA-256 and rows, which must be the ones `pre`'s prepare step recorded (the rehearsal
+  rows are drawn among rows both were trained on). Of the arm's run: what it always read, less `with`'s adapter
+  and the two measured models' markers; ITS RECORDED START MUST BE `pre` whatever this run starts from, and the
+  summary says so (`rows_made_by`). Of `pre`'s run: its prepare step's marker and `l4_pretraining_rows.jsonl`.
+  *G′.* Made by the pretraining's rule (`l4.goal_set_again`) from `pre_r64`'s stored first sampling and stored
+  in this run (`l4_goal_set_again.jsonl`); `pre`'s own is not read. Its count by length group is given by the
+  REPORT and not by the prepare step: the length of a held-out problem's published proof is read by reports
+  and by nothing before them. From the pulled rows: 192 (17 of one line, 45 of 2-3, 74 of 4-7, 56 of 8 or more).
+  *`old_rule`.* The twin's file's rows in the file's order, each with its k, stored with its text as the
+  twin's are; 428 optimizer steps. Its four checks are the other models' (the third reads its own sets and the
+  start model's). Read by itself (`by_itself` in the report): the four figures against `pre_r64`, and beside
+  each the same figure of `without` against `pre`, COMPUTED from their stored rows when those are on the box
+  and pair with this run (G's two samplings, their markers, the two measure steps' markers); when they are not,
+  the report says NOT THERE with the reason, and nothing is refused. From the pulled rows that gives the
+  amendment's figures: 216 against 238 solved (gained 25, lost 47, p = 0.013), 0.702 against 0.817 distinct,
+  11.8% against 22.9%, +0.0114 [+0.0026, +0.0203]. The outcome's name carries the START ADAPTER'S rank (64
+  here). A narrowing is decided first: an old rule that loses breadth by the sign test narrows, whatever it
+  gains per attempt. An interval that ends at zero is not above zero. `NO NARROWING SHOWN` and `NOT READ AS
+  EITHER` give the smallest split at which a narrowing would have been seen (the mirror of the other
+  branches'), or say that none is decisive with fewer than six changed problems.
+  *The two others.* The primary is against `old_rule`'s rows as this run measures them; reliability, G′ and
+  the rungs against `pre_r64`; the third check reads the model's own sets, `pre_r64`'s and `old_rule`'s. When
+  `old_rule` is INCONCLUSIVE each of the two reads NOT READ (a name the report already had), with that reason,
+  and what was measured is kept under `measured_and_not_read`.
+  *A case the amendment did not name: the smoke run.* The smoke `pre_r64`'s own report reads INCONCLUSIVE
+  (twelve rows have no loss to compare), which the refusal above stops. The smoke stage alone sets
+  `RLVR_LEAN_LADDER_L4_ROWS_START_CHECKS=smoke`: it goes on from a rank check whose checks failed, never from
+  a report that is not to be read, and the prepare step records it.
+  *Measured before any run, on the pulled copies* (`pre`'s prepare marker and two set markers made again from
+  that copy's own step results, as for L4r). The prepare step runs to its end from `pre_r64`: `old_rule`
+  3,422 rows, `reward_rows` 1,349, `rehearse` 6,844 (428, 169 and 856 optimizer steps); G′ 192; every model
+  at rank 64. The smoke stage's prepare step runs to its end on the pulled copies of the three smoke runs. The
+  report, with `pre_r64`'s own rows standing in for the three models, reads every difference as zero
+  (`old_rule` NOT READ AS EITHER, the two others NOT THIS LEVER AT THIS SIZE); with `pre`'s stored rows
+  standing in for one model, that model's all of G against `pre_r64` reads -0.0133 [-0.0192, -0.0077], L4r's
+  primary with its sign turned, which is the check that the references switched. Generations: 3 x 42,817 +
+  2 x 36,985 = 202,421. The task writes about 140 MB to its out directory (five measurements' attempts).
+  *From `pre`, nothing moves.* In the scripted world a run from `pre` writes the same 79 files and returns the
+  same 8 summaries with the code before the build and after it, key order included (paths and wall-clock
+  figures aside), and its report on eleven hand-made cases (every branch, a failed check, a set Lean did not
+  answer, a smoke run's one sampling, no goal problem) is the same report.
+  *Not shown without the box:* a stored rank-64 adapter loaded into a rank-64 training by the real loop, and
+  the memory of these trainings (the rank check's own peaked at 12.82 GB reserved, which is the cap; they attach
+  the same adapter and their longest rows are the same file's). The smoke run is the first run of both.
+- **The smoke run's minimum.** The fixture's problems are solved by every attempt or by none, so the rule may
+  keep no row; `RLVR_LEAN_LADDER_L4_ROWS_MINIMUM=2` (the smoke stage alone) fills `reward_rows` to two rows by the
+  smallest draws, each marked as kept by the run's minimum and not by the rule. Every other run refuses an empty set.
+- **The never-solved problems** are read from `l4_rows_never_solved.jsonl` in the run directory when it is there
+  (one `problem_id` a row); the stage does not compute them.
+
+### L4b: the arm again, from the larger pretrained model (fixed 2026-10-09, after L4r's read and BEFORE L4t's)
+
+**Under the owner's word of 2026-10-08 (night)** and by L4r's own branch: "the arm is then run again from
+`pre_r64` (its own map, the same halves, every model of the arm at that rank) before more seeds are bought at
+rank 16". Labelled **pretrained on published proofs**.
+
+**What runs.** L4's two tasks' shape again, with what the two results name and nothing else changed:
+1. **`pre_r64`'s own map**, a step of its own made first: the base map's 4,000 problems attempted again by
+   `pre_r64`, 8 attempts each, the stored map's sampling seed and sides, as `pre`'s map was made. The
+   challenger starts from it (one rule for every arm: the map of the model the arm starts from).
+2. **The arm `t010_assembly_pre_r64`:** target rate 1/10, six rounds of 1,000 problems from the `loop` half,
+   the Lean-only assembly after every batch, round 1 attempted by `pre_r64`, every model of the arm and the
+   twin trained FROM `pre_r64` at its rank (64, alpha 128; read from the adapter, not set twice), no H0, the
+   two measurements with `pre_r64`'s sampling seeds.
+3. **The training rule is ONE setting of the arm, and L4t names it.** Decided here, before L4t is read, so
+   that the rule is not chosen by the result it is then judged on:
+   - a rule that L4t reads as THE RULE GIVES THE BREADTH BACK AND KEEPS THE GAIN is the arm's rule; if both
+     `reward_rows` and `rehearse` do, the one with the larger (gained minus lost) against `old_rule`, and
+     `reward_rows` on a tie (it needs no published proof in a round);
+   - else, if `old_rule` reads NO NARROWING SHOWN AT RANK 64: the old rule (one proof for every solved
+     problem, as every arm so far);
+   - else (the old rule narrows at rank 64 too and no rule gives the breadth back): THE ARM IS NOT RUN as
+     specified; what L4t's `hot` and its secondary reads say goes to a new section first.
+   In a round the rule is applied to the rows of rounds 1 to r as L4t applies it to all six: `reward_rows`
+   keeps a row by the hash of the task's seed and the row's id against r(k), so a row kept for M(r) is kept
+   for every later model; `rehearse` adds as many rows of the pretraining file as the model has one-shot rows,
+   by the same nested hash draw. The twin is the same rule with the assembled rows left out.
+
+**The read, fixed before the run.** L4's, with `pre_r64` in `pre`'s place:
+- **Checks first** (any FAIL: INCONCLUSIVE): L4's five, read on `pre_r64` (its report's checks pass; G′, the
+  goal problems `pre_r64` does not solve in its 32-attempt sampling, holds at least 80: it holds 192; the two
+  measured trainings ran; each measured model still writes proofs; no barred row).
+- **Primary: on G′ (192 problems) over the 61 fresh attempts, `with` minus `pre_r64`, paired by problem, 95%
+  bootstrap over problems.** Branches as L4's: interval clear of zero and above, THE LOOP ADDS ON TOP OF
+  PRETRAINING (two more seeds of this arm from the same `pre_r64`); interval holds zero, NOT SHOWN at this
+  size; below zero, THE ROUNDS COST THE PRETRAINED MODEL.
+- **Beside it, the owner's "without overfitting", read on every branch:** the goal problems solved at least
+  once in 93 attempts, `with` against `pre_r64` (gained, lost, the two-sided sign test), and the share of
+  distinct attempts on G. Lost more than gained with the sign test under 0.05 is written NARROWER whatever
+  the primary says, and a primary that "adds" with it is reported as "adds per attempt, on fewer problems".
+- **Secondary:** L4's (all of G by proof length; the rungs; solved reliably; `with` against `without`; the
+  rounds' table: picks by k, training rows by origin, by k and by lines, the rule's kept share), the rank-16
+  arm's figures beside each, and the goal problems nothing stored has solved that each model solves.
+- **Budget.** The map about 45 to 60 minutes (32,464 attempts; `pre_r64`'s attempts take longer to check).
+  The arm: rank 16's took 279 minutes; at rank 64 the trainings and the two measurements are longer (L4r's
+  measurement took 74 minutes): about six to seven hours. One seed.
+
+**Made exact by the build (2026-10-09; nothing queued, nothing run on a GPU, nothing sent to Lean; the read, the rule
+for choosing the training rule and the branches above are not changed).**
+- **The stages, and how the rule is chosen.** Three stages, one a rule: `ladder_l4b_old`, `ladder_l4b_reward_rows`,
+  `ladder_l4b_rehearse` (`gpu/ladder_l4b.py` on the L2 stage's arm; rules `domain/ladder_round/l4b.py`; report
+  `reporting/ladder_l4b.py`), each with a smoke stage, and six jobs (`ladder_l4b_<rule>_seed0.json`,
+  `..._smoke.json`: job configs, not shipped in this copy). THE RULE IS ONE SETTING OF THE ARM (`ladder_loop.l2_assembly_arms.t010_assembly_pre_r64.rule`: `old`),
+  read in `ladder_l2.assembly_arm` and nowhere else; a stage names another by `RLVR_LEAN_LADDER_L2_RULE`. So the rule is
+  chosen by which job is queued, with no code or config changed at queue time. A run with another rule than `old` has the
+  rule in its run directory's name (`ladder_l2_t010_assembly_pre_r64_<rule>_seed<N>`), and a run keeps the rule it was
+  prepared with. An arm that states no rule (the base arm; the arm from `pre`) is refused the variable, and is trained and
+  recorded as it always was. An arm with a rule reads no H0 (refused: a rule gives a k to a round's own rows only).
+- **Where a start model lives is ONE function** (`gpu/ladder_l4_start.py`: `the_start`, with `config_from`,
+  `read_the_start_run`, `the_adapter_saved`, `pretrained_on`, `examples_of`, moved out of L4t's module), asked by L4t and
+  by the arm (`ladder_l2.the_start_of`). `pre`: the ONE pretraining's run. `pre_r64`: the rank check's run and adapter, by
+  that check's own functions. The rank and alpha are the ones that run's prepare step RECORDED (64 and 128), held to the
+  setting's check and to what that run read back from the adapter's two files; the arm's own prepare step stores them
+  (`start_recipe`) and refuses, before anything is written and naming `ladder_l4_rank_seed0.json` (a job config, not
+  shipped in this copy), a check's run without
+  its report or markers, one not to be read or whose checks failed, and another seed, model or rank. Every training of
+  the arm and of the twin attaches that rank (`ladder_l2.config_for`); the adapter each saves is read back (its config
+  file's rank and alpha, the rank of every matrix) and one at another rank fails its step unmarked; every step that
+  samples (the map, the six rounds, the two measurements) starts the model server with that rank as its largest. From
+  `pre` and from the base the config handed on is the config itself, the same object.
+- **`pre_r64`'s own map lives in a run directory of its own:** `ladder_l4_map_pre_r64_seed<pretraining seed>`
+  (`l4_map_pre_r64.jsonl`; step `ladder_l4b_map`, the stage's FIRST step). The rank check's run is only read: no later
+  stage writes there (`pre`'s map stays beside `pre`, where its own stage wrote it). It is `pre`'s map step under
+  `pre_r64`'s names (`ladder_l4.the_map_of`: one function, the pretraining's body unchanged): the same refusals, the sides
+  held to the stored map's, the 2% rule, block-resumable. One map for every rule and seed of the arm (it is sampled with
+  `base_map.sampling_seed`, which no task's seed moves): a later task finds it done, and a failed arm keeps it. Before it
+  samples, the map step reads and refuses the check's run as the arm's prepare step does. `start_map` then refuses, in
+  the arm's own prepare step, a map that is missing or was made with another seed, attempts or set of problems, naming
+  the step to run.
+- **The rule inside a round** (`l4b.rule_set`, called where M(r)'s set is built, `ladder_assembly.train_round`; L4t's own
+  functions: `with_k`, `reward_draws`, `kept_rows`, `rehearsal_rows`). k is the problem's k of 8 as the challenger read
+  it in the row's own round (an assembled row: 1). `old`: the rows and the order every arm has. `reward_rows`: the rows
+  whose draw is under r(k); each kept row carries its k, reward and draw; M(r)'s set is M(6)'s rows of rounds 1 to r, in
+  M(6)'s order (asserted). `rehearse`: EVERY row of the rounds so far (the assembled ones too) and as many rows of the
+  pretraining file as the model has ONE-SHOT rows, the first of one hash order of the rows the START model was
+  pretrained on (its run's `l4_pretraining_rows.jsonl`; M(r)'s are the first of M(r + 1)'s, asserted); stored by id and
+  place in the file, never with text; the text is read from the snapshot's file, held to the SHA-256 the start model's run
+  recorded, by the training and again by the twin's. THE TWIN is the last model's set, in its order, with the assembled
+  rows left out: under `rehearse` that is L4t's `rehearse` set exactly. A training's summary says the rule, the rows by
+  origin and the kept share of the rounds' rows in all and by k (`rule`).
+- **The checks on `pre_r64`** are read by the arm's own prepare step (`ladder_l4b_prepare`), which refuses a model that
+  fails one. The first is BOTH L4's own (it solves at least 150 goal problems in its 93 attempts: 245) and the section's
+  ("its report's checks pass": the three checks of the rank check's report, and that report not INCONCLUSIVE). G′ is made
+  there by the pretraining's rule from `pre_r64`'s stored first sampling and stored in the arm's run (the rank check's
+  run stored none). The FIFTH check reads the rounds' rows as ever; under `rehearse` the rehearsal rows stand apart, are
+  counted and named as rows of the `pretrain` half, and one is barred only when it is a held-out problem or is NOT of
+  that half; under any other rule a row of that half is barred whatever it is called.
+- **The breadth beside the primary** (`l4b.breadth_beside`, `with_breadth`; `build_l4_report(breadth=True)`): the goal
+  problems solved at least once over both samplings (93 attempts), by the function L4's secondary read uses, and the two
+  shares of distinct attempts on G. The branch's NAME stays one of L4's three; `reported_as` adds `, NARROWER` when lost
+  exceeds gained with the sign test under 0.05, and for THE LOOP ADDS it reads "... NARROWER: adds per attempt, on fewer
+  problems". INCONCLUSIVE says nothing else (what was measured is kept, the breadth with it). A run with one sampling (a
+  smoke run: the primary NOT READ) still has its breadth read.
+- **Beside, never a reason to refuse.** The base arm's own gain stands beside the primary as in L4, when its run is on
+  the box. The rank-16 arm's figures are ITS STORED REPORT's (`report_ladder_l4.json` of `ladder_l2_t010_assembly_pre_seed<N>`,
+  copied by the prepare step into `l4b_rank_16.json`), not computed again from its rows. The never-solved ids are read
+  from `l4b_never_solved.jsonl` in the arm's run directory; the report step can be run again.
+- **No fact of the section was found wrong.** One is made more exact: the rank is "read from the adapter" through what
+  the run that made it recorded and read back from its files, not by opening the adapter again in every step. And the
+  Budget by arithmetic, on the rank-16 rounds' sizes: the seven trainings are 1,998 optimizer steps under `old`, 777 under
+  `reward_rows` and 3,958 under `rehearse` (at `pre`'s 2.2 seconds a step: about 72, 28 and 143 minutes), so the arm with
+  `rehearse` is about an hour longer than with `old`. Not measured.
+- **Measured before any run, on the pulled copies of seed 0** (read through links; a stand-in map of `pre`'s 4,000 map
+  rows under `pre_r64`'s names). The arm's three prepare steps run to their end with each rule: 26,029 candidates of
+  51,631; the start's rank 64 and alpha 128; the map's 4,000 rows in the base map's place; check 1 passes (245 of 392
+  solved, 150 asked; the rank report's three checks pass); G′ 192 (80 asked); `pre_r64`'s rows on 712 + 392 + 392
+  problems; the rank-16 arm's report read (NOT SHOWN ON TOP OF PRETRAINING); the run directories
+  `ladder_l2_t010_assembly_pre_r64_seed0`, `..._reward_rows_seed0`, `..._rehearse_seed0`. THE RULES ON THE RANK-16 ARM'S
+  STORED ROUNDS, as if they were this arm's (rows of M(1) to M(6); the twin): `old` 625, 1,232, 1,830, 2,389, 2,960,
+  3,509; 3,422. `reward_rows` 258, 502, 728, 947, 1,152, 1,349 (33 to 169 optimizer steps); 1,262; M(6) is L4t's set
+  (1,009 rows at k = 1, 273 at 2, 62 at 3, 4 at 4, 1 at 5; all 87 assembled). `rehearse` 1,238, 2,434, 3,622, 4,727, 5,848,
+  6,931 (613 to 3,422 rehearsal rows); 6,844, which is L4t's `rehearse`. Nested under both, and no text in a rehearsal row.
+  The smoke stages' three prepare steps run to their end, with each rule, on the pulled copies of the three smoke runs
+  they read (a stand-in map of the fixture's four rows): 5 candidates, rank 64, the smoke rank check's failed check
+  waived and recorded, check 1 FAIL as said below, the fixture's SHA-256 the one that run recorded. Whether the box
+  still holds those runs is not verified from here: the prepare steps refuse, naming the task, if it does not.
+- **The stages before it write what they wrote.** In the scripted world, with the code before the build and after it:
+  the arm from `pre` (its pretraining with it) the same 158 files, the base arm the same 227, L4t from `pre` the same 237
+  and L4t from `pre_r64` the same 300, and every step's summary the same key for key (paths and wall-clock figures aside).
+  Four assertions that state where things live were brought up to date (an arm more; `config_from` in the shared module;
+  three smoke stages more that read the rank check's smoke run).
+- **The smoke stages** (`ladder_l4b_<rule>_smoke`) read `ladder_l1_smoke`, `ladder_l4_pretrain_smoke` and
+  `ladder_l4_rank_smoke`, and write `ladder_l4b_map_smoke` and `ladder_l4b_<rule>_smoke`. The smoke `pre_r64`'s own report
+  reads INCONCLUSIVE, so these stages alone set `RLVR_LEAN_LADDER_L2_START_CHECKS=smoke`, go on, and their own report
+  reads INCONCLUSIVE on its first check; `RLVR_LEAN_LADDER_L2_RULE_MINIMUM=2` fills a set the rule would leave empty, each
+  such row marked as not kept by the rule.
+- **Not shown without the box:** a rank-64 adapter served for a round's attempts and loaded into a round's training; the
+  memory of those trainings (the rank check's own reached the cap of reserved memory; these attach the same adapter and
+  cut rows at the same length); the real map. The smoke run is the first run of the first.
+- **Mutated.** Fifty one-change mutations of what this build added (the three rules and their nesting, the twin, the kept
+  share, NARROWER and how a branch is said, the fifth check with rehearsal rows, the rank handed to every training and
+  every engine, the adapters read back, the run's rule and directory, the map's place and seed, G′'s sampling, the
+  prepare steps' refusals, the report's start model). The stage's tests noticed 46 as first written; four assertions were
+  added for the four they missed (a held-out rehearsal row of the `pretrain` half; G′ drawn from the second sampling;
+  check 1 not reading the rank report's own checks; the primary read against the twin), and all fifty are noticed.
+
+**Outcome of L4t (seed 0, 2026-10-09; `ladder-l4t-RESULT.md`), and of L4b by its own rule: THE ARM IS NOT RUN AS
+SPECIFIED.** From `pre_r64`, every model at rank 64, all checks PASS, 93 attempts a goal problem.
+- `old_rule`: **THE OLD RULE NARROWS AT RANK 64 TOO.** 217 goal problems solved against `pre_r64`'s 245 (gained 25,
+  lost 53, p = 0.002); all of G per attempt −0.00107 [−0.01141, +0.00960] (78.9 against 80.0 per 1,000). The loss
+  is long proofs: on the problems of 4 lines or more, 99 solved against 125 (gained 12, lost 38), and the share of
+  its verified proofs with 8 lines or more is 0.125 against 0.254. The cap was not the cause; the training rule is.
+- `reward_rows`: **IT GIVES THE BREADTH BACK BY UNDOING THE TRAINING.** 241 against `old_rule`'s 217 (gained 48,
+  lost 24, p = 0.006); all of G against `pre_r64` +0.00395 [−0.00461, +0.01267].
+- `rehearse`: **the same branch.** 234 against 217 (gained 41, lost 24, p = 0.046); +0.00502 [−0.00453, +0.01478].
+- `hot` (1.2), read and not branched: `old_rule` 215 solved against 217 at 1.0 and 67.5 against 78.9 per 1,000;
+  `pre_r64` 240 against 245 and 62.4 against 80.0. Temperature costs successes and gives no breadth.
+- So no rule reads THE RULE GIVES THE BREADTH BACK AND KEEPS THE GAIN and `old_rule` narrows: L4b's third case.
+- **A fault in the bar, said plainly.** "Keeps the gain" asked for more successes per attempt on ALL of G than
+  `pre_r64`, an interval above zero. That bar was set from rank 16, where the old rule had +0.011. At rank 64 the
+  old rule itself has none (−0.001), so the branch's words "by undoing the training" say more than was measured:
+  there was no gain on all of G to undo. The verdicts stand as written; what follows reads the same rows by the
+  ARM's own read, which was fixed (L4b) before L4t was read.
+- **By the arm's read, from the same stored rows** (secondary here, not a verdict): on G′ of `pre_r64` (192
+  problems, the 61 fresh attempts) `old_rule` +0.00538 [+0.00000, +0.01272], `reward_rows` +0.00615 [+0.00171,
+  +0.01101], `rehearse` +0.00734 [+0.00205, +0.01358] (13.8, 14.5 and 15.7 against 8.4 per 1,000). G′ is chosen by
+  `pre_r64`'s own first sampling, which favours any model that differs from it; on a set no rank-64 model chose
+  (the 154 goal problems the rank-16 `pre` does not solve in 93 attempts) the four models have 4.9, 8.5, 7.5 and
+  7.6 successes per 1,000 and solve 38, 28, 37 and 31 problems: MORE SUCCESSES, ON NO MORE PROBLEMS. Breadth
+  against `pre_r64`: `reward_rows` gained 32, lost 36 (p = 0.72); `rehearse` gained 27, lost 38 (p = 0.21). Long
+  proofs (4 lines or more, per attempt, against `pre_r64`): `old_rule` −0.00636 [−0.01786, +0.00622], `reward_rows`
+  −0.01014 [−0.01903, −0.00117], `rehearse` +0.00809 [−0.00295, +0.01996]. Solved reliably: 107 (`pre_r64`), 97,
+  108, 114.
+- **Never solved by anything stored:** 81 before the arm, 58 now; this run's five samplings add 11 (each model 4
+  to 8, mostly different ones, once or twice each). At 186 attempts `pre_r64` with its own sampling at 1.2 solves
+  263 goal problems, and with a trained model's 93 attempts 270 to 277.
+
+### L4t2: two more one-change checks, on what L4t left open (fixed 2026-10-09, after L4t's read and before any run)
+
+**Under the owner's word of 2026-10-08 (night).** Labelled **pretrained on published proofs**. No new round: the
+stored rounds, `pre_r64`, L4t's own sets and measurements, which are only read.
+
+**What L4t left open, and why it is asked before the arm (about an hour a model against ten for the arm):**
+1. `rehearse` is the one rule that adds on G′, is not narrower and holds the long proofs. But half its rows are
+   published proofs `pre_r64` has already seen once: A SECOND PASS OVER THEM ALONE WOULD SHOW THE SAME. An arm
+   with rehearsal rows cannot be read until that is separated.
+2. `reward_rows` (a third of the rows, the hard problems' rows) keeps the breadth and adds on G′, and loses the
+   long proofs. Rehearsal holds them. The two together are not measured.
+
+**What runs.** Two models, each trained FROM `pre_r64` at its rank, one pass, the arm's recipe, in the content-hash
+order, and measured as L4t's models were (the rungs, G twice, `pre_r64`'s recorded sampling seeds):
+- `rehearse_only`: the 3,422 rehearsal rows of L4t's `rehearse` set and nothing else, in that set's order.
+- `reward_rehearse`: L4t's `reward_rows` set (1,349 rows) and as many rehearsal rows as it has one-shot rows
+  (1,262: the first of the same hash order, so they are among `rehearse`'s), 2,611 rows.
+The rehearsal rows' text is never stored in the run (L4t's rule: read from the snapshot's file, held to the hash).
+
+**Three reads of a model M against `pre_r64`, the ARM's own (L4b), fixed here before the run:**
+- ADDS: G′ (192), the 61 fresh attempts, M minus `pre_r64`, paired by problem, 95% bootstrap: interval above zero.
+- NOT NARROWER: goal problems solved in the 93 attempts: not (lost more than gained with the sign test under 0.05).
+- HOLDS THE LONG PROOFS: the goal problems of 4 lines or more (230), successes per attempt over the 93 attempts, M
+  minus `pre_r64`: the interval is not wholly below zero.
+From the stored rows: `old_rule` fails the first two; `reward_rows` fails the third; `rehearse` passes all three.
+
+**Branches, fixed before the run.**
+- **Question 1, `rehearse_only`.** On G′ over the 61 fresh attempts, `rehearse` minus `rehearse_only`, paired:
+  interval above zero, THE LOOP'S ROWS ADD BESIDE THE REHEARSAL. Else, if `rehearse_only` itself ADDS: THE GAIN IS
+  A SECOND PASS OVER PUBLISHED PROOFS (not shown to be the loop's). Else: NOT SEPARATED AT THIS SIZE (differences
+  on G′ resolve about 0.005).
+- **Question 2, `reward_rehearse`.** The three reads. All three: IT ADDS, KEEPS THE BREADTH AND HOLDS THE LONG
+  PROOFS. Otherwise the read it fails is named.
+- **The arm's rule after L4t2** (this replaces item 3 of L4b; L4b's read does not change):
+  - Question 1 reads A SECOND PASS: no arm with rehearsal rows is run, because it could not show that the loop
+    adds. What stands goes to the owner: a second pass over published proofs helps (a fact about the pretraining
+    recipe), and the loop's own rows trade long proofs for successes on short ones.
+  - Otherwise: the arm is run from `pre_r64` with a rule that passes all three reads: `reward_rehearse` if it
+    passes and its (gained minus lost) against `pre_r64` is at least `rehearse`'s; else `rehearse`. THE ARM THEN
+    CARRIES ITS OWN SEPARATION: after the last round one more model is trained from `pre_r64` on the last model's
+    rehearsal rows alone and measured as the twin is, and the report reads `with` against it beside the primary.
+- **What cannot be read here.** The rows are the rank-16 rounds': the arm makes its own, at `pre_r64`'s frontier.
+  One seed. A choice between two rules by reads on the same goal set is exploratory, and is said so in the note.
+- **Budget.** Trainings of about 15 and 10 minutes; a measurement took 39 to 54 minutes with the pool's 37
+  workers and takes about twice that with 15: two to four hours.
+
 ## Fixtures (these become the tests)
 
 1. An episode that proves the statement resolves the problem; so does one that proves the exact negation; one
@@ -1762,4 +2450,19 @@ Step 2, with `gpu/ladder_l4.py`).*
 
 ## Open questions (the owner's)
 
-None.
+Both are L4's, from "Further seeds of the arm, made exact before they run" (2026-10-09). Neither stops seeds
+1 and 2 from running; each says which reading was built.
+
+1. **`pre` is measured once.** At seeds 1 and 2, `with` is sampled with that seed's sampling seeds and the
+   `pre` side is seed 0's stored attempts. So those two primaries are paired by problem without the common
+   random numbers seed 0's has, and all three differences share the same `pre` attempts: a low draw of `pre`
+   on G′ would lift all three, and three seeds clear of zero are not three independent confirmations. The
+   pooled interval does carry `pre`'s sampling noise, problem by problem. Built: the reading that changes
+   least (the spec's "the same `pre`", no new measurement). The alternative is to measure `pre` again with
+   each further seed's sampling seeds (one measurement a seed, 42,817 generations, 46 to 55 minutes), which
+   would give each seed a `pre` side of its own. Is one measurement of `pre` enough for the three-seed read?
+2. **What the three seeds must show is not said in L4's own words.** Its "One seed first" says a positive
+   read licenses the two other seeds and nothing more, "as in Step 2", and Step 2's rule is: concluded only
+   on three seeds, each of its own sign and the pooled interval clear of zero. Built: the read prints what
+   that rule reads (each seed's sign, the pooled interval) and the count of seeds whose own interval is clear
+   of zero, and names no verdict. Is Step 2's rule the one L4's three seeds are read by?

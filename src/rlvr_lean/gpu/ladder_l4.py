@@ -27,19 +27,35 @@ two measurements), every model of it trained FROM `pre` and round 1 attempted by
 the pool, no H0; with two steps of its own:
 
   ladder_l4_prepare            (right after the arm's prepare step, before anything is sampled) REFUSES a pretraining
-                               run whose report is not written or whose two checks failed, and a missing `pre`
-                               adapter; copies into the arm's run what its report reads of that run (G', `pre`'s
-                               stored rows) and, when it is on the box, of the base arm's run
+                               run whose report is not written or whose two checks failed, one that recorded another
+                               seed than the ONE pretraining's, and a missing `pre` adapter; copies into the arm's run
+                               what its report reads of that run (G', `pre`'s stored rows) and, when it is on the box,
+                               of the base arm's run
   ladder_l4_report             the read fixed before the run (`reporting/ladder_l4.py`)
 
+ONE PRETRAINING FOR EVERY SEED OF THE ARM (spec, "Further seeds of the arm, made exact before they run"). The arm of
+seed N reads the pretraining run of `ladder_loop.l4.pretraining_seed` (`ladder_l2.pretraining_run`,
+`pretraining_of_the_arm`), not one of its own seed: the same `pre`, the same map, the same G' and the same stored rows
+of `pre` at every seed. What N moves is the arm's own: its rounds' sampling, its challenger's proposals, its trainings'
+rows and order, and the sampling seeds of its two measurements (those of the L1 and L2 runs of seed N, which it reads).
+The pretraining stage's own run directory stays its task's seed's (`pretrain_directory`).
+
 Every adapter of both stages is kept: `pre` is the arm's starting model, and the arm's models are this arm's own.
+
+THE PRETRAINING'S THREE STEPS ARE FUNCTIONS ANOTHER STAGE CALLS. A check of the pretraining (`gpu/ladder_l4_rank.py`: the
+same pass with another adapter rank) prepares, trains and measures its model by `read_for_a_pretraining` and
+`write_prepared`, `train_a_pretraining` and `measure_a_pretrained`, under its own names (`Pretraining`), in its own run
+directory and with the config it hands them. Called by this stage they do what they always did: the stage reads no
+variable and no setting of a check.
 """
 
 from __future__ import annotations
 
 import json
 import os
+from dataclasses import dataclass
 from pathlib import Path
+from typing import Callable, Mapping
 
 from collections import Counter
 
@@ -82,7 +98,7 @@ from rlvr_lean.reporting.ladder_ceiling import lean_did_not_answer
 L4 = "l4"
 LABEL = "pretrained on published proofs"
 PRETRAIN_STAGE, ARM_STAGE = "ladder_l4_pretrain", "ladder_l4"
-RUN_VARIABLE = ladder_l2.L4_PRETRAIN_RUN_VARIABLE       # another run directory of the pretraining stage than `ladder_l4_pretrain_seed<seed>` (a smoke run)
+RUN_VARIABLE = ladder_l2.L4_PRETRAIN_RUN_VARIABLE       # another run directory of the pretraining stage than the seed's own (a smoke run): the stage writes it, the arm reads it
 SOURCE_VARIABLE = "RLVR_LEAN_LADDER_L4_SOURCE"          # another L1 run directory to read than `ladder_l1_seed<seed>`
 STORED_VARIABLE = "RLVR_LEAN_LADDER_L4_STORED"          # `none`: L2's stored runs are not read (a smoke run)
 FILE_VARIABLE = "RLVR_LEAN_LADDER_L4_FILE"              # another pretraining file than the package's (the fixture)
@@ -110,7 +126,14 @@ def _say(message: str) -> None:
 
 
 def pretrain_directory(config: dict) -> Path:
+    """The pretraining STAGE's own run directory: its task's seed's (or the one the task names)."""
     return _runs(config) / (os.environ.get(RUN_VARIABLE) or f"{PRETRAIN_STAGE}_seed{training_seed(config)}")
+
+
+def pretraining_of_the_arm(config: dict) -> Path:
+    """The pretraining run an ARM stands on: the ONE pretraining's (`ladder_l2.pretraining_run`: the seed
+    `ladder_loop.l4.pretraining_seed`, whatever the arm's own seed is; spec, "Further seeds of the arm"). Only read."""
+    return _runs(config) / ladder_l2.pretraining_run(config)
 
 
 def _store(config: dict) -> ArtifactStore:
@@ -172,10 +195,45 @@ def ceiling_name(checkpoint: str) -> str:
 
 
 # --------------------------------------------------------------------------------------- the pretraining
-def ladder_l4_pretrain_prepare(config: dict) -> dict:
-    store = _store(config)
-    if store.is_done(PREPARE):
-        return store.done_summary(PREPARE)
+@dataclass(frozen=True)
+class Pretraining:
+    """One pass from the base over the pretraining file, as the steps that prepare, train and measure its model name
+    it. Every default is the stage's own (`pre`); a check of the pretraining gives its own (`gpu/ladder_l4_rank.py`)."""
+    name: str = PRE                                     # the model: its adapter's directory and its sets
+    stage: str = PRETRAIN_STAGE                         # the stage, as `runner.entry` names it
+    prepare: str = PREPARE                              # the three steps' markers
+    train: str = TRAIN
+    measure: str = MEASURE
+    run: str = PRETRAIN_STAGE                           # its TensorBoard run, before `_seed<N>`
+    what: str = "the pretraining"                       # the training, in a refusal: "<what> needs the step ..."
+    called: str = "the pretrained model `pre`"          # the model, in a printed line
+    whose: str = "L4's pretrained model `pre`"          # ... and in a refusal
+    no_adapter: str = ("the adapter `pre` is kept by this stage, and one trained again would not be the model its other measurements came from. "
+                       "The measurement cannot be made")
+
+
+THE_PRETRAINING = Pretraining()
+
+
+@dataclass
+class Found:
+    """What a pretraining's prepare step read and checked, with NOTHING WRITTEN yet (`read_for_a_pretraining`): the
+    stored runs; the file's rows in its order and each one's tokens as a training example; the ceiling's models when
+    its run was read (their per-problem rows, what they wrote); and the summary in two parts, up to the recipe
+    (`head`) and what is measured (`sizes`), between which a stage puts what is its own."""
+    read: StoredRuns
+    chosen: list
+    tokens: list
+    ceiling_rows: dict
+    ceiling_wrote: dict
+    head: dict
+    sizes: dict
+
+
+def read_for_a_pretraining(config: dict) -> Found:
+    """Everything a pretraining's prepare step reads and refuses, and nothing it writes: what the ceiling reads on the
+    box (L1's run; L2's two), the ceiling's run when it is there, and the pretraining file from the package's data, REFUSED
+    as the stage's docstring says. `config`: the recipe recorded is its own (`config["lora"]`)."""
     seed, source, stored = training_seed(config), source_directory(config), ladder_ceiling.stored_directories(config, STORED_VARIABLE, SETTING)
     read = read_stored_runs(config, source, stored, READING)
     path = pretraining_file()
@@ -192,70 +250,100 @@ def ladder_l4_pretrain_prepare(config: dict) -> dict:
     check_examples_fit([row["problem_id"] for row in chosen], tokens, training["max_sequence_tokens"], WHAT)
     batch = training["effective_batch"]
     ceiling = read_the_ceiling(config, read) if stored else {"read": False, "why": "L2's stored runs are not read (a smoke run), and the ceiling's is not either"}
-    write_stored_runs(store, read, (PRE,), L4)
-    for (who, part), own_rows in ceiling.pop("kept", {}).items():
+    ceiling_rows, ceiling_wrote = ceiling.pop("kept", {}), ceiling.pop("wrote", {})
+    arm = ladder_ceiling.loop_arm(config, SETTING) if stored else None
+    count_by = lambda key: {name: sum(key(row) == name for row in chosen) for name in sorted({key(row) for row in chosen})}      # noqa: E731
+    head = {"stage": L4, "label": LABEL, "seed": seed, "source_run": str(source), "stored_runs": {who: str(directory) for who, directory in stored.items()} if stored else None,
+            "loop_arm": arm, "loop_target_rate": config["ladder_loop"]["l2_arms"][arm].get("target_rate") if arm else None, "stand_in_engine": _stand_in(),
+            "ceiling": ceiling, "pretraining_file": str(path), "pretraining_file_sha256": sha256, "rows": len(chosen), "half": PRETRAIN, "half_seed": half_seed,
+            "rows_by_kind": count_by(lambda row: row["kind"]), "rows_by_proof_lines": count_by(lambda row: length_group(row["proof_lines"])),
+            "tokens": sum(tokens), "longest_example_tokens": max(tokens), "tokens_counted_by": counted_by, "max_sequence_tokens": training["max_sequence_tokens"],
+            "order": "the file's: no row is moved", "effective_batch": batch, "steps": -(-len(chosen) // batch),
+            "recipe": {"what": "the round's (`ladder_round._train`), from the base: one pass, the native format, the round's own example builder",
+                       "learning_rate": training["learning_rate"], "warmup_steps": training["warmup_steps"], "effective_batch": batch,
+                       "lora": config["lora"], "adapter_seed": seed}}
+    return Found(read, chosen, tokens, ceiling_rows, ceiling_wrote, head, measured_sizes(config, read))
+
+
+def write_prepared(store: ArtifactStore, found: Found, one: Pretraining, own: Mapping) -> dict:
+    """What a pretraining's prepare step leaves in its run directory, from what `read_for_a_pretraining` found: the
+    problems of the model's sets, the held-out groups and the stored rows; the rows the run trains on; its marker, and
+    its line. `own`: what the stage records of its own, between the recipe and what is measured."""
+    read, chosen, tokens = found.read, found.chosen, found.tokens
+    write_stored_runs(store, read, (one.name,), L4)
+    for (who, part), own_rows in found.ceiling_rows.items():
         store.write_rows(stored_file(who, part, L4), own_rows)
-    _write_json(store, STORED_MODELS_FILE, {"stage": L4, "label": LABEL, **{who: _wrote(read, who) for who in read.wrote}, **ceiling.pop("wrote", {})})
+    _write_json(store, STORED_MODELS_FILE, {"stage": L4, "label": LABEL, **{who: _wrote(read, who) for who in read.wrote}, **found.ceiling_wrote})
     # The rows the run trains on, WITHOUT their statements and proofs: the published proofs stay in the training file.
     store.write_rows(ROWS_FILE, [{"row": position, "problem_id": row["problem_id"], "kind": row["kind"], "proof_lines": row["proof_lines"],
                                   "length_group": length_group(row["proof_lines"]), "tokens": tokens[position]} for position, row in enumerate(chosen)])
-    arm = ladder_ceiling.loop_arm(config, SETTING) if stored else None
-    count_by = lambda key: {name: sum(key(row) == name for row in chosen) for name in sorted({key(row) for row in chosen})}      # noqa: E731
-    summary = {"stage": L4, "label": LABEL, "seed": seed, "source_run": str(source), "stored_runs": {who: str(directory) for who, directory in stored.items()} if stored else None,
-               "loop_arm": arm, "loop_target_rate": config["ladder_loop"]["l2_arms"][arm].get("target_rate") if arm else None, "stand_in_engine": _stand_in(),
-               "ceiling": ceiling, "pretraining_file": str(path), "pretraining_file_sha256": sha256, "rows": len(chosen), "half": PRETRAIN, "half_seed": half_seed,
-               "rows_by_kind": count_by(lambda row: row["kind"]), "rows_by_proof_lines": count_by(lambda row: length_group(row["proof_lines"])),
-               "tokens": sum(tokens), "longest_example_tokens": max(tokens), "tokens_counted_by": counted_by, "max_sequence_tokens": training["max_sequence_tokens"],
-               "order": "the file's: no row is moved", "effective_batch": batch, "steps": -(-len(chosen) // batch),
-               "recipe": {"what": "the round's (`ladder_round._train`), from the base: one pass, the native format, the round's own example builder",
-                          "learning_rate": training["learning_rate"], "warmup_steps": training["warmup_steps"], "effective_batch": batch,
-                          "lora": config["lora"], "adapter_seed": seed},
-               "minimums": dict(zip(("goal_problems_solved_by_pre", "goal_set_again"), minimums(config))), **measured_sizes(config, read)}
-    store.mark_done(PREPARE, summary)
-    _say(f"prepared, seed {seed}: {len(chosen)} rows of {path.name} in the file's order, {summary['steps']} optimizer steps; {summary['attempts_a_goal_problem']} "
-         f"attempts on each of {len(read.goal_problems)} goal problems")
+    summary = {**found.head, **own, **found.sizes}
+    store.mark_done(one.prepare, summary)
+    _say(f"prepared, seed {summary['seed']}: {len(chosen)} rows of {Path(summary['pretraining_file']).name} in the file's order, {summary['steps']} optimizer steps; "
+         f"{summary['attempts_a_goal_problem']} attempts on each of {len(read.goal_problems)} goal problems")
     return summary
 
 
-def ladder_l4_pretrain_train(config: dict) -> dict:
-    """The pretraining: from the base, one pass over the file's rows in its order; the adapter `pre` is kept."""
+def ladder_l4_pretrain_prepare(config: dict) -> dict:
     store = _store(config)
-    if store.is_done(TRAIN):
-        return store.done_summary(TRAIN)
-    _need(store, PREPARE, "the pretraining", PRETRAIN_STAGE)
-    prepared, seed = store.done_summary(PREPARE), training_seed(config)
+    if store.is_done(PREPARE):
+        return store.done_summary(PREPARE)
+    return write_prepared(store, read_for_a_pretraining(config), THE_PRETRAINING,
+                          {"minimums": dict(zip(("goal_problems_solved_by_pre", "goal_set_again"), minimums(config)))})
+
+
+def train_a_pretraining(config: dict, store: ArtifactStore, one: Pretraining, saved: Callable[[Path], Mapping] | None = None) -> dict:
+    """From the base, one pass over the file's rows in its order, the adapter `one.name` kept; every row's loss
+    stored. `config`: the adapter attached is its own (`config["lora"]`). `saved` (a check's own): called with the
+    adapter's directory once the pass is over and BEFORE the step is marked done; what it returns is added to the
+    summary, and what it refuses leaves the step not done."""
+    if store.is_done(one.train):
+        return store.done_summary(one.train)
+    _need(store, one.prepare, one.what, one.stage)
+    prepared, seed = store.done_summary(one.prepare), training_seed(config)
     rows, sha256 = _file_rows(pretraining_file(), WHAT, HOW)
     if sha256 != prepared["pretraining_file_sha256"]:
         raise RuntimeError(f"{WHAT} has SHA-256 {sha256} and this run was prepared on {prepared['pretraining_file_sha256']}: a run trains on the file its prepare step checked")
-    examples, batch = [training_example(row) for row in rows], prepared["effective_batch"]
+    examples, batch, adapters = [training_example(row) for row in rows], prepared["effective_batch"], store.root / ladder_assembly.ADAPTERS
     _say(f"pretraining from the base on {len(examples)} published proofs in the file's order, {prepared['steps']} optimizer steps")
-    result, step_rows, row_losses, _ = one_pass(config, examples, {PRE: prepared["steps"]}, seed, batch, store.root / ladder_assembly.ADAPTERS, f"{PRETRAIN_STAGE}_seed{seed}")
+    result, step_rows, row_losses, _ = one_pass(config, examples, {one.name: prepared["steps"]}, seed, batch, adapters, f"{one.run}_seed{seed}")
     result.pop("checkpoints")
     _write_json(store, LOSS_FILE, {
         "stage": L4, "label": LABEL, "seed": seed, "stand_in_engine": _stand_in(), "rows": len(row_losses), "steps": result["steps"], "effective_batch": batch,
         "what": "row_losses: each training row's mean loss per target token, in the file's order, read BEFORE the update of the optimizer step it was in",
         "row_losses": row_losses, "training_steps": [{**row, "rows_seen": min(row["step"] * batch, len(row_losses))} for row in step_rows]})
     took = the_training_took(row_losses, tenth(len(row_losses), config["ladder_loop"]["l4"]["loss_share_of_rows"]))
-    summary = {"stage": L4, "label": LABEL, "model": PRE, "seed": seed, "rows": len(examples), "passes": 1, "order": prepared["order"], "stand_in_engine": _stand_in(),
-               "adapter": str(store.root / ladder_assembly.ADAPTERS / PRE), "first_step_loss": step_rows[0]["mean_loss"], "last_step_loss": step_rows[-1]["mean_loss"],
+    summary = {"stage": L4, "label": LABEL, "model": one.name, "seed": seed, "rows": len(examples), "passes": 1, "order": prepared["order"], "stand_in_engine": _stand_in(),
+               "adapter": str(adapters / one.name), "first_step_loss": step_rows[0]["mean_loss"], "last_step_loss": step_rows[-1]["mean_loss"],
                "mean_loss_over_the_first_rows": took["first"], "mean_loss_over_the_last_rows": took["last"], "rows_compared": took["rows_compared"],
                "the_training_took": took["passes"], **result}
-    store.mark_done(TRAIN, summary)         # the adapter is saved, and kept
+    if saved is not None:
+        summary.update(saved(adapters / one.name))
+    store.mark_done(one.train, summary)     # the adapter is saved, and kept
     if summary.get("allocated_after_cleanup_gb", 0) > MAX_LEFTOVER_GB:
-        raise RuntimeError(f"{summary['allocated_after_cleanup_gb']} GB is still allocated on the GPU after the pretraining was released")
+        raise RuntimeError(f"{summary['allocated_after_cleanup_gb']} GB is still allocated on the GPU after {one.what} was released")
     return summary
 
 
-def ladder_l4_pretrain_measure(config: dict) -> dict:
-    store = _store(config)
-    _need(store, PREPARE, "the measurement of L4's pretrained model `pre`", PRETRAIN_STAGE)
-    prepared = store.done_summary(PREPARE)
+def ladder_l4_pretrain_train(config: dict) -> dict:
+    """The pretraining: from the base, one pass over the file's rows in its order; the adapter `pre` is kept."""
+    return train_a_pretraining(config, _store(config), THE_PRETRAINING)
+
+
+def measure_a_pretrained(config: dict, store: ArtifactStore, one: Pretraining) -> dict:
+    """The model of a pretraining as the ceiling's models are measured (`measure_model`). `config`: the model server
+    is started with its own settings (`config["vllm"]`)."""
+    _need(store, one.prepare, f"the measurement of {one.whose}", one.stage)
+    prepared = store.done_summary(one.prepare)
     return measure_model(config, store, prepared, Model(
-        name=PRE, called="the pretrained model `pre`", whose="L4's pretrained model `pre`", marker=MEASURE, trained_by=TRAIN,
-        adapter=store.root / ladder_assembly.ADAPTERS / PRE,
-        no_adapter="the adapter `pre` is kept by this stage, and one trained again would not be the model its other measurements came from. The measurement cannot be made",
-        detail=f"{prepared['rows']} published proofs", summary={"stage": L4, "label": LABEL, "model": PRE, "rows": prepared["rows"]},
-        stage=PRETRAIN_STAGE, label=L4, also=what_else_a_model_wrote))
+        name=one.name, called=one.called, whose=one.whose, marker=one.measure, trained_by=one.train,
+        adapter=store.root / ladder_assembly.ADAPTERS / one.name, no_adapter=one.no_adapter,
+        detail=f"{prepared['rows']} published proofs", summary={"stage": L4, "label": LABEL, "model": one.name, "rows": prepared["rows"]},
+        stage=one.stage, label=L4, also=what_else_a_model_wrote))
+
+
+def ladder_l4_pretrain_measure(config: dict) -> dict:
+    return measure_a_pretrained(config, _store(config), THE_PRETRAINING)
 
 
 def stored_map(config: dict) -> tuple[list[dict], list[dict], bool]:
@@ -265,19 +353,45 @@ def stored_map(config: dict) -> tuple[list[dict], list[dict], bool]:
     return data["base_map"], [row for row in data["base_results"] if row["set"] == BASE_MAP_SET], bool(data["summary"].get("fixture"))
 
 
+@dataclass(frozen=True)
+class MapOf:
+    """Whose own map of the base map's problems a step makes, as that step names it. Every default is `pre`'s, made by
+    the pretraining stage; the map of another start model is made by a step of its own (`gpu/ladder_l4b.py`)."""
+    name: str = PRE                                     # the model: the map is of ITS attempts
+    step: str = MAP                                     # the step, and its marker (an arm reads the map by it)
+    episodes: str = MAP_EPISODES                        # the set its episodes are stored under
+    file: str = MAP_FILE                                # the map's rows, in the shape the challenger reads the base's
+    problems_file: str = MAP_PROBLEMS_FILE              # what was recorded when the map's problems were built
+    request: str = f"{PRETRAIN_STAGE}_{PRE}"            # the adapter, as the model server names it
+    kept_by: str = "this stage"                         # who keeps the adapter, when its directory is not there
+
+
+THE_MAP = MapOf()
+
+
 def ladder_l4_pretrain_map(config: dict) -> dict:
-    """`pre`'s OWN MAP (spec, "And `pre`'s own map"): the base map's problems attempted again by `pre`, with what the
-    stored map (the base's) was made with: the same problems, the same sides, `base_map.episodes` attempts, and
-    `base_map.sampling_seed`. The problems get their exact negations by the rule that gave the stored map's
-    (`ladder_round.with_negations`, L0's), and BEFORE anything is sampled each problem's sides, as the episode step
-    would sample them, are held to the stored map's row: a map on other sides is not the base map of another model.
-    The episodes are a set of this run (`run_episodes`: a rerun resumes at the first block not done); the map is
-    then written in the shape the challenger reads the base's. A map Lean did not answer is not kept."""
+    """`pre`'s OWN MAP (spec, "And `pre`'s own map"): the base map's problems attempted again by `pre` (`the_map_of`),
+    in the pretraining's own run directory, after its training."""
     store = _store(config)
     if store.is_done(MAP):
         return store.done_summary(MAP)
     for needed in (PREPARE, TRAIN):
         _need(store, needed, "`pre`'s own map", PRETRAIN_STAGE)
+    return the_map_of(config, store, THE_MAP, store.root / ladder_assembly.ADAPTERS / PRE)
+
+
+def the_map_of(config: dict, store: ArtifactStore, one: MapOf, adapter_directory: Path, also: Mapping | None = None) -> dict:
+    """A model's OWN MAP: the base map's problems attempted again by it, with what the stored map (the base's) was
+    made with: the same problems, the same sides, `base_map.episodes` attempts, and `base_map.sampling_seed`. The
+    problems get their exact negations by the rule that gave the stored map's (`ladder_round.with_negations`, L0's),
+    and BEFORE anything is sampled each problem's sides, as the episode step would sample them, are held to the stored
+    map's row: a map on other sides is not the base map of another model. The episodes are a set of the run `store`
+    (`run_episodes`: a rerun resumes at the first block not done); the map is then written there in the shape the
+    challenger reads the base's. A map Lean did not answer is not kept. `one`: whose map, and the names it is stored
+    under. `adapter_directory`: that model's stored adapter. `config`: the model server is started with its own
+    settings. `also`: what the step that calls this records beside (the pretraining's own step records nothing more)."""
+    if store.is_done(one.step):
+        return store.done_summary(one.step)
     settings, episode = config["ladder_loop"]["base_map"], config["ladder_loop"]["episode"]
     episodes, seed = settings["episodes"], settings["sampling_seed"]
     base_map, of_the_base, fixture = stored_map(config)
@@ -285,8 +399,9 @@ def ladder_l4_pretrain_map(config: dict) -> dict:
     other = sorted(key for key, row in stored.items() if row["episodes"] != episodes)
     if other or sorted(stored) != sorted(row["problem_id"] for row in base_map):
         raise RuntimeError(f"the stored map is not {episodes} attempts on each of the base map's {len(base_map)} problems ({len(stored)} rows; {len(other)} with another "
-                           "number of attempts): `pre`'s map would not be the same map of another model. Nothing was sampled")
-    if not any(row["set"] == MAP_EPISODES for row in store.read_rows("problems.jsonl")):
+                           f"number of attempts): `{one.name}`'s map would not be the same map of another model. Nothing was sampled")
+    # (A run directory that is the map's alone has no problems yet: the pretraining's own holds its measured sets.)
+    if not store.path("problems.jsonl").exists() or not any(row["set"] == one.episodes for row in store.read_rows("problems.jsonl")):
         problems, checks = ladder_round.with_negations(config, base_map)
         planned = {problem["problem_id"]: len(side_plan(problem, episode, seed)) for problem in problems}
         differ = sorted(key for key, sides in planned.items() if sides != stored[key]["sides"])
@@ -294,38 +409,38 @@ def ladder_l4_pretrain_map(config: dict) -> dict:
             raise RuntimeError(f"{len(differ)} of the base map's {len(problems)} problems would be attempted on other sides than the stored map's were (first: {differ[0]}, "
                                f"{planned[differ[0]]} against {stored[differ[0]]['sides']}): the episode settings or an exactness check are not what they were when the "
                                "stored map was made. Nothing was sampled")
-        _write_json(store, MAP_PROBLEMS_FILE, {
+        _write_json(store, one.problems_file, {
             "stage": L4, "label": LABEL, "problems": len(problems), "episodes_each": episodes, "sampling_seed": seed, **checks,
             "sides": {str(sides): count for sides, count in sorted(Counter(planned.values()).items())},
             "sides_of_the_stored_map": {str(sides): count for sides, count in sorted(Counter(row["sides"] for row in of_the_base).items())},
             "problems_on_other_sides_than_the_stored_map": len(differ),
             "sides_held_to_the_stored_map": not fixture, **({"why_not": "a fixture's stored rows are hand-made: their sides are not what an episode step sampled"} if fixture else {})})
-        add_problems(store, _as_sets(problems, [MAP_EPISODES]))
+        add_problems(store, _as_sets(problems, [one.episodes]))
     if _stand_in():
         adapter = None
     else:
-        directory = store.root / ladder_assembly.ADAPTERS / PRE
+        directory = adapter_directory
         if not directory.is_dir():
-            raise RuntimeError(f"{directory} is not there: the adapter `pre` is kept by this stage, and the map is `pre`'s. The map cannot be made")
+            raise RuntimeError(f"{directory} is not there: the adapter `{one.name}` is kept by {one.kept_by}, and the map is `{one.name}`'s. The map cannot be made")
         from vllm.lora.request import LoRARequest
 
-        adapter = LoRARequest(f"{PRETRAIN_STAGE}_{PRE}", 1, str(directory))
-    _say(f"`pre`'s own map: {episodes} attempts on each of the base map's {len(base_map)} problems, sampling seed {seed}")
-    sampled = _episodes(config, store, MAP_EPISODES, episodes, seed, Engines(enable_lora=True).kit(adapter))
-    results = _results(store, MAP_EPISODES)
+        adapter = LoRARequest(one.request, 1, str(directory))
+    _say(f"`{one.name}`'s own map: {episodes} attempts on each of the base map's {len(base_map)} problems, sampling seed {seed}")
+    sampled = _episodes(config, store, one.episodes, episodes, seed, Engines(enable_lora=True).kit(adapter))
+    results = _results(store, one.episodes)
     if lean_did_not_answer(results):        # the challenger is not aimed by a map with holes: the set is sampled again by a rerun
-        forget_measurement(store, MAP_EPISODES)
-        raise RuntimeError(f"Lean gave no verdict on too many attempts of {MAP_EPISODES}: the map is not kept. Queue the task again: this step samples it again")
+        forget_measurement(store, one.episodes)
+        raise RuntimeError(f"Lean gave no verdict on too many attempts of {one.episodes}: the map is not kept. Queue the task again: this step samples it again")
     rows = map_rows(results, [row["problem_id"] for row in base_map])
-    store.write_rows(MAP_FILE, rows)
-    summary = {"stage": L4, "label": LABEL, "model": PRE, "what": "the base map's problems attempted again by `pre`, as the stored map (the base's) was made",
-               "set": MAP_EPISODES, "file": str(store.path(MAP_FILE)), "problems": len(rows), "episodes_each": episodes, "sampling_seed": seed,
-               "fixture": fixture, "problems_built": json.loads(store.path(MAP_PROBLEMS_FILE).read_text()),
+    store.write_rows(one.file, rows)
+    summary = {"stage": L4, "label": LABEL, "model": one.name, "what": f"the base map's problems attempted again by `{one.name}`, as the stored map (the base's) was made",
+               "set": one.episodes, "file": str(store.path(one.file)), "problems": len(rows), "episodes_each": episodes, "sampling_seed": seed,
+               "fixture": fixture, "problems_built": json.loads(store.path(one.problems_file).read_text()),
                "map": map_summary(rows), "map_of_the_base": map_summary(of_the_base),
                "attempts": sampled.get("attempts"), "statuses": sampled.get("statuses"), "generated_tokens": sampled.get("generated_tokens"),
-               "generation_seconds": sampled.get("generation_seconds"), "pipeline": sampled.get("pipeline"), "stand_in_engine": _stand_in()}
-    store.mark_done(MAP, summary)
-    _say(f"`pre`'s own map is stored ({MAP_FILE}): mean pass rate {summary['map']['mean_pass_rate']} against the base's {summary['map_of_the_base']['mean_pass_rate']}")
+               "generation_seconds": sampled.get("generation_seconds"), "pipeline": sampled.get("pipeline"), "stand_in_engine": _stand_in(), **(also or {})}
+    store.mark_done(one.step, summary)
+    _say(f"`{one.name}`'s own map is stored ({one.file}): mean pass rate {summary['map']['mean_pass_rate']} against the base's {summary['map_of_the_base']['mean_pass_rate']}")
     return summary
 
 
@@ -371,7 +486,48 @@ def ladder_l4_pretrain_report(config: dict) -> dict:
     return report
 
 
+# ---------------------------------------------------------------------- what `pre`'s run stored, read by another
+def pre_parts(of_pre: Mapping) -> list[str]:
+    """The parts `pre` was measured on, as its prepare step recorded them: the rungs, then each sampling of G."""
+    return [RUNG_PART, *(sampling["name"] for sampling in of_pre["goal_samplings"])]
+
+
+def pre_set(part: str) -> str:
+    """The set `pre`'s episodes on one part are stored under, in its own run directory."""
+    return f"{L4}_{part}_{PRE}"
+
+
+def pre_rows_file(part: str) -> str:
+    """`pre`'s per-problem rows on one part, as its own run directory holds them."""
+    return f"episodes_{pre_set(part)}_problems.jsonl"
+
+
+def copy_what_pre_stored(store: ArtifactStore, directory: Path, of_pre: Mapping) -> list[str]:
+    """Into another run's own directory, what its report reads of `pre`: `pre`'s per-problem rows on each part it was
+    measured on, and what it wrote (from its measure step's marker). `directory`: the pretraining run, only read.
+    `of_pre`: what that run's prepare step recorded. Returns the parts."""
+    parts = pre_parts(of_pre)
+    for part in parts:
+        store.write_rows(stored_file(PRE, part, L4), _rows(directory / pre_rows_file(part)))
+    _write_json(store, PRE_FILE, {"label": LABEL, **{key: json.loads((directory / f"{MEASURE}.done.json").read_text())[key] for key in WROTE}})
+    return parts
+
+
 # ------------------------------------------------------------------------------------------------ the arm
+def copy_the_base_arms_rows(config: dict, store: ArtifactStore, seed: int) -> tuple[str, Path, str | None]:
+    """The base arm's own gain stands beside the primary: its last model's stored rows on G are copied into the arm's
+    run when the base arm's run of `seed` is on this box (a smoke run reads none). Returns (the base arm, where its run
+    was looked for, the run that was read or None)."""
+    base_arm, copied = config["ladder_loop"]["l4"]["base_arm"], None
+    of_the_base_arm = _runs(config) / f"ladder_l2_{base_arm}_seed{seed}"
+    files = {part: of_the_base_arm / f"episodes_{ladder_l3d2.L3D2}_{part}_with_problems.jsonl" for part in (REACH, MORE)}
+    if os.environ.get(ladder_l3d2.STORED_VARIABLE) != "none" and all(path.exists() for path in files.values()):
+        for part, path in files.items():
+            store.write_rows(stored_file(BASE_ARM, part, L4), _rows(path))
+        copied = str(of_the_base_arm)
+    return base_arm, of_the_base_arm, copied
+
+
 def _arm_store(config: dict) -> ArtifactStore:
     wanted, named = config["ladder_loop"]["l4"]["arm"], ladder_l2.arm_name()
     if named != wanted:
@@ -381,20 +537,28 @@ def _arm_store(config: dict) -> ArtifactStore:
 
 
 def ladder_l4_prepare(config: dict) -> dict:
-    """What the arm stands on, checked BEFORE anything is sampled: the pretraining run of this seed (its report
-    written, its two checks passed, the adapter `pre` there). What the arm's report reads of that run, and of the
-    base arm's when it is on the box, is copied into the arm's own run directory."""
+    """What the arm stands on, checked BEFORE anything is sampled: the ONE pretraining run (that of the seed
+    `ladder_loop.l4.pretraining_seed`, whatever this task's seed: its report written, its two checks passed, the
+    adapter `pre` there, the seed it recorded that one). What the arm's report reads of that run, and of the base
+    arm's when it is on the box, is copied into the arm's own run directory. A FURTHER SEED of the arm (a task's seed
+    that is not the pretraining's) records that it is one (`a_further_seed`); at the pretraining's own seed the
+    summary is what it always was."""
     store = _arm_store(config)
     if store.is_done(ARM_PREPARE):
         return store.done_summary(ARM_PREPARE)
     _need(store, ladder_l2.PREPARE, "L4's own prepare step", ARM_STAGE)
-    seed, directory, start = training_seed(config), pretrain_directory(config), ladder_l2.start_directory(config)
-    task = f"the task of stage `{PRETRAIN_STAGE}` for seed {seed} (`python -m rlvr_lean.runner.entry --stage {PRETRAIN_STAGE} --seeds {seed}`; for the smoke run, stage `{PRETRAIN_STAGE}_smoke`)"
+    seed, of_the_pretraining = training_seed(config), ladder_l2.pretraining_seed(config)
+    directory, start = pretraining_of_the_arm(config), ladder_l2.start_directory(config)
+    task = (f"the task of stage `{PRETRAIN_STAGE}` for seed {of_the_pretraining} (`python -m rlvr_lean.runner.entry --stage {PRETRAIN_STAGE} --seeds {of_the_pretraining}`; "
+            f"for the smoke run, stage `{PRETRAIN_STAGE}_smoke`)")
     lacking = [name for name in (REPORT_FILE, AGAIN_FILE, f"{MEASURE}.done.json", f"{PREPARE}.done.json", MAP_FILE, f"{MAP}.done.json") if not (directory / name).exists()]
     if lacking:
         raise RuntimeError(f"{directory} does not hold {lacking}. L4's arm starts from the model {task} pretrained, and reads its report. Run that task to its end first; "
                            "nothing was written.")
     report, of_pre = json.loads((directory / REPORT_FILE).read_text()), json.loads((directory / f"{PREPARE}.done.json").read_text())
+    if of_pre.get("seed") != of_the_pretraining:        # a directory that is not the run it is named for: every seed of the arm stands on ONE pretraining
+        raise RuntimeError(f"the pretraining run {directory.name} was made at seed {of_pre.get('seed')} and ladder_loop.l4.pretraining_seed is {of_the_pretraining}: "
+                           "every seed of the arm starts from the ONE pretraining of that seed (its `pre`, its map, its G'). The arm is not run on it; nothing was written.")
     failed = [name for name, check in report["can_this_run_see_a_win"].items() if isinstance(check, dict) and not check["passes"]]
     if failed or not report.get("ok", True):
         raise RuntimeError(f"the pretraining run {directory.name} cannot carry the arm: " + (f"its checks failed ({', '.join(failed)})" if failed else "its report is not to be read")
@@ -403,42 +567,41 @@ def ladder_l4_prepare(config: dict) -> dict:
         raise RuntimeError(f"{start} is not there: the adapter `pre` is what every model of the arm is trained from and what attempts round 1. Run {task} again; nothing was written.")
     again = [row["problem_id"] for row in _rows(directory / AGAIN_FILE)]
     store.write_rows(AGAIN_FILE, [{"problem_id": problem_id} for problem_id in again])
-    parts = [RUNG_PART, *(sampling["name"] for sampling in of_pre["goal_samplings"])]
-    for part in parts:
-        store.write_rows(stored_file(PRE, part, L4), _rows(directory / f"episodes_{L4}_{part}_{PRE}_problems.jsonl"))
-    _write_json(store, PRE_FILE, {"label": LABEL, **{key: json.loads((directory / f"{MEASURE}.done.json").read_text())[key] for key in WROTE}})
-    # The base arm's own gain stands beside the primary: its last model's stored rows on G, when its run is on this box (a smoke run reads none).
-    base_arm, copied = config["ladder_loop"]["l4"]["base_arm"], None
-    of_the_base_arm = _runs(config) / f"ladder_l2_{base_arm}_seed{seed}"
-    files = {part: of_the_base_arm / f"episodes_{ladder_l3d2.L3D2}_{part}_with_problems.jsonl" for part in (REACH, MORE)}
-    if os.environ.get(ladder_l3d2.STORED_VARIABLE) != "none" and all(path.exists() for path in files.values()):
-        for part, path in files.items():
-            store.write_rows(stored_file(BASE_ARM, part, L4), _rows(path))
-        copied = str(of_the_base_arm)
+    parts = copy_what_pre_stored(store, directory, of_pre)
+    base_arm, of_the_base_arm, copied = copy_the_base_arms_rows(config, store, seed)
     summary = {"stage": L4, "label": LABEL, "seed": seed, "arm": ladder_l2.arm_name(), "pretraining_run": str(directory), "start_adapter": str(start),
                "pretraining_rows": of_pre["rows"], "pretraining_file_sha256": of_pre["pretraining_file_sha256"], "goal_set_again": len(again),
                "the_two_checks_of_the_pretraining": {name: check for name, check in report["can_this_run_see_a_win"].items() if isinstance(check, dict)},
                "map": store.done_summary(ladder_l2.PREPARE).get("map"), "map_file": store.done_summary(ladder_l2.PREPARE).get("map_file"),
                "pre_parts": parts, "base_arm": base_arm, "base_arm_run": copied, "stand_in_engine": _stand_in()}
+    if seed != of_the_pretraining:      # a further seed of the arm says so, and what it read from the ONE pretraining; the pretraining's own seed records what it always did
+        summary["a_further_seed"] = {
+            "what": "a further seed of the arm: the pretraining is not repeated. `pre`, its own map, G' and `pre`'s stored rows are the pretraining run's, the same at "
+                    "every seed of the arm; `pre`'s rows were sampled with that run's sampling seeds, this seed's models are sampled with its own",
+            "seed": seed, "pretraining_seed": of_the_pretraining, "sampling_seeds_of_pre": of_pre["sampling_seeds"], "base_arm_run_looked_for": str(of_the_base_arm)}
     store.mark_done(ARM_PREPARE, summary)
     _say(f"the arm {summary['arm']} is prepared, seed {seed}: from `pre` ({of_pre['rows']} published proofs); G' holds {len(again)} goal problems; the base arm's rows "
-         f"{'are read from ' + copied if copied else 'are not on this box: its own gain will not stand beside the primary'}")
+         f"{'are read from ' + copied if copied else 'are not on this box: its own gain will not stand beside the primary'}"
+         + (f". A FURTHER SEED of the arm: the pretraining is seed {of_the_pretraining}'s ({directory.name}) and is not repeated" if seed != of_the_pretraining else ""))
     return summary
 
 
-def ladder_l4_report(config: dict) -> dict:
+def read_for_the_arms_report(config: dict, store: ArtifactStore, prepare: str = ARM_PREPARE, stage: str = ARM_STAGE, start: str = PRE, wrote: str = PRE_FILE) -> tuple[tuple, dict]:
+    """What the report of an arm from a stored pretrained model reads of its run: (the arguments of `build_l4_report`,
+    in its order; and beside them, by training of the arm, the rows it was trained on as the training loop recorded
+    them, each with its id, its problem and its origin). `prepare`, `stage`: the arm's own prepare step and its stage.
+    `start`: the pretrained model the arm starts from, and `wrote` the file that says what it wrote: `pre`'s by default."""
     from rlvr_lean.gpu.ladder_l3c import proof_lengths
-    from rlvr_lean.reporting.ladder_l4 import build_l4_report
 
-    store, rounds = _arm_store(config), ladder_l2.rounds_of(config)
+    rounds = ladder_l2.rounds_of(config)
     last = rounds[-1]
-    for marker in (ARM_PREPARE, ladder_l3d2.PREPARE, f"ladder_l2_train_{last}", ladder_l3d2.TRAIN_WITHOUT, *(ladder_l3d2.measure_marker(arm) for arm in ARMS)):
-        _need(store, marker, "L4's report", ARM_STAGE)
-    own, prepared, sizes = store.done_summary(ARM_PREPARE), store.done_summary(ladder_l3d2.PREPARE), ladder_l2._sizes(ladder_l2.arm_config(config), store)
+    for marker in (prepare, ladder_l3d2.PREPARE, f"ladder_l2_train_{last}", ladder_l3d2.TRAIN_WITHOUT, *(ladder_l3d2.measure_marker(arm) for arm in ARMS)):
+        _need(store, marker, "L4's report", stage)
+    own, prepared, sizes = store.done_summary(prepare), store.done_summary(ladder_l3d2.PREPARE), ladder_l2._sizes(ladder_l2.arm_config(config), store)
     base, models = ladder_l3d2.measured_models(store, prepared)
     samplings = prepared["goal_samplings"]
-    models[PRE] = {RUNG_PART: store.read_rows(stored_file(PRE, RUNG_PART, L4)), GOAL: [store.read_rows(stored_file(PRE, sampling["name"], L4)) for sampling in samplings],
-                   **json.loads(store.path(PRE_FILE).read_text())}
+    models[start] = {RUNG_PART: store.read_rows(stored_file(start, RUNG_PART, L4)), GOAL: [store.read_rows(stored_file(start, sampling["name"], L4)) for sampling in samplings],
+                     **json.loads(store.path(wrote).read_text())}
     base_arm = [store.read_rows(stored_file(BASE_ARM, part, L4)) for part in (REACH, MORE)] if own["base_arm_run"] else None
     # Every training of the arm (each round's model, then the twin): its step's summary, its rows' losses, the problems of the rows it was to be trained on.
     trainings = {f"M({number})": (f"ladder_l2_train_{number}", ladder_assembly.loss_file(number), ladder_assembly.training_set_file(number)) for number in rounds}
@@ -449,28 +612,45 @@ def ladder_l4_report(config: dict) -> dict:
     # What each training WAS trained on is the training loop's own record of row ids, read back to their problems.
     problem_of = {name: {row["id"]: row["problem_id"] for row in store.read_rows(rows)} for name, (_, _, rows) in trainings.items()}
     trained_on = {name: [problem_of[name][row_id] for row_id in entry["rows_trained"]] for name, entry in stored_losses.items()}
+    origin_of = {name: {row["id"]: row["origin"] for row in store.read_rows(rows)} for name, (_, _, rows) in trainings.items()}
+    trained_rows = {name: [{"id": row_id, "problem_id": problem_of[name][row_id], "origin": origin_of[name][row_id]} for row_id in entry["rows_trained"]]
+                    for name, entry in stored_losses.items()}
     assembled = [row for number in rounds for batch in range(1, sizes["batches"] + 1) for row in store.read_rows(ladder_assembly.assembly_file(number, batch))]
     # The length of a held-out problem's published proof is read HERE, by the report, and by nothing before it.
-    report = build_l4_report(
-        prepared, own, store.done_summary(ladder_l2.PREPARE), [row["problem_id"] for row in store.read_rows(AGAIN_FILE)], trains, losses, trained_on,
-        [row["lines_after"] for row in assembled], ladder_l3d2.rounds_read(store, rounds, sizes["batches"]), store.read_rows(ladder_l3d2.GROUPS_FILE),
-        proof_lengths(), base, models, base_arm, config["ladder_loop"]["l4"], ladder_l2.arm_config(config)["ladder_loop"]["challenger"]["target_rate"],
-        config["evaluation"])
-    report["adapters"] = {"kept": True, "what": "every model of the arm is kept, and `pre` with them (in the pretraining run's directory)",
-                          "directory": str(store.root / ladder_assembly.ADAPTERS), "start_adapter": own["start_adapter"],
-                          "there": sorted(path.name for path in (store.root / ladder_assembly.ADAPTERS).glob("*") if path.is_dir())}
-    _write_json(store, ARM_REPORT_FILE, report)
+    return (prepared, own, store.done_summary(ladder_l2.PREPARE), [row["problem_id"] for row in store.read_rows(AGAIN_FILE)], trains, losses, trained_on,
+            [row["lines_after"] for row in assembled], ladder_l3d2.rounds_read(store, rounds, sizes["batches"]), store.read_rows(ladder_l3d2.GROUPS_FILE),
+            proof_lengths(), base, models, base_arm, config["ladder_loop"]["l4"], ladder_l2.arm_config(config)["ladder_loop"]["challenger"]["target_rate"],
+            config["evaluation"]), {"trained_rows": trained_rows, "last_set": store.read_rows(ladder_assembly.training_set_file(last))}
+
+
+def write_the_arms_report(store: ArtifactStore, report: dict, rounds: tuple[int, ...], marker: str = ARM_REPORT, file: str = ARM_REPORT_FILE, wrote: str = PRE_FILE,
+                          also: tuple[str, ...] = ()) -> None:
+    """The arm's report written, what a reader needs beside it sent out again, its lines printed, its step marked done."""
+    _write_json(store, file, report)
     for name in sorted(path.name for path in store.root.glob("*.jsonl")):
         if "_attempts_" not in name and not name.rsplit("_", 1)[-1][:4].isdigit():
             store.mirror(name)
     for name in sorted(path.name for path in store.root.glob("*.done.json")):
         if "_block_" not in name:
             store.mirror(name)
-    for name in (ladder_l3d2.STORED_MODELS_FILE, PRE_FILE, ladder_l3d2.LOSS_WITHOUT_FILE, *(ladder_assembly.loss_file(number) for number in rounds)):
+    for name in (ladder_l3d2.STORED_MODELS_FILE, wrote, ladder_l3d2.LOSS_WITHOUT_FILE, *(ladder_assembly.loss_file(number) for number in rounds), *also):
         store.mirror(name)
     for line in report["lines"]:
         print(line, flush=True)
-    store.mark_done(ARM_REPORT, {"stage": L4, "label": LABEL, "headline": report["headline"], "branch": report["branch"], "ok": report["ok"]})
+    store.mark_done(marker, {"stage": L4, "label": LABEL, "headline": report["headline"], "branch": report["branch"], "ok": report["ok"]})
+
+
+def ladder_l4_report(config: dict) -> dict:
+    from rlvr_lean.reporting.ladder_l4 import build_l4_report
+
+    store, rounds = _arm_store(config), ladder_l2.rounds_of(config)
+    read, _ = read_for_the_arms_report(config, store)
+    own = read[1]
+    report = build_l4_report(*read)
+    report["adapters"] = {"kept": True, "what": "every model of the arm is kept, and `pre` with them (in the pretraining run's directory)",
+                          "directory": str(store.root / ladder_assembly.ADAPTERS), "start_adapter": own["start_adapter"],
+                          "there": sorted(path.name for path in (store.root / ladder_assembly.ADAPTERS).glob("*") if path.is_dir())}
+    write_the_arms_report(store, report, rounds)
     return report
 
 

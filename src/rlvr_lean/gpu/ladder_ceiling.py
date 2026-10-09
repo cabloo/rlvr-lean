@@ -476,6 +476,7 @@ class Model:
     stage: str = "ladder_ceiling"       # the stage, as `runner.entry` names it
     label: str = CEILING                # what its sets and printed lines are called
     also: Callable[[list[dict], list[list[dict]]], dict] | None = None      # more to say of what it wrote: (its attempts on the rungs, on G a sampling)
+    rungs: bool = True                  # False (L4t's measurements at another temperature, and no other caller): G alone, no set of the rungs is sampled or named
 
 
 def measure_model(config: dict, store: ArtifactStore, prepared: Mapping, one: Model) -> dict:
@@ -488,7 +489,7 @@ def measure_model(config: dict, store: ArtifactStore, prepared: Mapping, one: Mo
     adapter."""
     name, label, marker = one.name, one.label, one.marker
     stored = store.done_summary(marker) if store.is_done(marker) else None
-    sets = [rung_set(name, label), *(goal_set(sampling["name"], name, label) for sampling in prepared["goal_samplings"])]
+    sets = [*([rung_set(name, label)] if one.rungs else []), *(goal_set(sampling["name"], name, label) for sampling in prepared["goal_samplings"])]
     again = [set_name for set_name in sets if lean_did_not_answer(_results(store, set_name))] if stored is not None else []
     if stored is not None and not again:
         return stored
@@ -507,10 +508,10 @@ def measure_model(config: dict, store: ArtifactStore, prepared: Mapping, one: Mo
     kit = Engines(enable_lora=True).kit(adapter)
     print(f"{label}: measuring {one.called} ({one.detail})", flush=True)
     summary = {**one.summary,
-               RUNG_PART: _episodes(config, store, rung_set(name, label), prepared["rung_episodes"], prepared["sampling_seeds"][RUNG_PART], kit),
+               **({RUNG_PART: _episodes(config, store, rung_set(name, label), prepared["rung_episodes"], prepared["sampling_seeds"][RUNG_PART], kit)} if one.rungs else {}),
                GOAL: {sampling["name"]: _episodes(config, store, goal_set(sampling["name"], name, label), sampling["episodes"], sampling["sampling_seed"], kit)
                       for sampling in prepared["goal_samplings"]}}
-    on_rungs = _attempts(store, rung_set(name, label))
+    on_rungs = _attempts(store, rung_set(name, label)) if one.rungs else []
     by_sampling = [_attempts(store, goal_set(sampling["name"], name, label)) for sampling in prepared["goal_samplings"]]
     summary.update(what_a_model_wrote(on_rungs, [attempt for attempts in by_sampling for attempt in attempts]))
     if one.also is not None:

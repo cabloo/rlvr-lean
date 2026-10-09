@@ -27,6 +27,9 @@ def main() -> int:
         ladder_l3d1,
         ladder_l3d2,
         ladder_l4,
+        ladder_l4_rank,
+        ladder_l4_rows,
+        ladder_l4b,
         ladder_loop,
         ladder_round,
         milestone2,
@@ -35,7 +38,7 @@ def main() -> int:
 
     steps = {**milestone2.STEPS, **pipeline.STAGES, **diagnostics.STEPS, **ladder_loop.STEPS, **ladder_round.STEPS, **ladder_dose.STEPS, **ladder_l2.STEPS,
              **ladder_l3a.STEPS, **ladder_l3a2.STEPS, **ladder_l3c.STEPS, **ladder_ceiling.STEPS, **ladder_l3d1.STEPS, **ladder_l3d2.STEPS,
-             **ladder_l4.STEPS}
+             **ladder_l4.STEPS, **ladder_l4_rank.STEPS, **ladder_l4_rows.STEPS, **ladder_l4b.STEPS}
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("step", choices=sorted(steps))
     parser.add_argument("--out", required=True, type=Path)

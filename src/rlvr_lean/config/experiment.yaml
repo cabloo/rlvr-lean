@@ -383,6 +383,24 @@ ladder_loop:                       # docs/spec/ladder-loop.spec.md, L0: the pool
       candidates: loop_half
       h0: false
       map: start_model
+    # L4b's arm (spec "L4b: the arm again, from the larger pretrained model"): the arm above with what L4r and L4t name and
+    # nothing else. It STARTS FROM `pre_r64`, the model of l4.rank_check (where it lives, its rank and its alpha are asked of
+    # gpu/ladder_l4_start.py, which L4t asks too): round 1 is attempted by it, every model of the arm and the twin is trained
+    # FROM it at ITS rank (64, alpha 128: read from what its run recorded, never from `lora` above), and the challenger starts
+    # from ITS OWN map (made by the stage's first step, ladder_l4b_map, in a run directory of its own). THE TRAINING RULE is
+    # one setting, `rule` (domain/ladder_round/l4b.py): `old` (one proof for every solved problem, as every arm so far),
+    # `reward_rows` (a row kept when a content hash of the seed and its id is under r(k)) or `rehearse` (as many rows of the
+    # pretraining file as the model has one-shot rows). L4t names it: the stage that is queued says which
+    # (RLVR_LEAN_LADDER_L2_RULE: ladder_l4b_old, ladder_l4b_reward_rows, ladder_l4b_rehearse), and a run with another rule
+    # than `old` has the rule in its run directory's name. An arm that states no rule is trained as it always was.
+    t010_assembly_pre_r64:
+      target_rate: 0.10
+      rounds: 6
+      start: pre_r64
+      candidates: loop_half
+      h0: false
+      map: start_model
+      rule: old
   # ---- L3a: the repair check, no training (gpu/ladder_l3a.py; spec "L3a: the repair check, no training"). The base
   # model, on G and the three rungs as L1's run of the seed stored them. Every problem gets blind first attempts; each
   # one that failed goes on in THREE arms from that same attempt, to at most episode.loops - 1 more attempts each:
@@ -524,8 +542,14 @@ ladder_loop:                       # docs/spec/ladder-loop.spec.md, L0: the pool
     # ladder_l4_pretrain: from the base, one pass over the pretraining file in its order; the adapter `pre` is KEPT.
     # ladder_l4: the arm below from `pre` (l2_assembly_arms), its twin and the two measurements, as L3d Step 2's.
     arm: t010_assembly_pre         # the arm of ladder_loop.l2_assembly_arms the stage ladder_l4 runs
+    # ONE pretraining for every seed of the arm (spec "Further seeds of the arm, made exact before they run"): the arm of
+    # seed N reads the pretraining run of THIS seed (ladder_l4_pretrain_seed<pretraining_seed>: the adapter `pre`, its own
+    # map, G' and `pre`'s stored rows), whatever N is. The pretraining is not repeated for another seed of the arm. Read in
+    # one function (gpu/ladder_l2.py, pretraining_seed); the arm's prepare step refuses a run that recorded another seed.
+    pretraining_seed: 0
     loop_arm: t010                 # the stored three-round model that stands beside: ladder_l2_t010_seed<N>
     base_arm: t010_assembly        # the base arm, whose own gain stands beside the primary: ladder_l2_t010_assembly_seed<N>
+                                   # (it ran at seed 0 only: beside the primary of seeds 1 and 2 nothing stands, and the report says so)
     # Can this run see a win (else INCONCLUSIVE):
     minimum_solved_by_pre: 150     # the pretraining took: `pre` solves at least this many goal problems in its 93 attempts
     minimum_goal_set_again: 80     # G' (the goal problems `pre` does not solve in its 32-attempt sampling) holds at least this many
@@ -534,6 +558,49 @@ ladder_loop:                       # docs/spec/ladder-loop.spec.md, L0: the pool
     loss_share_of_rows: 0.1
     standard_errors_allowed: 2
     maximum_share_without_an_answer: 0.05                      # of a model's attempts on the three rungs (the token cap, or no verdict)
+    # ---- L4r: is the pretrained model capped by the size of its adapter? (spec "L4r: is the pretrained model capped by the size
+    # of its adapter?"; gpu/ladder_l4_rank.py on the pretraining stage's own functions; rules in domain/ladder_round/l4_rank.py;
+    # report in reporting/ladder_l4_rank.py). A labelled check of the pretraining: `pre`'s pass again, from the base, the same
+    # file, order, seed, learning rate, batch, sequence limit and target modules, with ONE change, the adapter's rank and alpha
+    # (alpha / rank stays `pre`'s 2, so the adapter's scale is `pre`'s). The model is `pre_r<rank>`, in a run directory of its
+    # own (ladder_l4_pretrain_r<rank>_seed<N>), measured as `pre` was and read against `pre`'s stored rows. Its checks read
+    # loss_share_of_rows and maximum_share_without_an_answer above. THE one reader is gpu/ladder_l4_rank.py, the_check; the stage
+    # names which of the two checks it runs (runner/entry.py: RLVR_LEAN_LADDER_L4_RANK_CHECK). For the check's measurement, and
+    # for no other step of any stage, vllm.max_lora_rank above is raised to the check's rank (gpu/ladder_l4_rank.py, config_of).
+    rank_check:
+      rank: 64                     # stage ladder_l4_rank: the model `pre_r64`
+      alpha: 128
+      fallback_rank: 32            # stage ladder_l4_rank_fallback, queued ONLY when the box cannot hold the rank above (the training
+      fallback_alpha: 64           # runs out of GPU memory in its first steps and that run is VOID): the model `pre_r32`, the same read
+    # ---- L4t: what should a round train on? Three one-change checks on the rounds already made (spec "L4t: what should a round
+    # train on?"; stage ladder_l4_rows: gpu/ladder_l4_rows.py; rules in domain/ladder_round/l4_rows.py; report in
+    # reporting/ladder_l4_rows.py). NO NEW ROUND: two training sets made from the stored rounds of the arm below, each trained
+    # from the start adapter by the arm's recipe and measured as `with` was with `pre`'s sampling seeds; and `with` and `pre`
+    # sampled again on G alone at another temperature. Its checks read loss_share_of_rows, standard_errors_allowed and
+    # maximum_share_without_an_answer above. THE one reader is gpu/ladder_l4_rows.py, the_settings.
+    rows:
+      start: pre                   # the adapter every model here is trained FROM (the run directory carries the name of any other)
+      arm_run: t010_assembly_pre   # the arm whose stored rounds are read: ladder_l2_<arm_run>_seed<N> (its seed, arm and start are held to these)
+      models: [rehearse, reward_rows]   # the two trained models, in the order they are trained and measured (the stage's steps are theirs)
+      # ANOTHER START (spec "L4r's first branch was taken: what L4t runs"): a model of rank_check above, which the stage names
+      # (ladder_l4_rows_r64: RLVR_LEAN_LADDER_L4_ROWS_START=pre_r64; `start` above stays `pre` and its two stages are what they
+      # were). It lives in that check's run (ladder_l4_pretrain_r64_seed<pretraining_seed>/adapters/pre_r64); every model is then
+      # at ITS rank and alpha, read from what that run recorded and never from `lora` above, and the model server of this stage's
+      # measure steps is started with that rank as its largest. The rows are still the arm's (made from `pre`); `old_rule`, the
+      # twin's rows in the twin's order, is trained and measured FIRST and stands in `without`'s place, the start model in `pre`'s.
+      models_from_another_start: [old_rule, reward_rows, rehearse]      # in the order they are trained and measured
+      temperature_hot: 1.2         # `hot`: the sampling temperature of its two measurements ALONE; sampling.temperature (1.0) is every other step's
+      sampling_seeds_hot: [1040, 1041]  # `hot`: the sampling seeds of G's two samplings (32 and 61 attempts), no other measurement's: every
+                                   # other one is round.sampling_seed + 100 x a seed + a place up to 33, goal's 100 or base_map's 101
+    # ---- L4b: the arm again, from the larger pretrained model (spec "L4b: the arm again, from the larger pretrained model";
+    # stages ladder_l4b_old, ladder_l4b_reward_rows, ladder_l4b_rehearse: gpu/ladder_l4b.py on the L2 stage's arm below; rules in
+    # domain/ladder_round/l4b.py; report in reporting/ladder_l4b.py). L4's read with the start model in `pre`'s place, and beside
+    # the primary the goal problems solved in all the attempts against the start model (NARROWER when it lost more than it
+    # gained with the sign test under 0.05). Its checks read minimum_solved_by_pre, minimum_goal_set_again, loss_share_of_rows,
+    # standard_errors_allowed and maximum_share_without_an_answer above. THE one reader is gpu/ladder_l4b.py, the_settings.
+    again:
+      arm: t010_assembly_pre_r64   # the arm of ladder_loop.l2_assembly_arms the stages run (their tasks set RLVR_LEAN_LADDER_L2_ARM to it)
+      rank_16_arm: t010_assembly_pre    # the rank-16 arm, whose stored report's figures stand beside when its run of the seed is on the box
 
 evaluation:
   conjecture_holdout_samples: 12

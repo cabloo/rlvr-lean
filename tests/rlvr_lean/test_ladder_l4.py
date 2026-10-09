@@ -78,7 +78,9 @@ def test_the_settings_are_the_specs():
     # The arm is the base arm with a start adapter, the `loop` half as its candidates, no H0, and the map of the model it starts from: the
     # target rate and the rounds are the base arm's.
     assert arms[SETTINGS["arm"]] == {**arms[SETTINGS["base_arm"]], "start": "pre", "candidates": "loop_half", "h0": False, "map": "start_model"}
-    assert arms[SETTINGS["base_arm"]] == {"target_rate": 0.10, "rounds": 6} and list(arms) == ["t010_assembly", "t010_assembly_pre"]
+    assert arms[SETTINGS["base_arm"]] == {"target_rate": 0.10, "rounds": 6} and list(arms) == ["t010_assembly", "t010_assembly_pre", "t010_assembly_pre_r64"]
+    # L4b's arm is L4's with another start and a training rule: nothing else of the arm moves (test_ladder_l4b_stage.py).
+    assert arms["t010_assembly_pre_r64"] == {**arms[SETTINGS["arm"]], "start": "pre_r64", "rule": "old"} and SETTINGS["again"] == {"arm": "t010_assembly_pre_r64", "rank_16_arm": SETTINGS["arm"]}
     assert (PRE, START_MODEL, MAP_FILE, MAP_STEP) == ("pre", "start_model", "l4_map_pre.jsonl", "ladder_l4_pretrain_map")
     assert CONFIG["ladder_loop"]["base_map"] == {"problems": 4000, "episodes": 8, "seed": 20261004, "sampling_seed": 101}       # what the stored map was made with
 

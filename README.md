@@ -41,7 +41,9 @@ The distributed Lean checking pool built to feed it is a project of its own, [le
 | The same episode, by a replay after the run | What do the blind arm's own 8 attempts get when only the Lean-only assembly is added to them? | At least what the accumulate arm got as run: 1,373 hard episodes resolved against its 1,294 (blind 1,190), and 94 never-solved problems against its 92 (blind 65), with no generation added. Read after the run, not an arm fixed before it (`ladder-l3c-RESULT.md`, addendum) |
 | The ceiling, a labelled diagnostic (one seed; **not a result of the loop**) | Trained once on 8,000 published proofs written by other provers, can this model learn to write longer proofs? | Yes. On the never-solved problems that need 4 lines or more: +0.0478 successes per attempt [+0.0380, +0.0584] (50.4 per 1,000 against 2.62). It solves 245 of the 392 against the base's 59, and 106 reliably against 3. The adapters were deleted and the training text is not distributed (`ladder-ceiling-RESULT.md`) |
 | Assembly in the round (one seed) | Does training on the proofs the episode assembles reach the problems that need longer proofs? | **Not shown**, with the power to have seen it: −0.00019 successes per attempt [−0.00122, +0.00061] against a twin trained without them. Once minimised, the assembled proofs are as short as the model's own (`ladder-l3d2-RESULT.md`) |
-| The loop from a pretrained model (in progress) | Does the loop add anything on top of a model pretrained on published proofs? | Built; the run is in progress; no result yet. Labelled as distillation of other provers followed by the loop (`ladder-loop.spec.md`, L4) |
+| The loop from a pretrained model (one seed; labelled **pretrained on published proofs**) | Does the loop add anything on top of a model pretrained on published proofs? | **Not shown on top of pretraining.** On the 210 goal problems the pretrained model could not solve: +0.0012 successes per attempt [−0.0022, +0.0058]. Six rounds make it more reliable on what it could already do (+17% successes per attempt on the goal set) and narrower (227 distinct goal problems solved against 238) (`ladder-l4-RESULT.md`) |
+| The adapter's size, a labelled check of the pretraining (one seed) | Is the pretrained model capped by the size of its adapter? | **The adapter's size capped the pretrained model.** The same pretraining at rank 64 in the place of 16: +0.0133 successes per attempt on the goal set [+0.0077, +0.0192] (80.0 against 66.7 per 1,000), 107 goal problems solved reliably against 94; 3.9 points worse on the easy rung (`ladder-l4r-RESULT.md`) |
+| Training rules on the stored rounds, from the rank-64 pretrained model (one seed) | What should a round train on? | **The old rule narrows at rank 64 too**: 217 goal problems solved against 245 (gained 25, lost 53), nothing gained per attempt. Reward-weighted rows and rows mixed with published proofs both give the breadth back (241 and 234) without a clear gain per attempt on all goal problems (`ladder-l4t-RESULT.md`) |
 
 Every stage was run from a written spec whose pass, fail and void conditions were committed before the run.
 The specs and result notes are in [`docs/spec/`](docs/spec/).
@@ -64,8 +66,7 @@ flowchart LR
   a published proof of it, or of its exact negation, that our own Lean accepts. Nothing the model wrote is in
   the pool, and published proofs are used as certificates only, never as training targets: the solver trains
   only on proofs it found itself. There are two exceptions, each labelled as one wherever it is reported: a
-  ceiling diagnostic, and an arm now running that starts from a model pretrained on published proofs (both
-  below).
+  ceiling diagnostic, and the work that starts from a model pretrained on published proofs (both below).
 - **Either side counts.** A problem is resolved by proving the statement or by proving its negation, so
   refuting a false statement is rewarded like proving a true one.
 - **The challenger's reward** for a problem that `k` of `n` solver attempts resolved, with `p = k/n` and a
@@ -289,15 +290,33 @@ measured side by side. One seed.
 
 ([`ladder-l3d2-RESULT.md`](docs/spec/ladder-l3d2-RESULT.md))
 
-### In progress: the same six rounds from a model pretrained on published proofs
+### The same six rounds from a model pretrained on published proofs: not shown on top of pretraining
 
 The ceiling put a decision, and it was answered with both arms. The base arm is the six rounds above. The
 other (L4 in the spec) is the same six rounds started from a model pretrained on published proofs, so that
 what the loop adds on top of pretraining is itself measured. The pool is cut in two by a hash of each
 problem's id: the pretraining reads one half and the rounds draw from the other, so no round draws a problem
 whose published proof the pretraining saw. Everything this arm produces is labelled as what it is,
-distillation of other provers followed by the loop. It is built; the run is in progress; there is no result
-yet ([`ladder-loop.spec.md`](docs/spec/ladder-loop.spec.md), L4).
+distillation of other provers followed by the loop. The pretrained model itself, one pass over 24,866
+published proofs, solves 238 of the 392 goal problems and 94 reliably. One seed throughout.
+
+- **Not shown on top of pretraining.** On the 210 goal problems the pretrained model could not solve, the
+  model after six rounds minus the pretrained model: +0.0012 successes per attempt [−0.0022, +0.0058]. The
+  rounds make it more reliable on what it could already do (+17% successes per attempt on the goal set, +11
+  points on the middle rung) and narrower: 227 distinct goal problems solved against 238, and less varied
+  attempts ([`ladder-l4-RESULT.md`](docs/spec/ladder-l4-RESULT.md)).
+- **The adapter's size capped the pretrained model.** A labelled check of the pretraining: the same pass at
+  rank 64 in the place of 16 gives +0.0133 successes per attempt on the goal set [+0.0077, +0.0192] (80.0
+  against 66.7 per 1,000) and 107 goal problems solved reliably against 94. It is 3.9 points worse on the
+  easy rung, and its training loss was no better
+  ([`ladder-l4r-RESULT.md`](docs/spec/ladder-l4r-RESULT.md)).
+- **The old rule narrows at rank 64 too.** Trained from the rank-64 model on the rows the six rounds stored,
+  by the rule every arm so far has used (one verified proof for every solved problem), the model solves 217
+  goal problems against 245 (gained 25, lost 53) and gains nothing per attempt: the cap was not the cause of
+  the narrowing, the training rule is. Reward-weighted rows and rows mixed with published proofs both give
+  the breadth back (241 and 234) without a clear gain per attempt on all goal problems, and by its own rule
+  the six-round arm from the larger model (L4b in the spec) is not run as specified
+  ([`ladder-l4t-RESULT.md`](docs/spec/ladder-l4t-RESULT.md)).
 
 ### A defect worth describing
 
@@ -332,7 +351,7 @@ certificates, recovered with a 29-entry rename table taken from Mathlib's own de
   an FP8 export and LoRA adapters for sampling at about 2,500 tokens per second.
 - **Statistics.** Paired by problem, bootstrap over problems, sign tests for solved/unsolved flips, one seed
   as a scout and three to conclude, and a distinction kept between a run that failed and an idea that failed.
-- **Tests.** About 920 tests for the loop (the pool's 1,100 are in its own repository). The model and Lean are
+- **Tests.** About 980 tests for the loop (the pool's 1,100 are in its own repository). The model and Lean are
   replaced by stand-ins, so the suite runs with no GPU and no network. The tests that read the published-proof
   fixtures or the pool's derived data skip here, because neither is distributed.
 
@@ -366,8 +385,8 @@ python docs/figures/make_figures.py   # redraw the figures from docs/results/ (n
 The GPU stages need a 16 GB card, a Kimina Lean Server (or [lean-pool](https://github.com/cabloo/lean-pool) in front of several) and the
 model weights. A stage is one command, and the stages are listed in
 [`src/rlvr_lean/runner/entry.py`](src/rlvr_lean/runner/entry.py); each has a `_smoke` variant that runs on the
-shipped fixtures (the ceiling's and the pretraining's need a fixture of published proofs, which is not
-distributed), for example
+shipped fixtures (the ceiling's, the pretraining's and those of the stages built on the pretrained model need
+a fixture of published proofs, which is not distributed), for example
 `PYTHONPATH=src python -m rlvr_lean.runner.entry --stage ladder_l1_smoke --profile full --out out/`. The settings are in
 [`src/rlvr_lean/config/experiment.yaml`](src/rlvr_lean/config/experiment.yaml). The problem pool is rebuilt
 from the published datasets with `python -m rlvr_lean.tools.ladder_pool` (it is not shipped: 30 MB derived
@@ -384,12 +403,15 @@ from the search: an episode that keeps what verified solves problems that sampli
 model. Training on what that search assembles is not shown to add to it, and the loop's own training has
 barely moved the problems whose proof needs 4 lines or more (+0.00064 successes per attempt over three
 seeds); the one thing measured that moves them is training on proofs written by stronger provers, which is a
-ceiling and not the loop's doing. None of this is yet the aim, which is to do reliably what could not be done
-before. Three things are open.
+ceiling and not the loop's doing. Run from a model pretrained on such proofs, six rounds of the loop make it
+more reliable and narrower, and are not shown to take it to problems it could not solve. None of this is yet
+the aim, which is to do reliably what could not be done before. Three things are open.
 
-- **The loop on top of pretraining (in progress).** The same six rounds from a model pretrained on published
-  proofs, on a half of the pool the pretraining never saw, asks whether the loop takes that model to problems
-  it could not solve. It is labelled as distillation of other provers followed by the loop. No result yet.
+- **What a round should train on.** From a pretrained model, the loop's own proofs as every arm has used them
+  cost the model its long proofs, at either adapter size, and neither of the two other rules tried is shown
+  to beat the pretrained model on all goal problems per attempt. Two more one-change checks on the stored
+  rounds are specified and come before any further arm
+  ([`ladder-loop.spec.md`](docs/spec/ladder-loop.spec.md), L4t2).
 - **A search that builds longer arguments.** The assembled proofs are recombinations of failed attempts and
   come out short. Lemmas proposed for a goal are another thing, and are not built.
 - **A deeper pool.** About 650,000 published proofs have not been re-checked yet; the pool's thin middle is

@@ -15,6 +15,10 @@ with a 95% bootstrap interval over problems.
                           is kept under `measured_and_not_read`); the PRIMARY on G' over the attempts of the SECOND
                           sampling (fresh for those problems: nothing of it chose them), `with` minus `pre`; beside it
                           the base arm's own gain, the same quantity from its stored rows; the branch; the secondary reads
+`over_seeds`              the read over the seeds of the arm (spec, "Further seeds of the arm, made exact before they
+                          run"): each seed's primary from its stored rows, held to its report's figure; pooled, each
+                          problem's mean over the seeds of its difference, by the function the primary is read with;
+                          each seed's sign and whether its own interval is clear of zero. It names no verdict
 
 The counts WITH ASSEMBLY are not here: `tools/ladder_goal_assembly.py` makes them after the run, Lean only. THE LENGTH
 OF A HELD-OUT PROBLEM'S PUBLISHED PROOF is read here and nowhere before.
@@ -29,7 +33,8 @@ from typing import Mapping, Sequence
 from rlvr_lean.domain.ladder_round.ceiling import interval_text, still_writes_proofs
 from rlvr_lean.domain.ladder_round.l3d import WITH, WITHOUT
 from rlvr_lean.domain.ladder_round.l3d2 import round_table
-from rlvr_lean.domain.ladder_round.l4 import INCONCLUSIVE, PRE, arm_checks, goal_set_again, l4_branch, map_summary, pretraining_checks, the_training_ran
+from rlvr_lean.domain.ladder_round.l4 import INCONCLUSIVE, NOT_READ, PRE, arm_checks, goal_set_again, l4_branch, map_summary, pretraining_checks, the_training_ran
+from rlvr_lean.domain.ladder_round.l4b import NARROWER, breadth_beside, with_breadth
 from rlvr_lean.domain.ladder_round.read import GOAL, group_ids, paired_change
 from rlvr_lean.domain.problem_pool.episodes import RUNGS
 from rlvr_lean.reporting.ladder_ceiling import ALL, FOUR_PLUS, LOOP, RUNG_PART, _named, _rate, attempts_on_g, goal_sets, lean_did_not_answer, per_attempt, solved, verified_lines
@@ -231,7 +236,7 @@ def build_pretrain_report(prepare: Mapping, train: Mapping, groups: Sequence[Map
 def build_l4_report(prepare: Mapping, own: Mapping, arm_prepare: Mapping, again: Sequence[str], trains: Mapping[str, Mapping], row_losses: Mapping[str, Sequence[float]],
                     trained_on: Mapping[str, Sequence[str]], assembled_lines: Sequence[int], rounds: Mapping[int, Mapping], groups: Sequence[Mapping],
                     lengths: Mapping[str, Mapping], base: Mapping, models: Mapping[str, Mapping], base_arm: Sequence[Sequence[Mapping]] | None, settings: Mapping,
-                    target_rate: float, evaluation: Mapping) -> dict:
+                    target_rate: float, evaluation: Mapping, start: str = PRE, breadth: bool = False, rehearsed: Mapping[str, Sequence[str]] | None = None) -> dict:
     """`prepare`: the summary of the step that read the stored runs into the arm's run (`ladder_l3d2_prepare`); `own`:
     `ladder_l4_prepare`'s (the pretraining run it stands on and that run's two checks); `arm_prepare`: the arm's own.
     `again`: G', the ids the pretraining's report stored. `trains`, `row_losses`, `trained_on`: by training of the arm
@@ -241,13 +246,21 @@ def build_l4_report(prepare: Mapping, own: Mapping, arm_prepare: Mapping, again:
     its `summary`, `results` and `examples`. `base` and `models` (`pre`, `with`, `without`, and `loop` when a stored
     three-round model was read): as the pretraining's report takes them. `base_arm`: the base arm's last model on G, one
     list of per-problem rows a sampling, from its stored run; None when that run was not read. `settings`:
-    `ladder_loop.l4`. `target_rate`: the arm's."""
+    `ladder_loop.l4`. `target_rate`: the arm's.
+
+    THE ARM AGAIN, FROM ANOTHER PRETRAINED MODEL (L4b; every default is L4's own report, line for line). `start`: the
+    pretrained model in `pre`'s place, under whose name `models` holds its rows. `breadth`: the condition "without
+    overfitting" is read BESIDE the primary on every branch (`l4b.breadth_beside`: the goal problems solved at least
+    once in all the attempts, `with` against the start model, and the share of distinct attempts on G), and the branch
+    says NARROWER when it lost more than it gained (`l4b.with_breadth`). `rehearsed`: by training, the problems of its
+    REHEARSAL rows, for an arm whose training rule adds them (`trained_on` then holds the rounds' rows alone)."""
     resamples, seed = evaluation["bootstrap_resamples"], evaluation["bootstrap_seed"]
     goal_ids, rung_ids = group_ids(groups, GOAL), {name: group_ids(groups, name) for name in RUNGS}
     sets = goal_sets(goal_ids, lengths)
-    who = {BASE: base, **{name: models[name] for name in (PRE, WITH, WITHOUT, LOOP) if name in models}}
+    who = {BASE: base, **{name: models[name] for name in (start, WITH, WITHOUT, LOOP) if name in models}}
     names = names_of(prepare, {name: entry for name, entry in who.items() if name != BASE})
-    pairs = {name: pair for name, pair in PAIRS.items() if pair[0] in who and pair[1] in who}
+    pairs = {name: tuple(start if model == PRE else model for model in pair) for name, pair in PAIRS.items()}
+    pairs = {name: pair for name, pair in pairs.items() if pair[0] in who and pair[1] in who}
     on_g = {name: attempts_on_g(entry[GOAL]) for name, entry in who.items()}
     by_length = {name: {group: per_attempt(on_g[model], on_g[other], ids, resamples, seed) for group, ids in sets.items()} for name, (model, other) in pairs.items()}
     rungs = {name: {rung: paired_change(who[model][RUNG_PART], who[other][RUNG_PART], rung_ids[rung], resamples, seed) for rung in RUNGS}
@@ -271,8 +284,8 @@ def build_l4_report(prepare: Mapping, own: Mapping, arm_prepare: Mapping, again:
     def on_the_fresh_attempts(model: str, other: str, ids: Sequence[str]) -> dict:
         return per_attempt(second(who[model]), second(who[other]), ids, resamples, seed) if fresh else dict(NOT_MEASURED)
 
-    primary = on_the_fresh_attempts(WITH, PRE, list(again))
-    again_by_length = {group: on_the_fresh_attempts(WITH, PRE, [problem_id for problem_id in ids if problem_id in in_again]) for group, ids in sets.items()}
+    primary = on_the_fresh_attempts(WITH, start, list(again))
+    again_by_length = {group: on_the_fresh_attempts(WITH, start, [problem_id for problem_id in ids if problem_id in in_again]) for group, ids in sets.items()}
     twin_on_again = on_the_fresh_attempts(WITH, WITHOUT, list(again))
     # ---- beside it: the base arm's own gain, the same quantity from its stored rows
     base_again = goal_set_again(base[GOAL][0], goal_ids)
@@ -283,18 +296,23 @@ def build_l4_report(prepare: Mapping, own: Mapping, arm_prepare: Mapping, again:
                   "run": own.get("base_arm_run"), "goal_set_again_of_the_base": len(base_again), **per_attempt(base_arm[1], second(base), base_again, resamples, seed)}
 
     # ---- the checks; then the branch
-    measured_here = {name: who[name][RUNG_PART] for name in (PRE, WITH, WITHOUT)}
+    measured_here = {name: who[name][RUNG_PART] for name in (start, WITH, WITHOUT)}
     last = prepare["rounds"][-1]
     of_the_measured = (f"M({last})", f"`{WITHOUT}`")           # the two trainings whose models are measured: `with`'s and `without`'s
     as_recorded = lambda name: {"row_losses": row_losses[name], "against_the_start_adapter": adapter_against_the_start(trains[name])}      # noqa: E731
     checks = arm_checks(own["the_two_checks_of_the_pretraining"], {name: as_recorded(name) for name in of_the_measured if name in row_losses}, measured_here, trained_on,
-                        {row["problem_id"] for row in groups}, settings["half_seed"], settings)
+                        {row["problem_id"] for row in groups}, settings["half_seed"], settings, **({"rehearsed": rehearsed} if rehearsed is not None else {}))
     # The other trainings (the models of the rounds before the last) are read the same way and decide nothing.
     others = {name: the_training_ran(row_losses[name], adapter_against_the_start(trains[name]), settings) for name in row_losses if name not in of_the_measured}
     took_pre, enough, ran, writes, barred = (checks[key] for key in (
         "the_pretraining_took", "the_goal_set_again_is_large_enough", "the_two_measured_trainings_ran", "each_measured_model_still_writes_proofs",
         "no_training_row_is_of_the_pretrain_half_or_held_out"))
-    branch = l4_branch(checks, primary, beside)
+    branch = l4_branch(checks, primary, beside, start)
+    read_beside = None
+    if breadth:         # the condition "without overfitting", beside the primary on every branch: NARROWER is said whatever the primary says
+        read_beside = breadth_beside(solved_on_g[PRIMARY][ALL], distinct[WITH][GOAL]["mean_share_distinct"], distinct[start][GOAL]["mean_share_distinct"], start)
+        branch = with_breadth(branch, read_beside)
+    said_branch = branch.get("reported_as", branch["name"])
     inconclusive = branch["name"] == INCONCLUSIVE
     health, not_to_be_read = _sets_health(who)
 
@@ -307,10 +325,11 @@ def build_l4_report(prepare: Mapping, own: Mapping, arm_prepare: Mapping, again:
                  "assembled_in_the_rounds": len(assembled_lines),
                  "lines_once_minimised": verified_lines({str(lines): count for lines, count in sorted(Counter(assembled_lines).items())})}
     measured = {
-        "primary": {"what": f"G' (the goal problems `pre` does not solve in its {samplings[0]['episodes']}-attempt sampling): successes per attempt over {of_the_fresh}, "
-                            "`with` minus `pre`, paired by problem, a 95% bootstrap interval over problems. In its figures `of_the_base` is the side compared with: `pre`",
+        "primary": {"what": f"G' (the goal problems `{start}` does not solve in its {samplings[0]['episodes']}-attempt sampling): successes per attempt over {of_the_fresh}, "
+                            f"`with` minus `{start}`, paired by problem, a 95% bootstrap interval over problems. In its figures `of_the_base` is the side compared with: `{start}`",
                     "goal_set_again": len(again), **primary},
         "beside_the_primary": beside,
+        **({"breadth_beside_the_primary": read_beside} if breadth else {}),
         "secondary": {
             "by_length_group": {"what": f"successes per attempt over all {attempts} attempts a problem by the length group of each goal problem's shortest published "
                                         "proof, on the problems of 4 lines or more and on all of G; for every pair of models read",
@@ -322,7 +341,7 @@ def build_l4_report(prepare: Mapping, own: Mapping, arm_prepare: Mapping, again:
                         "quarter, half (RELIABLY) and nine tenths of their episodes. No Lean here: the counts with assembly come from tools/ladder_goal_assembly.py",
                 **{name: {"model": names[name], **alone[name]} for name in who}},
             "goal_problems_solved": {"what": f"goal problems solved at least once in their {attempts} attempts, gained against lost with a two-sided sign test, by "
-                                             "length group: `with` against `pre`, and `with` against `without`",
+                                             f"length group: `with` against `{start}`, and `with` against `without`",
                                      **{name: {"pair": against(name), **solved_on_g[name]} for name in solved_on_g}},
             "the_goal_set_again_by_length_group": {"what": "the primary's quantity by the length group of each problem of G'", **again_by_length},
             "with_minus_without": {"what": f"do assembled proofs teach at this strength: `with` minus its twin, on G' over {of_the_fresh}; on all of G it is under "
@@ -339,10 +358,10 @@ def build_l4_report(prepare: Mapping, own: Mapping, arm_prepare: Mapping, again:
     # ---- the lines: the checks first, then the read in the spec's order
     lines = [
         f"{SAY}: L4, THE LOOP FROM A MODEL {LABEL.upper()}, seed {prepare['seed']}. The arm {prepare['arm']}: {len(prepare['rounds'])} rounds with assembly after each "
-        f"batch, its candidates the `loop` half of the pool, round 1 attempted by `pre` ({own['pretraining_rows']:,} published proofs of the `pretrain` half) and every "
-        f"model trained FROM `pre`. `with` is M({last}), `pre` trained one more pass on {trains[f'M({last})']['rows']:,} rows of the rounds; `without` is its twin, from "
-        f"`pre` on the {trains[f'`{WITHOUT}`']['rows']:,} one-shot rows among them. All measured in one-shot attempts",
-        f"{SAY}: CHECK 1, the pretraining took: `pre` solves {took_pre['goal_problems_solved']} of the {took_pre['goal_problems']} goal problems; at least "
+        f"batch, its candidates the `loop` half of the pool, round 1 attempted by `{start}` ({own['pretraining_rows']:,} published proofs of the `pretrain` half) and every "
+        f"model trained FROM `{start}`. `with` is M({last}), `{start}` trained one more pass on {trains[f'M({last})']['rows']:,} rows of the rounds; `without` is its twin, from "
+        f"`{start}` on the {trains[f'`{WITHOUT}`']['rows']:,} one-shot rows among them. All measured in one-shot attempts",
+        f"{SAY}: CHECK 1, the pretraining took: `{start}` solves {took_pre['goal_problems_solved']} of the {took_pre['goal_problems']} goal problems; at least "
         f"{took_pre['minimum']} is asked: {_verdict(took_pre)}",
         f"{SAY}: CHECK 2, G' holds {enough['problems']} problems; at least {enough['minimum']} is asked: {_verdict(enough)}",
         f"{SAY}: CHECK 3, the two measured trainings of the arm ran (the adapter saved is not the start adapter's; the mean loss over the last tenth of its rows is "
@@ -356,17 +375,38 @@ def build_l4_report(prepare: Mapping, own: Mapping, arm_prepare: Mapping, again:
     if prepare.get("stored_runs") is None:
         lines.append(f"{SAY}: L2's stored runs were not read (a smoke run): G was attempted {attempts} times a problem in ONE sampling, so the primary has no fresh "
                      "attempts to be read on, and no stored model stands beside")
+    # A further seed of the arm (spec, "Further seeds of the arm"): what it read from the ONE pretraining, and what is its own. The pretraining's own seed has no such line.
+    further = own.get("a_further_seed")
+    if further:
+        by_part = lambda seeds: ", ".join(f"{part} {seeds[part]}" for part in seeds)      # noqa: E731
+        lines.append(f"{SAY}: A FURTHER SEED OF THE ARM: seed {prepare['seed']}, from the pretraining of seed {further['pretraining_seed']}, which is not repeated "
+                     f"({own['pretraining_run']}). The same at every seed of the arm, read from that run: `{start}`, its own map, G' and `{start}`'s stored rows (sampling seeds: "
+                     f"{by_part(further['sampling_seeds_of_pre'])}). This seed's own: its rounds' attempts, its challenger's proposals, its trainings' rows and order, and "
+                     f"the sampling seeds of `with` and `without` ({by_part(prepare['sampling_seeds'])}). `with` and `{start}` are paired by problem and do not share a "
+                     "sampling seed")
     if not inconclusive:
-        lines.append(f"{SAY}: PRIMARY. G' ({len(again)} goal problems `pre` does not solve in its {samplings[0]['episodes']}-attempt sampling), successes per attempt over "
-                     f"{of_the_fresh}, `with` minus `pre`, paired by problem, 95% bootstrap over problems: {_rate(primary)}"
+        lines.append(f"{SAY}: PRIMARY. G' ({len(again)} goal problems `{start}` does not solve in its {samplings[0]['episodes']}-attempt sampling), successes per attempt over "
+                     f"{of_the_fresh}, `with` minus `{start}`, paired by problem, 95% bootstrap over problems: {_rate(primary)}"
                      + (f" ({primary['successes']} successes against {primary['successes_of_the_base']} in {primary['attempts_each']:,} attempts each)"
                         if primary.get("mean") is not None else ""))
-        lines.append(f"{SAY}: BESIDE IT, the base arm's own gain from its stored rows (the {beside['goal_set_again_of_the_base']} goal problems the base does not solve in "
-                     f"its {samplings[0]['episodes']}-attempt sampling, its last model minus the base, over the same {fresh['episodes']} attempts): {_rate(beside)}"
-                     if beside is not None else f"{SAY}: BESIDE IT: the base arm's stored rows were not read (its run is not on this box, or this run has one sampling)")
-    lines.append(f"{SAY}: {'INCONCLUSIVE' if inconclusive else 'BRANCH: ' + branch['name']}. {branch['reason']}")
+        if beside is not None:
+            lines.append(f"{SAY}: BESIDE IT, the base arm's own gain from its stored rows (the {beside['goal_set_again_of_the_base']} goal problems the base does not solve "
+                         f"in its {samplings[0]['episodes']}-attempt sampling, its last model minus the base, over the same {fresh['episodes']} attempts): {_rate(beside)}")
+        elif further and not own.get("base_arm_run"):
+            lines.append(f"{SAY}: BESIDE IT: nothing at this seed. No run of the base arm ({own['base_arm']}) for seed {prepare['seed']} is on this box "
+                         f"({further['base_arm_run_looked_for']}): its own gain stands beside the primary of the seed it ran at")
+        else:
+            lines.append(f"{SAY}: BESIDE IT: the base arm's stored rows were not read (its run is not on this box, or this run has one sampling)")
+    if breadth and not inconclusive:
+        shares = read_beside["share_of_distinct_attempts_on_g"]
+        lines.append(f"{SAY}: BESIDE IT, WITHOUT OVERFITTING (read on every branch): goal problems solved at least once in their {attempts} attempts, `with` against "
+                     f"`{start}`: {read_beside['solved_by_with']} to {read_beside['solved_by_the_start']} of {read_beside['problems']}, {read_beside['counts']}; the share of "
+                     f"distinct attempts on G {shares['with']} against {shares[start]}: "
+                     + (f"{NARROWER} (lost more than gained with the sign test under {read_beside['level']:g})" if read_beside["narrower"] else
+                        f"not narrower by the sign test at {read_beside['level']:g}"))
+    lines.append(f"{SAY}: {'INCONCLUSIVE' if inconclusive else 'BRANCH: ' + said_branch}. {branch['reason']}")
     if not inconclusive:
-        lines.append(f"{SAY}: SECONDARY, G' by the length of the shortest published proof, `with` minus `pre` over {of_the_fresh}: "
+        lines.append(f"{SAY}: SECONDARY, G' by the length of the shortest published proof, `with` minus `{start}` over {of_the_fresh}: "
                      + "; ".join(f"{_named(group)} ({again_by_length[group]['problems']}): {_rate(again_by_length[group])}" for group in sets))
         for name in pairs:
             lines.append(f"{SAY}: SECONDARY, all of G over {attempts} attempts a problem by the length of the shortest published proof, {said(name)}: "
@@ -399,9 +439,9 @@ def build_l4_report(prepare: Mapping, own: Mapping, arm_prepare: Mapping, again:
     if not_to_be_read:
         lines.append(f"{SAY}: NOT TO BE READ: too many attempts without a verdict from Lean in {', '.join(not_to_be_read)}. The step fails; the task queued again "
                      "measures such a set of this run's own again from the kept adapter")
-    headline = (f"L4 (the loop from a model {LABEL}) seed {prepare['seed']}: {branch['name']}. "
-                + ("" if inconclusive else f"Primary (G', {len(again)} goal problems `pre` does not solve in its first sampling, over {of_the_fresh}, `with` minus "
-                                           f"`pre`): {_rate(primary)}; the base arm's own gain beside it: {_rate(beside) if beside is not None else 'not read'}. ")
+    headline = (f"L4 (the loop from a model {LABEL}) seed {prepare['seed']}: {said_branch}. "
+                + ("" if inconclusive else f"Primary (G', {len(again)} goal problems `{start}` does not solve in its first sampling, over {of_the_fresh}, `with` minus "
+                                           f"`{start}`): {_rate(primary)}; the base arm's own gain beside it: {_rate(beside) if beside is not None else 'not read'}. ")
                 + f"Checks: the pretraining took {_verdict(took_pre)}, G' {_verdict(enough)} ({enough['problems']}), the two measured trainings ran {_verdict(ran)}, still write "
                   f"proofs {_verdict(writes)}, no barred row {_verdict(barred)}. " + branch["reason"]
                 + (f" NOT TO BE READ: too many attempts without a verdict from Lean in {', '.join(not_to_be_read)}" if not_to_be_read else ""))
@@ -414,15 +454,16 @@ def build_l4_report(prepare: Mapping, own: Mapping, arm_prepare: Mapping, again:
         "can_this_run_see_a_win": {"what": "the checks the spec reads before the branch; when any fails the run is INCONCLUSIVE and nothing else is said", **checks},
         "the_other_trainings": {"what": "the trainings whose models are not measured (the rounds before the last), read as the third check reads the two that "
                                         "are: for information, they decide nothing", **others},
-        **({"primary": None, "beside_the_primary": None, "secondary": None,
+        **({"primary": None, "beside_the_primary": None, **({"breadth_beside_the_primary": None} if breadth else {}), "secondary": None,
             "measured_and_not_read": {"why": "a check failed: the run is INCONCLUSIVE, and these numbers say nothing about what the loop adds on top of pretraining. "
                                              "They are kept for whoever repairs the run", **measured}} if inconclusive else measured),
         "models": {BASE: "the base model, from stored attempts: nothing here measured it again",
-                   PRE: f"`pre`: {LABEL} ({own['pretraining_rows']:,} proofs of the pool's `pretrain` half), measured by its own stage: its rows are that run's",
-                   WITH: f"`with`: M({last}), the arm's last model: `pre` trained one more pass on the rounds' proofs",
-                   WITHOUT: f"`without`: the twin of M({last}), from `pre` on its one-shot rows alone", **({LOOP: names[LOOP]} if LOOP in who else {})},
+                   start: f"`{start}`: {LABEL} ({own['pretraining_rows']:,} proofs of the pool's `pretrain` half), measured by its own stage: its rows are that run's",
+                   WITH: f"`with`: M({last}), the arm's last model: `{start}` trained one more pass on the rounds' proofs",
+                   WITHOUT: f"`without`: the twin of M({last}), from `{start}` on its one-shot rows alone", **({LOOP: names[LOOP]} if LOOP in who else {})},
         "trainings": {name: {key: value for key, value in entry.items() if key != "checkpoints"} for name, entry in trains.items()},
         "the_pretraining": {key: own.get(key) for key in ("pretraining_run", "start_adapter", "pretraining_rows", "pretraining_file_sha256", "goal_set_again")},
+        **({"a_further_seed": {**further, "sampling_seeds": prepare["sampling_seeds"]}} if further else {}),       # absent at the pretraining's own seed
         "the_arm": {key: arm_prepare.get(key) for key in ("arm", "target_rate", "rounds", "problems_a_round", "batches", "solvers", "candidates",
                                                           "candidates_of_the_whole_pool", "start", "start_adapter", "h0", "h0_rows", "sampling_seeds", "data")},
         "heldout": {"goal_set": len(goal_ids), "goal_set_again": len(again), "goal_set_by_length_group": {group: len(ids) for group, ids in sets.items()},
@@ -430,9 +471,115 @@ def build_l4_report(prepare: Mapping, own: Mapping, arm_prepare: Mapping, again:
         "sizes": {key: prepare[key] for key in ("sampling_seeds", "rung_episodes", "goal_samplings", "attempts_a_goal_problem", "stored_runs", "loop_arm",
                                                 "stored_measurements", "contradicted_side_setting")},
         "attempts": health, "not_to_be_read": not_to_be_read,
-        "not_measured": ["the base, `pre` and the stored three-round model (their rows are the stored ones of the runs named under sizes.stored_runs and the_pretraining)",
+        "not_measured": [f"the base, `{start}` and the stored three-round model (their rows are the stored ones of the runs named under sizes.stored_runs and the_pretraining)",
                          "the base arm (its last model's rows are its own run's, read when that run is on the box)",
                          "the models of the rounds before the last: only the last round's model and its twin are measured",
                          "anything with assembly on the goal set: the counts by episode with assembly are made after the run, Lean only (tools/ladder_goal_assembly.py)",
                          "the stop rule and the equal-compute control of the L2 stage: this arm has neither"],
+    }
+
+
+# ------------------------------------------------------------------------------- the read over the seeds of the arm
+NOT_TO_BE_READ = "NOT TO BE READ"       # a seed's report in which Lean gave no verdict on too much of a set
+HELD_TO = ("problems", "mean", "low", "high", "successes", "successes_of_the_base", "attempts_each")      # what a seed's primary, computed again, is held to in its report
+
+
+def not_read(report: Mapping) -> str | None:
+    """Why a seed's primary is not given, or None when it is read: its report is not to be read, a check failed
+    (INCONCLUSIVE: nothing else is said of such a run), or the primary had nothing to be read on."""
+    if not report.get("ok", True):
+        return NOT_TO_BE_READ
+    if report.get("inconclusive"):
+        return INCONCLUSIVE
+    return NOT_READ if (report.get("primary") or {}).get("mean") is None else None
+
+
+def _by_problem(rows: Sequence[Mapping]) -> dict:
+    return {row["problem_id"]: (row["resolved"], row["episodes"]) for row in rows}
+
+
+def over_seeds(by_seed: Mapping[int, Mapping], resamples: int, bootstrap_seed: int) -> dict:
+    """The read over the seeds of the arm (spec, "Further seeds of the arm, made exact before they run": "The read over
+    the three seeds, fixed now"). `by_seed`: for each seed of the arm, from its run: `report` (its report: `ok`,
+    `inconclusive`, `branch`, `primary`), `again` (G': the ids the run stored), and `with` and `pre` (each one's
+    per-problem rows on the SECOND sampling of G, the one the primary is read on).
+
+    Per seed: the primary as its report reads it (`per_attempt`), computed again from the rows and HELD to the
+    report's figure: rows that give another are not the rows that report read (ValueError). Pooled: for each problem
+    of G' the mean over the seeds of its difference, with a 95% bootstrap over the problems of G': the same
+    `per_attempt`, on each problem's attempts ADDED over the seeds (`with`'s of every seed; `pre`'s once for each
+    seed). Every seed has the same number of attempts on a problem (each is held to `pre`'s, and `pre` is one), so a
+    problem's difference there is the mean of its differences seed by seed. Beside it: each seed's sign, and the seeds
+    whose own interval is clear of zero.
+
+    Refused (ValueError): fewer than two seeds; seeds that do not hold ONE G' or ONE `pre` (the pretraining is not
+    repeated: every seed reads the same rows). A seed whose report is not to be read, is INCONCLUSIVE or has no
+    primary is named, its primary is not given, and NOTHING IS POOLED. No verdict is named: the spec's branches stand."""
+    if len(by_seed) < 2:
+        raise ValueError(f"the read over the seeds of the arm needs at least two seeds, and was given {sorted(by_seed)}: one seed's read is its own report's")
+    seeds = sorted(by_seed)
+    first = by_seed[seeds[0]]
+    again, one_pre = list(first["again"]), _by_problem(first["pre"])
+    for number in seeds[1:]:
+        if list(by_seed[number]["again"]) != again:
+            raise ValueError(f"seed {number} holds another G' than seed {seeds[0]} ({len(by_seed[number]['again'])} problems against {len(again)}, or other ids): every "
+                             "seed of the arm is read on the ONE G' of the pretraining")
+        if _by_problem(by_seed[number]["pre"]) != one_pre:
+            raise ValueError(f"seed {number} holds other rows of `pre` than seed {seeds[0]}: every seed of the arm is read against the ONE measurement of `pre`")
+    why_not = {number: not_read(by_seed[number]["report"]) for number in seeds}
+    read = [number for number in seeds if why_not[number] is None]
+    each = {}
+    for number in seeds:
+        entry = by_seed[number]
+        branch = (entry["report"].get("branch") or {}).get("name")
+        if why_not[number] is not None:
+            each[number] = {"read": False, "why_not": why_not[number], "branch": branch, "primary": None}
+            continue
+        primary, of_the_report = per_attempt(entry["with"], entry["pre"], again, resamples, bootstrap_seed), entry["report"]["primary"]
+        differs = [key for key in HELD_TO if primary.get(key) != of_the_report.get(key)]
+        if differs:
+            raise ValueError(f"seed {number}: the primary computed from its stored rows is not its report's ({', '.join(differs)}: "
+                             f"{[primary.get(key) for key in differs]} against {[of_the_report.get(key) for key in differs]}): these are not the rows that report read, "
+                             "or the bootstrap's settings are not the run's")
+        each[number] = {"read": True, "why_not": None, "branch": branch, "primary": primary,
+                        "sign": "+" if primary["mean"] > 0 else "-" if primary["mean"] < 0 else "0",
+                        "own_interval": "above zero" if primary["low"] > 0 else "below zero" if primary["high"] < 0 else "holds zero"}
+    pooled = None
+    if len(read) == len(seeds):
+        pooled = per_attempt(attempts_on_g([by_seed[number]["with"] for number in seeds]), attempts_on_g([by_seed[number]["pre"] for number in seeds]), again,
+                             resamples, bootstrap_seed)
+    of = lambda key, value: [number for number in read if each[number][key] == value]      # noqa: E731
+    signs = {"positive": of("sign", "+"), "negative": of("sign", "-"), "zero": of("sign", "0")}
+    clear = {"above": of("own_interval", "above zero"), "below": of("own_interval", "below zero"), "holds_zero": of("own_interval", "holds zero")}
+    named = lambda numbers: ", ".join(str(number) for number in numbers) if numbers else "none"      # noqa: E731
+
+    lines = [f"{SAY}: L4, THE READ OVER {len(seeds)} SEEDS OF THE ARM ({named(seeds)}), each from the ONE pretraining: on the one G' ({len(again)} goal problems `pre` does "
+             "not solve in its first sampling), successes per attempt over the second sampling, `with` of the seed minus the one measurement of `pre`, paired by problem, "
+             "95% bootstrap over problems"]
+    for number in seeds:
+        entry = each[number]
+        if not entry["read"]:
+            lines.append(f"{SAY}: seed {number}: {entry['why_not']}: its primary is not given, and nothing is said of what the loop added at this seed")
+            continue
+        primary = entry["primary"]
+        lines.append(f"{SAY}: seed {number}: {entry['branch']}. Primary {_rate(primary)} ({primary['successes']} successes against {primary['successes_of_the_base']} in "
+                     f"{primary['attempts_each']:,} attempts each); its own interval {entry['own_interval']}")
+    if pooled is not None:
+        lines.append(f"{SAY}: POOLED over seeds {named(seeds)}, each problem's mean over the seeds of its difference: {_rate(pooled)} ({pooled['successes']} successes of "
+                     f"`with` against {pooled['successes_of_the_base']} of `pre`, counted once for each seed, in {pooled['attempts_each']:,} attempts each)")
+    else:
+        unread = [number for number in seeds if why_not[number] is not None]
+        lines.append(f"{SAY}: NOT POOLED: seed{'s' if len(unread) > 1 else ''} {named(unread)} "
+                     f"({', '.join(why_not[number] for number in unread)}): nothing is said of such a run, and nothing is pooled over it")
+    lines.append(f"{SAY}: by seed: of positive sign {len(signs['positive'])} of {len(seeds)} (seeds {named(signs['positive'])}), of negative sign {len(signs['negative'])} "
+                 f"(seeds {named(signs['negative'])}); own interval clear of zero and above {len(clear['above'])} of {len(seeds)} (seeds {named(clear['above'])}), below "
+                 f"{len(clear['below'])} (seeds {named(clear['below'])}), holding zero {len(clear['holds_zero'])} (seeds {named(clear['holds_zero'])}). All seeds share one "
+                 "measurement of `pre`: they are not independent reads of its side. No verdict is named here: the spec's branches stand")
+    return {
+        "spec": "docs/spec/ladder-loop.spec.md, L4: Further seeds of the arm, made exact before they run (the read over the three seeds)", "stage": L4, "label": LABEL,
+        "what": "per seed: the primary as that seed's report reads it, computed again from its stored rows. Pooled: for each problem of G' the mean over the seeds of its "
+                "difference (`with` of the seed minus `pre`), 95% bootstrap over the problems of G', on each problem's attempts added over the seeds",
+        "seeds": seeds, "goal_set_again": len(again), "by_seed": each, "pooled": pooled,
+        "not_pooled": None if pooled is not None else {str(number): why_not[number] for number in seeds if why_not[number] is not None},
+        "signs": signs, "own_interval_clear_of_zero": clear, "lines": lines,
     }

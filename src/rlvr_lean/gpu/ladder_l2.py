@@ -46,6 +46,19 @@ resolved (`gpu/ladder_assembly.py`). A problem only assembly resolved counts as 
 models are trained in the order of a content hash, so that the twin of the last one is that order with rows left out.
 Its models are NOT measured round by round and it has no control: `gpu/ladder_l3d2.py` measures the last model and
 its twin, and writes the report. The steps of rounds 4 to 6 are registered there; `STEPS` here is the three rounds'.
+
+AN ARM FROM A STORED PRETRAINED MODEL (L4: `start: pre`; L4b: `start: pre_r64`). Where the start model lives, its rank and
+alpha and its own map are asked in ONE place (`the_start_of`, on `gpu/ladder_l4_start.py`, which L4t asks too). From
+`pre` every step is handed the config itself. From a model of the check of the adapter's rank, the arm's prepare step
+reads and refuses what that check's run recorded, and stores the START ADAPTER's rank and alpha; every training of the
+arm and of its twin attaches that rank (`config_for`), each adapter saved is read back and held to it before its step is
+marked done (`adapter_saved`), and every step that samples starts the model server with that rank as its largest.
+
+THE TRAINING RULE OF AN ARM (L4b; `rule: old | reward_rows | rehearse`, `domain/ladder_round/l4b.py`) is one setting, read
+in `assembly_arm` and nowhere else; the stage names another by `RLVR_LEAN_LADDER_L2_RULE`. It is applied where M(r)'s
+training set is built (`ladder_assembly.train_round`, from `rule_inputs`); a run with another rule than `old` has the
+rule in its run directory's name, and a run keeps the rule it was prepared with. An arm that says no rule is trained as
+every arm was, and writes what it wrote.
 """
 
 from __future__ import annotations
@@ -63,7 +76,9 @@ import numpy as np
 
 from rlvr_lean.data.ladder_round_export import BASE_MAP_SET
 from rlvr_lean.domain.ladder_round.assembly import counted
-from rlvr_lean.domain.ladder_round.l4 import LOOP, MAP_FILE, MAP_STEP, START_MODEL, check_start_map, half_of, map_summary, refuse_the_other_half
+from rlvr_lean.domain.ladder_round.l4 import MAP_FILE, MAP_STEP  # noqa: F401 - `pre`'s own map by its ONE name: `the_start_of` gives an arm from `pre` these
+from rlvr_lean.domain.ladder_round.l4 import LOOP, START_MODEL, check_start_map, half_of, map_summary, refuse_the_other_half
+from rlvr_lean.domain.ladder_round.l4b import OLD, REHEARSE, RULES
 from rlvr_lean.domain.ladder_round.challenger import SCORED, expected_rewards, fact_features, feature_names, fit_pass_rate_model, fit_projection
 from rlvr_lean.domain.ladder_round.read import arm_reward, group_ids, paired_change, stop_rule
 from rlvr_lean.domain.ladder_round.rounds import (
@@ -97,7 +112,13 @@ ASSEMBLY_ARM_SETTINGS = ("target_rate", "rounds")        # what such an arm says
 # in the place of the base, the half of the pool its candidates are, whether it reads H0, and whose map of pass rates its
 # challenger starts from (the map of the model the arm starts from, in the place of the base's stored one).
 ASSEMBLY_ARM_OPTIONS = {"start": ("pre",), "candidates": ("loop_half",), "h0": (True, False), "map": (START_MODEL,)}
-L4_PRETRAIN_RUN_VARIABLE = "RLVR_LEAN_LADDER_L4_PRETRAIN_RUN"   # another run directory of the pretraining stage than `ladder_l4_pretrain_seed<seed>`
+# ... and, for L4b's arm: another start than `pre` (a model of the check of the adapter's rank: `the_start_of` says where it
+# lives), and the TRAINING RULE, which the stage may name in the place of the arm's own.
+ANOTHER_START = "a model of the check of the adapter's rank (`pre_r64`)"
+L2_RULE_VARIABLE = "RLVR_LEAN_LADDER_L2_RULE"            # another training rule than the arm's own `rule` (the stage names the one L4t read: `old`, `reward_rows`, `rehearse`)
+L2_RULE_MINIMUM_VARIABLE = "RLVR_LEAN_LADDER_L2_RULE_MINIMUM"   # a smoke run: `reward_rows` keeps at least this many rows for each model (the rule keeps none of a fixture's rows)
+L2_START_CHECKS_VARIABLE = "RLVR_LEAN_LADDER_L2_START_CHECKS"   # `smoke` (a smoke run alone): the run that made the start model may have failed ITS checks (twelve rows have no loss to compare)
+L4_PRETRAIN_RUN_VARIABLE = "RLVR_LEAN_LADDER_L4_PRETRAIN_RUN"   # another run directory of the pretraining stage than the seed's own (a smoke run)
 START_REQUEST_ID = 100                                   # the start adapter as vLLM serves it: an id no round's model has
 L2_ROUNDS_VARIABLE = "RLVR_LEAN_LADDER_L2_ROUNDS"        # another number of rounds for an arm with assembly (a smoke run: two)
 MOST_ROUNDS = 6                                          # the most rounds an arm may run: the rounds a step exists for
@@ -155,10 +176,21 @@ def assembly_arm(config: dict) -> dict | None:
     if name is None or name not in arms:
         return None
     settings = dict(arms[name] or {})
-    options = {key: value for key, value in settings.items() if key in ASSEMBLY_ARM_OPTIONS}
-    if set(settings) - set(options) != set(ASSEMBLY_ARM_SETTINGS) or any(value not in ASSEMBLY_ARM_OPTIONS[key] for key, value in options.items()):
+    allowed = {**ASSEMBLY_ARM_OPTIONS, "rule": RULES}
+    options = {key: value for key, value in settings.items() if key in allowed}
+
+    def is_allowed(key: str, value) -> bool:
+        return value in allowed[key] or (key == "start" and isinstance(value, str) and _is_a_start(config, value))
+
+    if set(settings) - set(options) != set(ASSEMBLY_ARM_SETTINGS) or not all(is_allowed(key, value) for key, value in options.items()):
         raise ValueError(f"ladder_loop.{ASSEMBLY_ARMS}.{name} is {settings}: an arm with assembly says {list(ASSEMBLY_ARM_SETTINGS)} and nothing else, "
-                         f"but for {ASSEMBLY_ARM_OPTIONS}")
+                         f"but for {ASSEMBLY_ARM_OPTIONS}, for a start that is {ANOTHER_START}, and for its training rule, one of {list(RULES)}")
+    named = os.environ.get(L2_RULE_VARIABLE)
+    if named:           # the stage names the rule: only for an arm that has one, and only a rule there is
+        if "rule" not in options or named not in RULES:
+            raise ValueError(f"{L2_RULE_VARIABLE} names the training rule {named!r} for the arm {name}: " + (
+                f"a rule is one of {list(RULES)}" if "rule" in options else "that arm states no rule of its own (it is trained as every arm was), and none is given it"))
+        options["rule"] = named
     if options.get("map") and not options.get("start"):
         raise ValueError(f"ladder_loop.{ASSEMBLY_ARMS}.{name} asks for the map of the model it starts from and names no start: an arm from the base reads the base's map")
     rounds = int(os.environ.get(L2_ROUNDS_VARIABLE) or settings["rounds"])
@@ -167,19 +199,121 @@ def assembly_arm(config: dict) -> dict | None:
     return {"target_rate": settings["target_rate"], "rounds": rounds, **options}
 
 
-def start_directory(config: dict) -> Path | None:
-    """The stored adapter every model of this task's arm is trained FROM and its first round is attempted by (an arm
-    with `start: pre`: the adapter the pretraining stage of this seed kept), or None: from the base."""
+def pretraining_seed(config: dict) -> int:
+    """The seed of the ONE pretraining every seed of L4's arm stands on (spec, "Further seeds of the arm, made exact
+    before they run"): the pretraining is not repeated for another seed of the arm. THE one place that reads
+    `ladder_loop.l4.pretraining_seed`."""
+    return config["ladder_loop"]["l4"]["pretraining_seed"]
+
+
+def pretraining_run(config: dict) -> str:
+    """The run directory of the pretraining stage an ARM reads (its adapter `pre`, its map, G', `pre`'s stored rows):
+    the one the task names (a smoke run), else the pretraining of `pretraining_seed`, WHATEVER the task's own seed is.
+    (The pretraining stage's own run directory is its task's seed's: `ladder_l4.pretrain_directory`.)"""
+    return os.environ.get(L4_PRETRAIN_RUN_VARIABLE) or f"ladder_l4_pretrain_seed{pretraining_seed(config)}"
+
+
+def _is_a_start(config: dict, name: str) -> bool:
+    """Whether `name` is a stored pretrained model an arm may start from (`ladder_l4_start.is_known`)."""
+    from rlvr_lean.gpu import ladder_l4_start        # imported here: that module reads this one
+
+    return ladder_l4_start.is_known(config, name)
+
+
+def the_start_of(config: dict):
+    """The stored pretrained model this task's arm starts from (`ladder_l4_start.Start`: its run, its adapter, the check
+    that made it when it is not `pre`, and where its own map is), or None: an arm from the base. THE one place an arm's
+    `start` is resolved, by the function L4t resolves its own with."""
     arm = assembly_arm(config)
     if arm is None or not arm.get("start"):
         return None
-    run = os.environ.get(L4_PRETRAIN_RUN_VARIABLE) or f"ladder_l4_pretrain_seed{training_seed(config)}"
-    return _runs(config) / run / "adapters" / arm["start"]
+    from rlvr_lean.gpu import ladder_l4_start        # imported here: that module reads this one
+
+    return ladder_l4_start.the_start(config, arm["start"], f"ladder_loop.{ASSEMBLY_ARMS}.{arm_name()}.start")
+
+
+def start_directory(config: dict) -> Path | None:
+    """The stored adapter every model of this task's arm is trained FROM and its first round is attempted by (an arm
+    with `start: pre`: the adapter the ONE pretraining kept, `pretraining_run`; with another start: the adapter of the
+    check that made it), or None: from the base."""
+    start = the_start_of(config)
+    return None if start is None else start.adapter
 
 
 def start_map_directory(config: dict) -> Path:
-    """Where the map of the model this task's arm starts from is: the pretraining run's directory (its adapter's own)."""
-    return start_directory(config).parents[1]
+    """Where the map of the model this task's arm starts from is: `pre`'s in the pretraining run's directory (its
+    adapter's own); another start's in the run directory of the step that made it."""
+    return the_start_of(config).map_directory
+
+
+def rule_of(config: dict) -> str | None:
+    """The training rule of this task's arm (`assembly_arm`: the arm's own, or the one the stage names), or None: an arm
+    that states none is trained as every arm was."""
+    return (assembly_arm(config) or {}).get("rule")
+
+
+def config_for(config: dict, store: ArtifactStore, serving: bool = False) -> dict:
+    """The config as a training of this task's arm (or, with `serving`, a step that samples) is handed it. An arm from the
+    base or from `pre`: `config` itself, the same object. An arm from another start: the START ADAPTER's rank and alpha,
+    as the arm's own prepare step stored them, and for a step that samples the model server's largest adapter rank too
+    (`ladder_l4_start`'s own function for it, which L4t calls too)."""
+    start = the_start_of(config)
+    if start is None or start.check is None:
+        return config
+    from rlvr_lean.gpu import ladder_l4_start
+
+    return ladder_l4_start.config_from(config, store.done_summary(PREPARE), start, serving=serving)
+
+
+def adapter_saved(config: dict, adapter: Path, model: str) -> dict:
+    """What a training of this task's arm adds to its summary BEFORE its step is marked done. An arm from the base or from
+    `pre`: nothing. From another start: the adapter it saved, read back and held to the start adapter's rank and alpha
+    (refused, the step not marked done, when they are not: `ladder_l4_start.the_adapter_saved`)."""
+    start = the_start_of(config)
+    if start is None or start.check is None:
+        return {}
+    from rlvr_lean.gpu import ladder_l4_start
+
+    return ladder_l4_start.the_adapter_saved(adapter, model, start)
+
+
+def rule_minimum() -> int:
+    """A smoke run's least number of rows the rule `reward_rows` keeps for a model; 0 for every other run."""
+    return max(0, int(os.environ.get(L2_RULE_MINIMUM_VARIABLE) or 0))
+
+
+def _recorded_file(start) -> str:
+    """The SHA-256 of the pretraining file, as the prepare step of the run that made the start model recorded it."""
+    return json.loads((start.directory / f"{start.prepare}.done.json").read_text())["pretraining_file_sha256"]
+
+
+def rule_inputs(config: dict, store: ArtifactStore, number: int) -> dict | None:
+    """What `ladder_assembly.train_round` needs to apply this task's arm's rule to M(`number`): the rule; the arm's target
+    rate; every batch's per-problem results of rounds 1 to `number` (each problem's k of n); for `rehearse` the rows the
+    start model was pretrained on, without their text, and how a stored set's rehearsal rows get their text (from the
+    pretraining file, held to the SHA-256 the run that made the start model recorded). None for an arm that states no rule."""
+    rule = rule_of(config)
+    if rule is None:
+        return None
+    sizes = _sizes(config, store)
+    picks = [row for earlier in rounds_of(config) if earlier <= number for batch in range(1, sizes["batches"] + 1) for row in _results(store, batch_set(earlier, batch))]
+    inputs = {"name": rule, "target_rate": config["ladder_loop"]["challenger"]["target_rate"], "picks": picks, "at_least": rule_minimum()}
+    if rule == REHEARSE:
+        from rlvr_lean.gpu import ladder_l4_start
+
+        start = the_start_of(config)
+        pretraining, sha256 = ladder_l4_start.pretrained_on(start.directory, _recorded_file(start), start.name)
+        inputs.update({"pretraining": pretraining, "pretraining_file_sha256": sha256, "examples": lambda rows: ladder_l4_start.examples_of(rows, sha256)})
+    return inputs
+
+
+def examples_of(config: dict, rows: list[dict]) -> list[dict]:
+    """A stored training set of this task's arm as the training's examples, in its order (`ladder_l4_start.examples_of`:
+    a rehearsal row's text is read from the pretraining file, held to the SHA-256 the start model's run recorded). A set
+    with no rehearsal row, which is every set of an arm without the rule `rehearse`, reads no file."""
+    from rlvr_lean.gpu import ladder_l4_start
+
+    return ladder_l4_start.examples_of(rows, _recorded_file(the_start_of(config)) if rule_of(config) == REHEARSE else "")
 
 
 def start_map(config: dict, base_map: list[dict]) -> list[dict]:
@@ -188,13 +322,12 @@ def start_map(config: dict, base_map: list[dict]) -> list[dict]:
     naming the task to run, when it is not there, and when it was made with another sampling seed, number of
     attempts or set of problems than the stored map's (`check_start_map`): the challenger would then be aimed by
     something that is not the base map of another model."""
-    directory, settings = start_map_directory(config), config["ladder_loop"]["base_map"]
-    marker, file = directory / f"{MAP_STEP}.done.json", directory / MAP_FILE
-    seed = training_seed(config)
+    start, settings = the_start_of(config), config["ladder_loop"]["base_map"]       # the task to run is the ONE pretraining's, never one of this task's own seed
+    directory = start.map_directory
+    marker, file = directory / f"{start.map_step}.done.json", directory / start.map_file
     if not marker.exists() or not file.exists():
-        raise RuntimeError(f"{directory} does not hold the map of the model this arm starts from ({MAP_FILE}, and the marker of the step {MAP_STEP}). The arm's "
-                           f"challenger starts from that map, not from the base's. Run the task of stage `ladder_l4_pretrain` for seed {seed} to its end first "
-                           f"(`python -m rlvr_lean.runner.entry --stage ladder_l4_pretrain --seeds {seed}`; for the smoke run, stage `ladder_l4_pretrain_smoke`); nothing was written.")
+        raise RuntimeError(f"{directory} does not hold the map of the model this arm starts from ({start.map_file}, and the marker of the step {start.map_step}). The arm's "
+                           f"challenger starts from that map, not from the base's. Run {start.map_task}; nothing was written.")
     rows = _rows(file)
     try:
         check_start_map(rows, json.loads(marker.read_text()), [row["problem_id"] for row in base_map], settings["episodes"], settings["sampling_seed"])
@@ -249,7 +382,8 @@ def _in_arm(step):
 def _store(config: dict) -> ArtifactStore:
     mirror = os.environ.get("RLVR_LEAN_STEP_DIR")
     arm = arm_name() if arm_settings(config) else None       # an unknown arm is refused before any directory is made
-    run = os.environ.get(L2_RUN_VARIABLE) or f"ladder_l2_{arm + '_' if arm else ''}seed{training_seed(config)}"
+    rule = rule_of(config)                                   # an arm with another rule than the old one: a run directory of its own
+    run = os.environ.get(L2_RUN_VARIABLE) or f"ladder_l2_{arm + '_' if arm else ''}{rule + '_' if rule not in (None, OLD) else ''}seed{training_seed(config)}"
     return ArtifactStore(_runs(config) / run, Path(mirror) if mirror else None)
 
 
@@ -338,6 +472,9 @@ def _same_arm(config: dict, prepared: dict, store: ArtifactStore) -> None:
     if "target_rate" in prepared and prepared["target_rate"] != target:
         raise RuntimeError(f"{store.root} was prepared at the target rate {prepared['target_rate']} and the config now gives {target}: "
                            "a run keeps the target rate it began with")
+    if prepared.get("rule") != rule_of(config):
+        raise RuntimeError(f"{store.root} was prepared with the training rule {prepared.get('rule')!r} and this task runs {rule_of(config)!r}: a run keeps the rule it "
+                           "began with (another rule is another run directory)")
 
 
 def _sizes(config: dict, store: ArtifactStore) -> dict:
@@ -352,6 +489,29 @@ def _sizes(config: dict, store: ArtifactStore) -> dict:
 
 
 # ------------------------------------------------------------------------------------------------- prepare
+def _start_recipe(config: dict) -> dict:
+    """For an arm from another start than `pre`: what its prepare step records of the START ADAPTER, read from the run
+    that made it (`ladder_l4_start.read_the_start_run`: REFUSED, nothing written, when that run lacks its report or a
+    marker, is not to be read, failed its checks, or recorded another seed, model or rank than the check's). Nothing
+    for an arm from `pre`, whose rank is the config's own."""
+    start = the_start_of(config)
+    if start.check is None:
+        return {}
+    from rlvr_lean.gpu import ladder_l4_start
+
+    read = ladder_l4_start.read_the_start_run(start, pretraining_seed(config), waived=os.environ.get(L2_START_CHECKS_VARIABLE) == "smoke",
+                                              reader=ladder_l4_start.Reader(reads="This arm starts from the model that task kept: it reads what", carry="the arm"))
+    recorded = ladder_l4_start.recipe_recorded(read["prepared"])
+    return {"start_run": str(start.directory),
+            "start_recipe": {"what": f"the adapter of `{start.name}`, as the run that made it recorded it: EVERY training of this arm and of its twin attaches this rank and "
+                                     f"alpha (not the config's own, {config['lora']['rank']} and {config['lora']['alpha']}), the adapter each saves is read back and held to "
+                                     "them, and every step that samples starts the model server with this rank as its largest",
+                             **recorded, "check": start.check.which, "stage": start.check.stage, "adapter_saved": read["trained"].get("adapter_saved"),
+                             "rank_of_the_config": config["lora"]["rank"], "alpha_of_the_config": config["lora"]["alpha"]},
+            "start_run_read": {"branch": (read["report"].get("branch") or {}).get("name"), "pretraining_file_sha256": read["prepared"].get("pretraining_file_sha256"),
+                               "rows": read["prepared"].get("rows"), "checks_failed": read["checks_failed"], "checks_waived_for_a_smoke_run": read["checks_waived"]}}
+
+
 @_in_arm
 def ladder_l2_prepare(config: dict) -> dict:
     store = _store(config)
@@ -407,9 +567,18 @@ def ladder_l2_prepare(config: dict) -> dict:
             harvest.update({"candidates": options["candidates"], "candidates_of_the_whole_pool": data["counts"]["candidates_of_the_whole_pool"]})
         if options.get("start"):
             harvest.update({"start": options["start"], "start_adapter": str(start_directory(config))})
+            harvest.update(_start_recipe(config))       # another start than `pre`: its run read and refused, its adapter's rank and alpha stored
         if options.get("map"):          # read (and checked) by `_data` above: the challenger's first fit and every refit start from it
-            harvest.update({"map": options["map"], "map_file": str(start_map_directory(config) / MAP_FILE),
+            harvest.update({"map": options["map"], "map_file": str(start_map_directory(config) / the_start_of(config).map_file),
                             "map_of_the_start_model": map_summary([row for row in data["base_results"] if row["set"] == BASE_MAP_SET])})
+        if options.get("rule"):
+            if options.get("h0", True):
+                raise RuntimeError(f"the arm {arm_name()} has a training rule and reads H0: a rule gives a k to a round's own rows and to no other. Nothing was written")
+            if options["rule"] == REHEARSE and not options.get("start"):
+                raise RuntimeError(f"the arm {arm_name()} has the rule `{REHEARSE}` and names no start: its rehearsal rows are rows a start model was pretrained on. "
+                                   "Nothing was written")
+            harvest.update({"rule": options["rule"], "rule_of_the_arms_own_setting": config["ladder_loop"][ASSEMBLY_ARMS][arm_name()]["rule"],
+                            "rule_minimum_of_a_smoke_run": rule_minimum()})
     store.write_rows("problems.jsonl", own)
     store.write_rows("heldout_groups.jsonl", groups)
     store.write_rows("base_rungs.jsonl", _rows(source / f"episodes_rungs_{BASE}_problems.jsonl"))
@@ -656,7 +825,7 @@ def ladder_l2_round(config: dict, number: int) -> dict:
         batch_marker = f"ladder_l2_batch_r{number}_b{batch}"
         if not store.is_done(batch_marker):
             picks = _propose(config, store, data, statements, sizes, number, batch)
-            episodes = _episodes(config, store, set_name, sizes["solvers"], sampling_seed, kit, assembling)
+            episodes = _episodes(config_for(config, store, serving=True), store, set_name, sizes["solvers"], sampling_seed, kit, assembling)
             if assembling:      # the batch is not settled until its assembly is: a problem it resolves counts as k = 1 for the reward
                 assembly = ladder_assembly.assemble_batch(config, store, number, batch, set_name)
                 store.mark_done(batch_marker, {"round": number, "batch": batch, "set": set_name, "problems": len(picks), "episodes": episodes,
@@ -712,8 +881,10 @@ def ladder_l2_train(config: dict, number: int) -> dict:
     if assembly_arm(config) is not None:        # its own set, order and record (`gpu/ladder_assembly.py`); the adapter is where every arm's is
         from rlvr_lean.gpu import ladder_assembly
 
-        start = start_directory(config)
-        summary = ladder_assembly.train_round(config, store, number, rounds_of(config), arm_name(), **({"start": start} if start is not None else {}))
+        start, rule = start_directory(config), rule_inputs(config, store, number)
+        summary = ladder_assembly.train_round(config_for(config, store), store, number, rounds_of(config), arm_name(), **({"start": start} if start is not None else {}),
+                                              **({"rule": rule} if rule is not None else {}))
+        summary.update(adapter_saved(config, adapter_directory(store, number), f"m{number}"))      # refused, and the step not marked done, at another rank than the start adapter's
         store.mark_done(marker, summary)
         if summary.get("allocated_after_cleanup_gb", 0) > MAX_LEFTOVER_GB:
             raise RuntimeError(f"{summary['allocated_after_cleanup_gb']} GB is still allocated on the GPU after {model_name(number)}'s adapter was trained and released")

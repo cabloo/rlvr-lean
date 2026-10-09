@@ -19,7 +19,8 @@ it is built" and "Made exact by the build (Step 2)". Called by `gpu/ladder_l2.py
                    H0's rows for the problems the rounds so far have not resolved themselves
   train_round      M(r): from the base, one pass over the training set in the order of a content hash
                    (`ladder_ceiling.one_pass`: the round's recipe, every row's loss, and the training loop's own
-                   record of the rows), so that the twin is this order with rows left out
+                   record of the rows), so that the twin is this order with rows left out. An arm with a TRAINING RULE
+                   (L4b: `domain/ladder_round/l4b.py`) has its set made by that rule from the same rows
 """
 
 from __future__ import annotations
@@ -51,6 +52,8 @@ from rlvr_lean.domain.ladder_round.assembly import (
 )
 from rlvr_lean.domain.ladder_round.ceiling import the_training_took
 from rlvr_lean.domain.ladder_round.l3d import tenth
+from rlvr_lean.domain.ladder_round.l4_rows import with_k
+from rlvr_lean.domain.ladder_round.l4b import OLD, record, rule_set
 from rlvr_lean.domain.problem_pool.selection import SoundnessAlarm
 from rlvr_lean.domain.repair import replay
 from rlvr_lean.gpu import ladder_loop
@@ -202,20 +205,28 @@ def round_examples(store: ArtifactStore, number: int, sets: list[str], examples:
     return own + h0_rows(harvest, resolved, number)
 
 
-def train_round(config: dict, store: ArtifactStore, number: int, rounds: tuple[int, ...], arm: str, start: Path | None = None) -> dict:
+def train_round(config: dict, store: ArtifactStore, number: int, rounds: tuple[int, ...], arm: str, start: Path | None = None, rule: Mapping | None = None) -> dict:
     """M(number) of this arm: from the base, one pass over its training set in the order of a content hash of the
     task's seed and each row's id, the round's recipe. Stores the set in that order (`training_set_m<r>.jsonl`),
     every row's loss and the training loop's own record of the rows (`training_loss_m<r>.json`). `start`: the stored
-    adapter an arm's models are trained FROM in the place of the base (L4: `pre`)."""
+    adapter an arm's models are trained FROM in the place of the base (L4: `pre`). `rule` (an arm with a TRAINING
+    RULE, L4b; `ladder_l2.rule_inputs`): its `name`, the arm's `target_rate`, the `picks` of rounds 1 to `number`, and
+    for `rehearse` the rows the start model was pretrained on (`pretraining`, no text) with the function that reads a
+    stored set's text (`examples`). The set is then `l4b.rule_set`'s, and the summary says the rule, the kept share by
+    k and the rows by origin. With no rule the set, the file and the summary are what they always were."""
     from rlvr_lean.gpu.ladder_ceiling import one_pass      # imported here: that module reads this stage's (`ladder_l2`)
 
     seed, batch = training_seed(config), config["training"]["effective_batch"]
     by_round = {earlier: store.read_rows(f"training_examples_r{earlier}.jsonl") for earlier in rounds if earlier <= number}
-    rows = training_order(training_set(by_round, number), seed)
+    if rule is None:
+        rows = training_order(training_set(by_round, number), seed)
+    else:
+        rows = rule_set(by_round, rule["picks"], number, rule["name"], rule["target_rate"], seed, rule.get("pretraining"), rule.get("at_least", 0))
     if not rows:
-        raise RuntimeError(f"rounds 1 to {number} resolved no problem and H0 is empty: there is nothing to train M({number}) on")
+        raise RuntimeError(f"rounds 1 to {number} resolved no problem and H0 is empty: there is nothing to train M({number}) on" if rule is None else
+                           f"the rule `{rule['name']}` keeps no row of rounds 1 to {number}: there is nothing to train M({number}) on")
     store.write_rows(training_set_file(number), [{"row": position, **row} for position, row in enumerate(rows)])
-    examples = [{field: row[field] for field in EXAMPLE_FIELDS} for row in rows]
+    examples = [{field: row[field] for field in EXAMPLE_FIELDS} for row in rows] if rule is None or "examples" not in rule else rule["examples"](rows)
     steps = -(-len(rows) // batch)
     result, step_rows, row_losses, positions = one_pass(config, examples, {f"m{number}": steps}, seed, batch, store.root / ADAPTERS,
                                                         f"ladder_l2_{arm}_m{number}_seed{seed}", positions=True, **({"start": start} if start is not None else {}))
@@ -228,10 +239,18 @@ def train_round(config: dict, store: ArtifactStore, number: int, rounds: tuple[i
         "row_losses": row_losses, "rows_trained": [rows[position]["id"] for position in positions],
         "training_steps": [{**row, "rows_seen": min(row["step"] * batch, len(row_losses))} for row in step_rows]})
     took = the_training_took(row_losses, tenth(len(row_losses), 0.1))
+    of_the_rule = {}
+    if rule is not None:        # the rule, the kept share of the rounds' rows by k, the set's rows by origin (the rehearsal rows among them)
+        of_the_rounds = with_k(training_set(by_round, number), rule["picks"])
+        of_the_rule = {"rule": {**record(rule["name"], rows, of_the_rounds), "target_rate": rule["target_rate"],
+                                **({"pretraining_file_sha256": rule["pretraining_file_sha256"]} if "pretraining_file_sha256" in rule else {}),
+                                "what": "the old rule: one proof for every problem the rounds resolved, as every arm" if rule["name"] == OLD else
+                                        "the arm's training rule, applied to the rows of the rounds so far (`domain/ladder_round/l4b.py`): a row kept for this model is "
+                                        "kept for every later one, and this model's rehearsal rows are the first of the next model's"}}
     return {"round": number, "model": f"M({number})", "seed": seed, "trained_from": "the base" if start is None else f"the stored adapter {start}",
             "rounds_trained_on": sorted(by_round),
-            "rows": len(rows), "rows_by_origin": by_origin(rows),
-            "rows_by_round": {str(earlier): sum(row["round"] == earlier and row["origin"] != H0 for row in rows) for earlier in sorted(by_round)},
+            "rows": len(rows), "rows_by_origin": by_origin(rows), **of_the_rule,
+            "rows_by_round": {str(earlier): sum(row.get("round") == earlier and row["origin"] != H0 for row in rows) for earlier in sorted(by_round)},
             "order": "a content hash of the task's seed and each row's id (`assembly.training_order`): leaving rows out moves no other",
             "one_shot_rows": sum(row["origin"] == ATTEMPT for row in rows), "first_step_loss": step_rows[0]["mean_loss"],
             "last_step_loss": step_rows[-1]["mean_loss"], "mean_loss_over_the_first_rows": took["first"], "mean_loss_over_the_last_rows": took["last"],

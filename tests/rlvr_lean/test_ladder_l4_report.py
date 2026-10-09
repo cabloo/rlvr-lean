@@ -240,6 +240,60 @@ def test_the_branches_follow_the_primarys_interval_and_the_note_sets_the_base_ar
     assert below["primary"]["high"] < 0 and below["branch"]["name"] == COSTS
 
 
+# A further seed of the arm (spec, "Further seeds of the arm, made exact before they run"): seed 1's steps recorded their own sampling seeds, and its own prepare
+# step that it stands on the pretraining of seed 0 and found no run of the base arm for its seed.
+FURTHER = {"what": "a further seed of the arm: the pretraining is not repeated", "seed": 1, "pretraining_seed": 0,
+           "sampling_seeds_of_pre": {"rungs": 1002, "reach": 1001, "more": 1020}, "base_arm_run_looked_for": "runs/ladder_l2_t010_assembly_seed1"}
+OF_SEED_1 = {"rungs": 1102, "reach": 1101, "more": 1120}
+PREPARE_1 = {**PREPARE, "seed": 1, "stored_runs": {"base": "ladder_l2_seed1", "loop": "ladder_l2_t010_seed1"}, "sampling_seeds": OF_SEED_1,
+             "goal_samplings": [{"name": "reach", "episodes": 32, "sampling_seed": 1101}, {"name": "more", "episodes": 61, "sampling_seed": 1120}]}
+OWN_1 = {**OWN, "seed": 1, "base_arm_run": None, "a_further_seed": FURTHER}
+HEADS = lambda report: [line.split(": ", 1)[1].split(",")[0].split(".")[0].split(":")[0] for line in report["lines"]]      # noqa: E731
+
+
+def test_a_further_seeds_report_says_what_it_stands_on_and_that_nothing_stands_beside_and_seed_0_says_neither():
+    report = _report(prepare=PREPARE_1, own=OWN_1, base_arm=None)
+    lines = report["lines"]
+    assert report["seed"] == 1 and report["inconclusive"] is False and all(line.startswith(f"{SAY}: ") for line in lines)
+    # One line, after the checks' lines and before the primary: what was read from the ONE pretraining, and what is this seed's own.
+    assert HEADS(report)[:11] == ["L4", "CHECK 1", "CHECK 2", "CHECK 3", "CHECK 4", "CHECK 5", "for information", "A FURTHER SEED OF THE ARM", "PRIMARY", "BESIDE IT", "BRANCH"]
+    assert lines[7] == (f"{SAY}: A FURTHER SEED OF THE ARM: seed 1, from the pretraining of seed 0, which is not repeated (ladder_l4_pretrain_seed0). The same at every seed "
+                        "of the arm, read from that run: `pre`, its own map, G' and `pre`'s stored rows (sampling seeds: rungs 1002, reach 1001, more 1020). This seed's own: "
+                        "its rounds' attempts, its challenger's proposals, its trainings' rows and order, and the sampling seeds of `with` and `without` (rungs 1102, reach "
+                        "1101, more 1120). `with` and `pre` are paired by problem and do not share a sampling seed")
+    # BESIDE IT: nothing. The base arm has no run of this seed: said where its gain would stand; nothing fails and no check reads it.
+    assert report["beside_the_primary"] is None and lines[9] == (
+        f"{SAY}: BESIDE IT: nothing at this seed. No run of the base arm (t010_assembly) for seed 1 is on this box (runs/ladder_l2_t010_assembly_seed1): its own gain stands "
+        "beside the primary of the seed it ran at")
+    assert all(check["passes"] for check in report["can_this_run_see_a_win"].values() if isinstance(check, dict)) and "the base arm's own gain beside it: not read" in report["headline"]
+    assert report["a_further_seed"] == {**FURTHER, "sampling_seeds": OF_SEED_1} and list(report)[list(report).index("the_pretraining") + 1] == "a_further_seed"
+    # The primary is the same read: `with` of this seed minus `pre`, on G' over the second sampling (here the rows of seed 0's hand-made world again).
+    at_seed_0 = _report()
+    assert report["primary"] == at_seed_0["primary"] and report["branch"]["name"] == at_seed_0["branch"]["name"] and report["secondary"] == at_seed_0["secondary"]
+    # An interval that holds zero: the note says the base arm's rows were not read, as it does whenever they are not.
+    mixed = _made("with", on_g=(ON_G["with"][0], [9, 9, 9, 6, 6, 6, 4, 3, 0, 1, 0, 0]))
+    through = _report(prepare=PREPARE_1, own=OWN_1, base_arm=None, **{"with": mixed})
+    assert through["branch"]["name"] == NOT_SHOWN and through["branch"]["the_note"]["seen"] is None and "the base arm's stored rows were not read" in through["branch"]["reason"]
+    # INCONCLUSIVE at a further seed: what the run stands on is still said (it is no read of the run), and nothing else is.
+    broken = _report(prepare=PREPARE_1, own=OWN_1, base_arm=None, trained_on={**TRAININGS, "M(2)": [*TRAININGS["M(2)"][:-1], OF_THE_OTHER_HALF]})
+    assert HEADS(broken) == ["L4", "CHECK 1", "CHECK 2", "CHECK 3", "CHECK 4", "CHECK 5", "for information", "A FURTHER SEED OF THE ARM", "INCONCLUSIVE"]
+    assert broken["primary"] is None and broken["a_further_seed"]["pretraining_seed"] == 0
+    # A further seed whose base arm DID run at that seed reads it as seed 0 does: the line and the figure are the usual ones.
+    with_its_own = _report(prepare=PREPARE_1, own={**OWN_1, "base_arm_run": "ladder_l2_t010_assembly_seed1"})
+    assert with_its_own["beside_the_primary"]["run"] == "ladder_l2_t010_assembly_seed1" and with_its_own["lines"][9].startswith(f"{SAY}: BESIDE IT, the base arm's own gain")
+    # SEED 0 (the pretraining's own seed) says neither: no line, no entry; without the base arm's rows its line is the one it always was.
+    assert "a_further_seed" not in at_seed_0 and not any("FURTHER SEED" in line or "nothing at this seed" in line for line in at_seed_0["lines"])
+    assert HEADS(at_seed_0)[:10] == ["L4", "CHECK 1", "CHECK 2", "CHECK 3", "CHECK 4", "CHECK 5", "for information", "PRIMARY", "BESIDE IT", "BRANCH"]
+    alone = _report(base_arm=None)
+    assert "a_further_seed" not in alone and alone["lines"][8] == f"{SAY}: BESIDE IT: the base arm's stored rows were not read (its run is not on this box, or this run has one sampling)"
+    # A further seed with ONE sampling of G (a smoke run's shape): what is missing is still the base arm's run of that seed, and that is what is said.
+    one ={**PREPARE_1, "stored_runs": None, "loop_arm": None, "loop_target_rate": None, "attempts_a_goal_problem": 32, "goal_samplings": PREPARE_1["goal_samplings"][:1]}
+    first = lambda model: {**model, "goal": [model["goal"][0]]}      # noqa: E731
+    smoke = build_l4_report(one, OWN_1, ARM_PREPARE, AGAIN, TRAINS, LOSSES, TRAININGS, [], ROUNDS, GROUPS, LENGTHS, first(_model("base")),
+                            {name: first(_made(name)) for name in ("pre", "with", "without")}, None, SETTINGS, 0.10, EVALUATION)
+    assert smoke["branch"]["name"] == NOT_READ and any("BESIDE IT: nothing at this seed" in line for line in smoke["lines"])
+
+
 def test_a_failing_check_gives_inconclusive_and_nothing_else_is_said():
     for change, name, line in (
             ({"own": {**OWN, "the_two_checks_of_the_pretraining": {**OF_THE_PRETRAINING, "the_goal_set_again_is_large_enough": {"problems": 4, "minimum": 80, "passes": False}}}},

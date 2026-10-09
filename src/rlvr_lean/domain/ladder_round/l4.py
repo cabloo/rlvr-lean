@@ -69,15 +69,15 @@ def goal_set_again(first_sampling: Sequence[Mapping], goal_ids: Sequence[str]) -
     return [problem_id for problem_id in goal_ids if problem_id not in solved]
 
 
-def pretraining_checks(on_g: Sequence[Mapping], again: Sequence[str], goal_ids: Sequence[str], minimum_solved: int, minimum_again: int) -> dict:
-    """The first two "can this run see a win" checks, read on `pre`. `on_g`: its per-problem rows over ALL its attempts
-    on G (93). The pretraining took: it solves at least `minimum_solved` goal problems. G' holds at least
-    `minimum_again` problems."""
+def pretraining_checks(on_g: Sequence[Mapping], again: Sequence[str], goal_ids: Sequence[str], minimum_solved: int, minimum_again: int, name: str = PRE) -> dict:
+    """The first two "can this run see a win" checks, read on `pre` (or on the pretrained model `name` an arm starts
+    from in its place). `on_g`: its per-problem rows over ALL its attempts on G (93). The pretraining took: it solves at
+    least `minimum_solved` goal problems. G' holds at least `minimum_again` problems."""
     wanted = set(goal_ids)
     solved = sum(row["resolved"] > 0 for row in on_g if row["problem_id"] in wanted)
-    return {"the_pretraining_took": {"what": f"`pre` solves at least {minimum_solved} goal problems in all its attempts on G", "goal_problems_solved": solved,
+    return {"the_pretraining_took": {"what": f"`{name}` solves at least {minimum_solved} goal problems in all its attempts on G", "goal_problems_solved": solved,
                                      "goal_problems": len(goal_ids), "minimum": minimum_solved, "passes": solved >= minimum_solved},
-            "the_goal_set_again_is_large_enough": {"what": f"G' (the goal problems `pre` does not solve in its first sampling) holds at least {minimum_again}",
+            "the_goal_set_again_is_large_enough": {"what": f"G' (the goal problems `{name}` does not solve in its first sampling) holds at least {minimum_again}",
                                                    "problems": len(again), "minimum": minimum_again, "passes": len(again) >= minimum_again}}
 
 
@@ -165,14 +165,27 @@ def the_training_ran(row_losses: Sequence[float], against: Mapping | None, setti
 
 
 def arm_checks(of_the_pretraining: Mapping, measured_trainings: Mapping[str, Mapping], rung_rows: Mapping[str, Sequence[Mapping]],
-               trained_on: Mapping[str, Sequence[str]], heldout: Collection[str], half_seed: int, settings: Mapping) -> dict:
+               trained_on: Mapping[str, Sequence[str]], heldout: Collection[str], half_seed: int, settings: Mapping,
+               rehearsed: Mapping[str, Sequence[str]] | None = None) -> dict:
     """The arm's "can this run see a win" checks (any failing: INCONCLUSIVE). `of_the_pretraining`: the two checks
     the pretraining stage's report read. `measured_trainings`: for the two trainings whose models are measured
     (`with`'s and `without`'s), its `row_losses` and what it recorded `against_the_start_adapter`. `rung_rows`: by
-    measured model, its rows on the rungs. `trained_on`: by training of the arm (all seven), the problems of its rows."""
+    measured model, its rows on the rungs. `trained_on`: by training of the arm (all seven), the problems of its rows.
+    `rehearsed` (an arm whose training rule adds REHEARSAL rows, L4b; None for every other arm, whose check is what it
+    was): by training, the problems of its rehearsal rows, which `trained_on` then does not hold. A rehearsal row IS of
+    the `pretrain` half (a published proof the start model was pretrained on) and is named as such: it is barred only
+    when it is a held-out problem or is NOT of that half. A ROUND's row of that half is barred as ever."""
     ran = {name: the_training_ran(entry["row_losses"], entry.get("against_the_start_adapter"), settings) for name, entry in measured_trainings.items()}
     writes = {name: still_writes_proofs(rows, settings["maximum_share_without_an_answer"]) for name, rows in rung_rows.items()}
     barred = {name: sorted(key for key in set(problems) if key in heldout or half_of(key, half_seed) != LOOP) for name, problems in trained_on.items()}
+    of_the_rehearsal = {}
+    if rehearsed is not None:
+        wrong = {name: sorted(key for key in set(problems) if key in heldout or half_of(key, half_seed) != PRETRAIN) for name, problems in rehearsed.items()}
+        barred = {name: sorted({*keys, *wrong.get(name, [])}) for name, keys in barred.items()}
+        of_the_rehearsal = {"rehearsal_rows_of_the_pretrain_half": {name: len(problems) for name, problems in rehearsed.items()},
+                            "barred_rehearsal_rows": sum(len(keys) for keys in wrong.values()),
+                            "what_of_the_rehearsal_rows": "the rehearsal rows are rows of the pretraining file, of the `pretrain` half, and are named as such: one is "
+                                                          "barred only when it is a held-out problem or is not of that half"}
     found = sorted({key for keys in barred.values() for key in keys})
     return {**{name: dict(check) for name, check in of_the_pretraining.items()},
             "the_two_measured_trainings_ran": {
@@ -184,7 +197,8 @@ def arm_checks(of_the_pretraining: Mapping, measured_trainings: Mapping[str, Map
                                                         "passes": bool(writes) and all(entry["passes"] for entry in writes.values())},
             "no_training_row_is_of_the_pretrain_half_or_held_out": {
                 "what": "no row of any training of the arm is a problem of the `pretrain` half or a held-out problem",
-                "rows": {name: len(problems) for name, problems in trained_on.items()}, "barred_problems": len(found), "first": found[:5], "passes": not found}}
+                "rows": {name: len(problems) for name, problems in trained_on.items()}, "barred_problems": len(found), "first": found[:5], **of_the_rehearsal,
+                "passes": not found}}
 
 
 def the_note(primary: Mapping, base_arm: Mapping | None) -> dict:
@@ -197,11 +211,11 @@ def the_note(primary: Mapping, base_arm: Mapping | None) -> dict:
             "resolves": resolves, "base_arms_gain": base_arm["mean"], "seen": abs(base_arm["mean"]) >= resolves}
 
 
-def l4_branch(checks: Mapping, primary: Mapping, base_arm: Mapping | None = None) -> dict:
+def l4_branch(checks: Mapping, primary: Mapping, base_arm: Mapping | None = None, start: str = PRE) -> dict:
     """The branch, fixed before the run. `primary`: on G', successes per attempt over the 61 fresh attempts, `with`
     minus `pre`. A check failed: INCONCLUSIVE, and nothing else is said. Clear of zero and above: the loop adds on
     top of pretraining. It holds zero (one that ends at zero holds it): not shown, with the note. Below zero: the
-    rounds cost the pretrained model."""
+    rounds cost the pretrained model. `start` (L4b): the pretrained model in `pre`'s place, for what the reason says."""
     failed = [name for name, check in checks.items() if not check["passes"]]
     if failed:
         return {"name": INCONCLUSIVE, "failed_checks": failed,
@@ -213,7 +227,7 @@ def l4_branch(checks: Mapping, primary: Mapping, base_arm: Mapping | None = None
     if low > 0:
         return {"name": ADDS, "failed_checks": [],
                 "reason": f"the interval is clear of zero and above ({read}): the loop adds on top of pretraining. Two more seeds of the arm (the pretraining is not "
-                          "repeated: the same `pre`), and this is the loop from here"}
+                          f"repeated: the same `{start}`), and this is the loop from here"}
     if high < 0:
         return {"name": COSTS, "failed_checks": [],
                 "reason": f"the interval lies below zero ({read}): the rounds cost the pretrained model on what it could not solve (the rounds' own proofs, easier "

@@ -775,6 +775,225 @@ def test_the_base_arm_is_what_it_was_and_its_own_gain_stands_beside_the_primary(
     assert ladder_l4.ladder_l4_prepare(config)["base_arm_run"] is None
 
 
+# ---------------------------------------------------------------------------- further seeds of the arm
+SEEDS = "RLVR_LEAN_TRAINING_SEEDS"          # the task's seed (`--seeds`), as the entry shim hands it to every step
+# What `ladder_l4_prepare` records and what the arm's report holds AT THE PRETRAINING'S OWN SEED: what they held before a further seed could run.
+OWN_KEYS = ["stage", "label", "seed", "arm", "pretraining_run", "start_adapter", "pretraining_rows", "pretraining_file_sha256", "goal_set_again",
+            "the_two_checks_of_the_pretraining", "map", "map_file", "pre_parts", "base_arm", "base_arm_run", "stand_in_engine"]
+REPORT_KEYS = ["spec", "stage", "label", "headline", "lines", "ok", "seed", "arm", "rounds", "stand_in_engine", "branch", "inconclusive", "can_this_run_see_a_win",
+               "the_other_trainings", "primary", "beside_the_primary", "secondary", "models", "trainings", "the_pretraining", "the_arm", "heldout",
+               "sizes", "attempts", "not_to_be_read", "not_measured", "adapters"]          # and `measured_and_not_read` after `secondary` in a report that is INCONCLUSIVE
+
+
+def _keys(report):
+    return [key for key in report if key != "measured_and_not_read"]
+
+
+def _the_arm_at(l4, monkeypatch, config, seed):
+    """The arm's stage at one seed (two rounds), its trainings by their GPU path; (its summaries, its store)."""
+    monkeypatch.setenv(SEEDS, str(seed))
+    l4.the_arm()
+    with monkeypatch.context() as patched:
+        patched.setattr(ladder_ceiling, "_stand_in", lambda: False)
+        _run(config, "ladder_l4", rounds=2, until="ladder_l3d2_train_without")
+    return _run(config, "ladder_l4", rounds=2), l4.store()
+
+
+def test_a_further_seed_of_the_arm_stands_on_the_one_pretraining_and_seed_0_is_what_it_was(l4, monkeypatch):
+    config, calls = l4.config, []
+    of_pre = _pretrained(l4, monkeypatch, calls)                                                    # seed 0: its stored runs, and the ONE pretraining
+    pretrain = l4.pretrain_store().root
+    pre, the_map = pretrain / "adapters" / "pre", pretrain / "l4_map_pre.jsonl"
+    assert pretrain.name == "ladder_l4_pretrain_seed0" and config["ladder_loop"]["l4"]["pretraining_seed"] == 0
+    # The base arm ran at seed 0 only: its run of that seed is on the box (here its last model's two files on G, rows of the right shape).
+    of_the_base_arm = pretrain.parent / f"ladder_l2_{BASE_ARM}_seed0"
+    of_the_base_arm.mkdir()
+    for part in (REACH, MORE):
+        (of_the_base_arm / f"episodes_l3d2_{part}_with_problems.jsonl").write_bytes((pretrain / f"episodes_l4_{part}_pre_problems.jsonl").read_bytes())
+    as_it_was = {path: _files(path) for path in (pretrain, pre, of_the_base_arm)}
+    # ---- seed 1's task: what the L1 and L2 tasks of seed 1 stored, and NO pretraining of seed 1
+    monkeypatch.setenv(SEEDS, "1")
+    l4.stored()
+    assert (ladder_l2.pretraining_seed(config), ladder_l2.pretraining_run(config)) == (0, "ladder_l4_pretrain_seed0")
+    assert ladder_l4.pretraining_of_the_arm(config) == pretrain                                    # the arm of seed 1 reads seed 0's pretraining run ...
+    assert ladder_l4.pretrain_directory(config).name == "ladder_l4_pretrain_seed1"                 # ... while the pretraining STAGE's own directory stays its task's seed's
+    del calls[:]
+    summaries, store = _the_arm_at(l4, monkeypatch, config, 1)
+    assert ladder_l2.start_directory(config) == pre and ladder_l2.start_map_directory(config) == pretrain
+    assert store.root.name == "ladder_l2_t010_assembly_pre_seed1" and store.root.parent == pretrain.parent
+    assert not (pretrain.parent / "ladder_l4_pretrain_seed1").exists()                             # no pretraining of seed 1 was looked for into being, or made
+    assert {path: _files(path) for path in as_it_was} == as_it_was                                 # the one pretraining run was only read
+    assert sorted(path.name for path in pretrain.parent.iterdir()) == [
+        "ladder_l1_seed0", "ladder_l1_seed1", "ladder_l2_seed0", "ladder_l2_seed1", "ladder_l2_t010_assembly_pre_seed1", "ladder_l2_t010_assembly_seed0",
+        "ladder_l2_t010_seed0", "ladder_l2_t010_seed1", "ladder_l4_pretrain_seed0"]
+
+    # ---- READ FROM SEED 0's PRETRAINING RUN: the start adapter, the map, G', `pre`'s rows, the two checks
+    prepare, own = summaries["ladder_l2_prepare"], summaries["ladder_l4_prepare"]
+    assert (prepare["seed"], prepare["start_adapter"], prepare["map_file"]) == (1, str(pre), str(the_map)) and prepare["source_run"].endswith("ladder_l1_seed1")
+    assert prepare["map_of_the_start_model"] == of_pre["the_map_the_arm_starts_from"]["pre"]
+    assert (own["seed"], own["pretraining_run"], own["start_adapter"], own["map_file"]) == (1, str(pretrain), str(pre), str(the_map))
+    assert own["the_two_checks_of_the_pretraining"] == {name: check for name, check in of_pre["can_this_run_see_a_win"].items() if isinstance(check, dict)}
+    again = of_pre["goal_set_again"]["problem_ids"]
+    assert [row["problem_id"] for row in store.read_rows(ladder_l4.AGAIN_FILE)] == again == [row["problem_id"] for row in _file_rows(pretrain / ladder_l4.AGAIN_FILE)]
+    for part in ("rungs", REACH, MORE):
+        assert store.read_rows(ladder_ceiling.stored_file("pre", part, "l4")) == _file_rows(pretrain / f"episodes_l4_{part}_pre_problems.jsonl")
+    # ... and it says that it is a further seed, with `pre`'s sampling seeds (seed 0's) and where it looked for a base arm's run of its own seed.
+    of_seed_0 = {"rungs": 1002, "reach": 1001, "more": 1020}
+    assert list(own) == [*OWN_KEYS, "a_further_seed"]
+    # BESIDE THE PRIMARY: nothing. The base arm's run of seed 0 is on the box and is NOT read at seed 1: the run looked for is seed 1's, which is not there.
+    assert own["base_arm_run"] is None and not [name for name in _files(store.root) if "base_arm" in name]
+    further = own["a_further_seed"]
+    assert {key: value for key, value in further.items() if key != "what"} == {
+        "seed": 1, "pretraining_seed": 0, "sampling_seeds_of_pre": of_seed_0, "base_arm_run_looked_for": str(pretrain.parent / f"ladder_l2_{BASE_ARM}_seed1")}
+    assert "the pretraining is not repeated" in further["what"]
+
+    # ---- MOVED BY THE SEED: the rounds' sampling seeds, the trainings' seed and names, the measurements' sampling seeds (those of seed 1's L1 and L2 runs)
+    assert prepare["sampling_seeds"] == {"rungs": 1102, "reach": 1101, "round_1": 1111, "round_2": 1112, "control": 1120}
+    assert [summaries[f"ladder_l2_round_{number}"]["sampling_seed"] for number in (1, 2)] == [1111, 1112]
+    assert all(summaries[f"ladder_l2_round_{number}"]["seed"] == 1 and summaries[f"ladder_l2_round_{number}"]["start_adapter"] == str(pre) for number in (1, 2))
+    assert summaries["ladder_l2_round_1"]["attempted_by_the_start_adapter"] is True
+    assert [(call["seed"], call["tensorboard_run"], call["more"]) for call in calls] == [
+        (1, f"ladder_l2_{L4_ARM}_m1_seed1", {"start": pre}), (1, f"ladder_l2_{L4_ARM}_m2_seed1", {"start": pre}), (1, f"ladder_l3d2_{L4_ARM}_without_seed1", {"start": pre})]
+    measured = summaries["ladder_l3d2_prepare"]
+    assert measured["seed"] == 1 and [Path(path).name for path in measured["stored_runs"].values()] == ["ladder_l2_seed1", "ladder_l2_t010_seed1"]
+    assert measured["sampling_seeds"] == {"rungs": 1102, "reach": 1101, "more": 1120} and [sampling["sampling_seed"] for sampling in measured["goal_samplings"]] == [1101, 1120]
+    for model in ("with", "without"):
+        of = summaries[f"ladder_l3d2_measure_{model}"]
+        assert (of["rungs"]["sampling_seed"], of["goal"][REACH]["sampling_seed"], of["goal"][MORE]["sampling_seed"]) == (1102, 1101, 1120)
+    # The second sampling is as large as `pre`'s (the control gave the base the same number at both seeds): the two sides of the primary have the same attempts.
+    assert [sampling["episodes"] for sampling in measured["goal_samplings"]] == [sampling["episodes"] for sampling in of_pre["sizes"]["goal_samplings"]]
+
+    # ---- THE REPORT of a further seed: it says what it stands on; the primary is `with` of THIS seed against `pre`'s seed-0 rows, on the one G'
+    report = summaries["ladder_l4_report"]
+    after = REPORT_KEYS.index("the_pretraining") + 1
+    assert report["seed"] == 1 and report["ok"] is True and _keys(report) == [*REPORT_KEYS[:after], "a_further_seed", *REPORT_KEYS[after:]]
+    assert report["a_further_seed"] == {**further, "sampling_seeds": {"rungs": 1102, "reach": 1101, "more": 1120}}
+    lines = report["lines"]
+    assert [line[len(SAY):][:7] for line in lines[1:6]] == ["CHECK 1", "CHECK 2", "CHECK 3", "CHECK 4", "CHECK 5"] and lines[6][len(SAY):].startswith("for information")
+    assert lines[7] == (f"{SAY}A FURTHER SEED OF THE ARM: seed 1, from the pretraining of seed 0, which is not repeated ({pretrain}). The same at every seed of the arm, read "
+                        "from that run: `pre`, its own map, G' and `pre`'s stored rows (sampling seeds: rungs 1002, reach 1001, more 1020). This seed's own: its rounds' "
+                        "attempts, its challenger's proposals, its trainings' rows and order, and the sampling seeds of `with` and `without` (rungs 1102, reach 1101, more "
+                        "1120). `with` and `pre` are paired by problem and do not share a sampling seed")
+    read = report["measured_and_not_read"] if report["inconclusive"] else report
+    of = lambda rows: sum(row["resolved"] for row in rows if row["problem_id"] in again)      # noqa: E731
+    assert read["primary"]["goal_set_again"] == len(again) == read["primary"]["problems"] and read["beside_the_primary"] is None
+    if again:
+        assert read["primary"]["successes"] == of(store.read_rows("episodes_l3d2_more_with_problems.jsonl"))
+        assert read["primary"]["successes_of_the_base"] == of(_file_rows(pretrain / "episodes_l4_more_pre_problems.jsonl"))
+    if not report["inconclusive"]:
+        assert any(line.startswith(f"{SAY}BESIDE IT: nothing at this seed. No run of the base arm ({BASE_ARM}) for seed 1 is on this box") for line in lines)
+    assert report["the_pretraining"]["pretraining_run"] == str(pretrain) and report["adapters"]["start_adapter"] == str(pre)
+
+    # ---- SEED 0 IS WHAT IT WAS: the same pretraining run, nothing said of a further seed, the summary and the report with the keys they had
+    of_seed_1 = _files(store.root)
+    summaries_0, store_0 = _the_arm_at(l4, monkeypatch, config, 0)
+    assert store_0.root.name == "ladder_l2_t010_assembly_pre_seed0" and _files(store.root) == of_seed_1          # ... and seed 1's run was not touched by it
+    own_0, report_0 = summaries_0["ladder_l4_prepare"], summaries_0["ladder_l4_report"]
+    assert list(own_0) == OWN_KEYS and _keys(report_0) == REPORT_KEYS and not any("FURTHER SEED" in line for line in report_0["lines"])
+    assert (own_0["pretraining_run"], own_0["start_adapter"]) == (own["pretraining_run"], own["start_adapter"]) == (str(pretrain), str(pre))
+    # ... and at seed 0 the base arm's run IS read, as it was: its rows are copied, and its own gain stands beside the primary.
+    assert own_0["base_arm_run"] == str(of_the_base_arm) and store_0.read_rows(ladder_ceiling.stored_file("base_arm", MORE, "l4")) == _file_rows(
+        of_the_base_arm / "episodes_l3d2_more_with_problems.jsonl")
+    read_0 = report_0["measured_and_not_read"] if report_0["inconclusive"] else report_0
+    assert read_0["beside_the_primary"]["run"] == str(of_the_base_arm)
+    assert summaries_0["ladder_l2_prepare"]["sampling_seeds"] == {"rungs": 1002, "reach": 1001, "round_1": 1011, "round_2": 1012, "control": 1020}
+    assert summaries_0["ladder_l3d2_prepare"]["sampling_seeds"] == of_seed_0                       # at seed 0 `with` and `pre` share their sampling seeds
+    # ONE G' and ONE `pre` in both seeds' runs: what the read over the seeds holds them to.
+    for name in (ladder_l4.AGAIN_FILE, *(ladder_ceiling.stored_file("pre", part, "l4") for part in ("rungs", REACH, MORE)), ladder_l4.PRE_FILE):
+        assert store_0.path(name).read_bytes() == store.path(name).read_bytes(), name
+    assert {path: _files(path) for path in as_it_was} == as_it_was
+
+
+def test_a_further_seeds_prepare_steps_refuse_and_name_the_one_pretraining_never_one_of_their_own_seed(l4, monkeypatch, tmp_path):
+    config = l4.config
+    l4.stored()                                                                                    # seed 0's stored runs; no pretraining yet
+    monkeypatch.setenv(SEEDS, "1")
+    l4.stored()
+    l4.the_arm()
+    pretrain = ladder_l4.pretraining_of_the_arm(config)
+    assert pretrain.name == "ladder_l4_pretrain_seed0" and not pretrain.exists()
+    # THE MAP is asked of the ONE pretraining: the refusal names the task of seed 0, and nothing of seed 1.
+    with pytest.raises(RuntimeError) as refused:
+        ladder_l2.ladder_l2_prepare(config)
+    assert ("ladder_l4_pretrain_seed0 does not hold the map of the model this arm starts from" in str(refused.value)
+            and "Run the task of stage `ladder_l4_pretrain` for seed 0 to its end first (`python -m rlvr_lean.runner.entry --stage ladder_l4_pretrain --seeds 0`" in str(refused.value))
+    assert "seed1" not in str(refused.value) and "seed 1" not in str(refused.value) and not l4.store().is_done(ladder_l2.PREPARE)
+    # The pretraining, at ITS seed.
+    monkeypatch.delenv(SEEDS)
+    monkeypatch.delenv(ARM)
+    assert _run(config, "ladder_l4_pretrain")["ladder_l4_pretrain_report"]["checks_pass"] is True
+    monkeypatch.setenv(SEEDS, "1")
+    l4.the_arm()
+    ladder_l2.ladder_l2_prepare(config)
+    store = l4.store()
+
+    def refused_with(match):
+        with pytest.raises(RuntimeError, match=match):
+            ladder_l4.ladder_l4_prepare(config)
+        assert not store.is_done(ladder_l4.ARM_PREPARE) and not store.path(ladder_l4.AGAIN_FILE).exists()      # nothing was written
+
+    # Its report, its file of G', its measurement, its map: each missing one is named, with the task of seed 0.
+    for name in (ladder_l4.REPORT_FILE, ladder_l4.AGAIN_FILE, f"{ladder_l4.MEASURE}.done.json", ladder_l4.MAP_FILE, f"{ladder_l4.MAP}.done.json"):
+        lost = pretrain / name
+        lost.rename(lost.with_name("elsewhere"))
+        refused_with(rf"ladder_l4_pretrain_seed0 does not hold \['{name}'\]. L4's arm starts from the model the task of stage `ladder_l4_pretrain` for seed 0 "
+                     r".`python -m rlvr_lean.runner.entry --stage ladder_l4_pretrain --seeds 0`")
+        lost.with_name("elsewhere").rename(lost)
+    # A pretraining run that recorded ANOTHER SEED than the configured one is not the one pretraining: refused.
+    marker = pretrain / f"{ladder_l4.PREPARE}.done.json"
+    as_made = marker.read_text()
+    marker.write_text(json.dumps({**json.loads(as_made), "seed": 1}))
+    refused_with("the pretraining run ladder_l4_pretrain_seed0 was made at seed 1 and ladder_loop.l4.pretraining_seed is 0: every seed of the arm starts from the ONE "
+                 r"pretraining of that seed .its `pre`, its map, its G'.\. The arm is not run on it; nothing was written")
+    marker.write_text(json.dumps({key: value for key, value in json.loads(as_made).items() if key != "seed"}))
+    refused_with("the pretraining run ladder_l4_pretrain_seed0 was made at seed None and ladder_loop.l4.pretraining_seed is 0")
+    marker.write_text(as_made)
+    # Its checks failed: refused, as at seed 0.
+    report_file = pretrain / ladder_l4.REPORT_FILE
+    as_read = report_file.read_text()
+    failing = json.loads(as_read)
+    failing["can_this_run_see_a_win"]["the_pretraining_took"]["passes"] = False
+    report_file.write_text(json.dumps(failing))
+    refused_with(r"the pretraining run ladder_l4_pretrain_seed0 cannot carry the arm: its checks failed .the_pretraining_took.\. The arm is not run on it")
+    report_file.write_text(json.dumps({**json.loads(as_read), "ok": False}))
+    refused_with("the pretraining run ladder_l4_pretrain_seed0 cannot carry the arm: its report is not to be read")
+    report_file.write_text(as_read)
+    # On the GPU the adapter must be on disk (the stand-in trained none): the task to run again is seed 0's.
+    with monkeypatch.context() as patched:
+        patched.setattr(ladder_l4, "_stand_in", lambda: False)
+        refused_with(r"ladder_l4_pretrain_seed0/adapters/pre is not there: the adapter `pre` is what every model of the arm is trained from and what attempts round 1. "
+                     r"Run the task of stage `ladder_l4_pretrain` for seed 0 .`python -m rlvr_lean.runner.entry --stage ladder_l4_pretrain --seeds 0`")
+    # THE SETTING IS WHAT IS READ: with another pretraining seed configured, the arm looks for that run and no other, and a copy of seed 0's run under that name
+    # (it recorded seed 0) is refused.
+    config["ladder_loop"]["l4"]["pretraining_seed"] = 1
+    assert ladder_l2.pretraining_run(config) == "ladder_l4_pretrain_seed1" and ladder_l2.start_directory(config).parents[1].name == "ladder_l4_pretrain_seed1"
+    refused_with(r"ladder_l4_pretrain_seed1 does not hold \['report_ladder_l4_pretrain.json', .*the task of stage `ladder_l4_pretrain` for seed 1 ")
+    assert not (pretrain.parent / "ladder_l4_pretrain_seed1").exists()                             # a refusal makes no directory
+    copy = tmp_path / "a_copy"
+    copy.mkdir()
+    for path in pretrain.iterdir():
+        if path.is_file():
+            (copy / path.name).write_bytes(path.read_bytes())
+    copy.rename(pretrain.parent / "ladder_l4_pretrain_seed1")
+    refused_with("the pretraining run ladder_l4_pretrain_seed1 was made at seed 0 and ladder_loop.l4.pretraining_seed is 1")
+    config["ladder_loop"]["l4"]["pretraining_seed"] = 0
+    # A task that names a run (the smoke run) reads that one, whatever the seeds.
+    monkeypatch.setenv(ladder_l4.RUN_VARIABLE, "ladder_l4_pretrain_smoke")
+    assert ladder_l2.pretraining_run(config) == "ladder_l4_pretrain_smoke" == ladder_l4.pretraining_of_the_arm(config).name == ladder_l4.pretrain_directory(config).name
+    monkeypatch.delenv(ladder_l4.RUN_VARIABLE)
+    # With the one pretraining whole, seed 1's own prepare step runs, made once.
+    own = ladder_l4.ladder_l4_prepare(config)
+    assert own["pretraining_run"] == str(pretrain) and own["a_further_seed"]["pretraining_seed"] == 0 and ladder_l4.ladder_l4_prepare(config) == own
+    # ONE function reads the setting: with it saying another seed, the run, the start adapter, the map's directory and both refusals follow it, whatever the config says.
+    store.path(f"{ladder_l4.ARM_PREPARE}.done.json").unlink()
+    store.path(f"{ladder_l2.PREPARE}.done.json").unlink()
+    monkeypatch.setattr(ladder_l2, "pretraining_seed", lambda given: 2)
+    assert config["ladder_loop"]["l4"]["pretraining_seed"] == 0 and ladder_l2.pretraining_run(config) == "ladder_l4_pretrain_seed2"
+    assert ladder_l4.pretraining_of_the_arm(config).name == ladder_l2.start_map_directory(config).name == ladder_l2.start_directory(config).parents[1].name == "ladder_l4_pretrain_seed2"
+    with pytest.raises(RuntimeError, match="ladder_l4_pretrain_seed2 does not hold the map .*Run the task of stage `ladder_l4_pretrain` for seed 2 to its end first"):
+        ladder_l2.ladder_l2_prepare(config)
+
+
 # ------------------------------------------------------------------------------------------ the smoke stages
 def test_the_two_smoke_stages_run_on_the_l1_smoke_run_with_the_fixture_and_two_rounds_of_the_loop_half(arm, monkeypatch):  # noqa: F811
     if not FIXTURE.exists():

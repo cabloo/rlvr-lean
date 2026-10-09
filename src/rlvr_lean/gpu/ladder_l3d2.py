@@ -33,6 +33,7 @@ from rlvr_lean.domain.ladder_round.assembly import EXAMPLE_FIELDS, FROM_ASSEMBLY
 from rlvr_lean.domain.ladder_round.ceiling import the_training_took
 from rlvr_lean.domain.ladder_round.l3d import ARMS, WITH, WITHOUT, tenth
 from rlvr_lean.domain.ladder_round.l3d2 import L3D2
+from rlvr_lean.domain.ladder_round.l4b import rehearsal_of, twin_of
 from rlvr_lean.domain.ladder_round.read import GOAL
 from rlvr_lean.gpu import ladder_assembly, ladder_ceiling, ladder_l2, pipeline
 from rlvr_lean.gpu.ladder_ceiling import (
@@ -72,8 +73,9 @@ def _arm(config: dict) -> dict:
     """The config as the arm's steps read it. The stage runs ONE arm (`l3d.step_2.arm`), and every one of its tasks
     names it: a step here that is run for another arm, or for none, is refused."""
     wanted, named = config["ladder_loop"]["l3d"]["step_2"]["arm"], ladder_l2.arm_name()
-    also = (config["ladder_loop"].get("l4") or {}).get("arm")          # L4's arm is this stage's steps again, from a stored adapter (`gpu/ladder_l4.py`)
-    if named not in (wanted, also) or named is None or ladder_l2.assembly_arm(config) is None:
+    l4 = config["ladder_loop"].get("l4") or {}
+    also = (l4.get("arm"), (l4.get("again") or {}).get("arm"))        # L4's arm, and L4b's, are this stage's steps again, from a stored adapter (`gpu/ladder_l4.py`, `ladder_l4b.py`)
+    if named not in (wanted, *also) or named is None or ladder_l2.assembly_arm(config) is None:
         raise RuntimeError(f"the stage `{STAGE}` runs the arm {wanted} of ladder_loop.{ladder_l2.ASSEMBLY_ARMS} and {ladder_l2.L2_ARM_VARIABLE} names "
                            f"{named!r}: its steps are run by the stage, which sets it")
     return ladder_l2.arm_config(config)
@@ -143,16 +145,21 @@ def ladder_l3d2_train_without(config: dict) -> dict:
     for needed in (PREPARE, f"ladder_l2_train_{last}"):
         _need(store, needed, "the training of `without`", STAGE)
     ordered = store.read_rows(ladder_assembly.training_set_file(last))
-    rows = [{**row, "row": position, "row_of_with": row["row"]} for position, row in enumerate(attempts_alone(ordered))]
+    rule = ladder_l2.rule_of(config)                    # an arm with a TRAINING RULE: its twin is the same rule with the assembled rows left out (the rehearsal rows stay)
+    rows = [{**row, "row": position, "row_of_with": row["row"]} for position, row in enumerate(attempts_alone(ordered) if rule is None else twin_of(ordered))]
     if not rows:
         raise RuntimeError(f"no row of M({last})'s training set is a one-shot attempt's: there is nothing to train `without` on")
     store.write_rows(TRAINING_WITHOUT_FILE, rows)
-    examples = [{field: row[field] for field in EXAMPLE_FIELDS} for row in rows]
+    examples = [{field: row[field] for field in EXAMPLE_FIELDS} for row in rows] if rule is None else ladder_l2.examples_of(config, rows)
     steps = -(-len(rows) // batch)
     left_out = by_origin([row for row in ordered if row["origin"] in FROM_ASSEMBLY])
-    _say(f"training `without` from the base on {len(rows)} one-shot rows, M({last})'s order with its {len(ordered) - len(rows)} assembled rows left out, {steps} optimizer steps")
+    if rule is None:
+        _say(f"training `without` from the base on {len(rows)} one-shot rows, M({last})'s order with its {len(ordered) - len(rows)} assembled rows left out, {steps} optimizer steps")
+    else:
+        _say(f"training `without` (the rule `{rule}`) on {len(rows)} rows: {len(attempts_alone(rows))} one-shot and {len(rehearsal_of(rows))} rehearsal, M({last})'s order with its "
+             f"{len(ordered) - len(rows)} assembled rows left out, {steps} optimizer steps")
     start = ladder_l2.start_directory(config)           # an arm whose models start from a stored adapter: so does its twin
-    result, step_rows, row_losses, positions = one_pass(config, examples, {WITHOUT: steps}, seed, batch, store.root / ladder_assembly.ADAPTERS,
+    result, step_rows, row_losses, positions = one_pass(ladder_l2.config_for(config, store), examples, {WITHOUT: steps}, seed, batch, store.root / ladder_assembly.ADAPTERS,
                                                         f"{STAGE}_{ladder_l2.arm_name()}_{WITHOUT}_seed{seed}" if start is not None else f"{STAGE}_{WITHOUT}_seed{seed}",
                                                         positions=True, **({"start": start} if start is not None else {}))
     result.pop("checkpoints")
@@ -168,6 +175,10 @@ def ladder_l3d2_train_without(config: dict) -> dict:
                "left_out": {origin: left_out[origin] for origin in FROM_ASSEMBLY}, "order": f"M({last})'s, with the assembled rows left out and no row moved",
                "first_step_loss": step_rows[0]["mean_loss"], "last_step_loss": step_rows[-1]["mean_loss"], "mean_loss_over_the_first_rows": took["first"],
                "mean_loss_over_the_last_rows": took["last"], "rows_compared": took["rows_compared"], "stand_in_engine": _stand_in(), **result}
+    if rule is not None:        # what the twin's set holds under the arm's rule: the same rule with the assembled rows left out
+        summary["rule"] = {"rule": rule, "what": "the arm's training rule with the assembled rows left out: the last model's set, in its order, without them",
+                           "one_shot_rows": len(attempts_alone(rows)), "rehearsal_rows": len(rehearsal_of(rows))}
+    summary.update(ladder_l2.adapter_saved(config, store.root / ladder_assembly.ADAPTERS / WITHOUT, WITHOUT))     # refused, and the step not marked done, at another rank than the start adapter's
     store.mark_done(TRAIN_WITHOUT, summary)         # the adapter is saved: keep it whatever follows
     if summary.get("allocated_after_cleanup_gb", 0) > MAX_LEFTOVER_GB:
         raise RuntimeError(f"{summary['allocated_after_cleanup_gb']} GB is still allocated on the GPU after the training of `without` was released")
@@ -181,7 +192,7 @@ def ladder_l3d2_measure(config: dict, arm: str) -> dict:
     store = _store(config)
     _need(store, PREPARE, f"the measurement of L3d Step 2's model `{arm}`", STAGE)
     prepared, last = store.done_summary(PREPARE), last_round(config)
-    return measure_model(config, store, prepared, Model(
+    return measure_model(ladder_l2.config_for(config, store, serving=True), store, prepared, Model(        # from another start than `pre`: the model server started for the start adapter's rank
         name=arm, called=f"the model `{arm}`", whose=f"L3d Step 2's model `{arm}`", marker=measure_marker(arm), trained_by=trained_by(config, arm),
         adapter=adapter_of(config, store, arm),
         no_adapter="this run keeps its adapters, and one trained again would not be the model its other measurements came from. The measurement cannot be made",

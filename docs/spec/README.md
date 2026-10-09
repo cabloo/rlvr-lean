@@ -21,6 +21,9 @@ or a question came from the owner, and they keep the corrections that later runs
 | [`ladder-l3c-RESULT.md`](ladder-l3c-RESULT.md) | An episode that keeps what verified: more hard episodes resolved and more never-solved problems reached, three seeds |
 | [`ladder-ceiling-RESULT.md`](ladder-ceiling-RESULT.md) | The ceiling, a labelled diagnostic: one training on other provers' published proofs, to see whether the model can learn longer proofs; not a result of the loop, one seed |
 | [`ladder-l3d2-RESULT.md`](ladder-l3d2-RESULT.md) | Six rounds with the assembly in the round, and a twin trained without the assembled proofs: not shown, one seed |
+| [`ladder-l4-RESULT.md`](ladder-l4-RESULT.md) | The same six rounds from a model pretrained on published proofs: not shown on top of pretraining; more reliable and narrower, one seed |
+| [`ladder-l4r-RESULT.md`](ladder-l4r-RESULT.md) | Is the pretrained model capped by the size of its adapter? The same pretraining at rank 64 in the place of 16: the adapter's size capped it, one seed |
+| [`ladder-l4t-RESULT.md`](ladder-l4t-RESULT.md) | What should a round train on? Three training rules on the stored rounds, from the larger pretrained model: the old rule narrows at rank 64 too, one seed |
 | [`phase-a-RESULT.md`](phase-a-RESULT.md) | The first experiment: one round on self-written conjectures |
 | [`phase-b-selection-RESULT.md`](phase-b-selection-RESULT.md) | Selection by a learning-progress score against a random draw, and its correction |
 | [`native-format-RESULT.md`](native-format-RESULT.md) | The missing-token defect: does the gain survive the fix |
