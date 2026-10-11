@@ -118,3 +118,25 @@ def test_a_sequence_larger_than_the_budget_is_scored_alone_and_an_empty_set_make
 def test_impossible_budgets_are_refused(call):
     with pytest.raises(ValueError):
         call()
+
+
+def test_a_training_asks_for_segments_that_can_grow_unless_something_is_already_said():
+    """Task 15f70151 (2026-10-09): a rank-64 training failed at the cap with 0.9 GiB reserved and not allocated."""
+    from rlvr_lean.gpu.memory_budget import ALLOCATOR_SETTING, ALLOCATOR_VARIABLE, allocator_setting
+
+    assert (ALLOCATOR_VARIABLE, ALLOCATOR_SETTING) == ("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
+    assert allocator_setting({}) == "expandable_segments:True"
+    assert allocator_setting({ALLOCATOR_VARIABLE: ""}) == "expandable_segments:True"
+    assert allocator_setting({ALLOCATOR_VARIABLE: "max_split_size_mb:128"}) == "max_split_size_mb:128"       # what is said is kept
+
+
+def test_the_cache_is_released_between_rows_only_past_the_slack():
+    from rlvr_lean.gpu.memory_budget import CACHE_SLACK_GB, cache_to_release
+
+    gib = 1024 ** 3
+    assert CACHE_SLACK_GB == 0.25
+    assert cache_to_release(int(11.5 * gib), int(10.65 * gib))               # the failed training's own figures
+    assert not cache_to_release(int(9.8 * gib), int(9.6 * gib))              # under the slack: nothing is released
+    assert not cache_to_release(10 * gib + gib // 4, 10 * gib)               # at the slack exactly: nothing
+    assert cache_to_release(10 * gib + gib // 4 + 1, 10 * gib)
+    assert cache_to_release(2 * gib, gib, slack_gb=0.5) and not cache_to_release(2 * gib, gib, slack_gb=1.0)

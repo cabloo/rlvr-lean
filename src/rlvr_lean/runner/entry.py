@@ -496,6 +496,74 @@ _LADDER_L4_ROWS_R64_SMOKE = {"environment": {**_LADDER_L4_ROWS_SMOKE["environmen
                                              "RLVR_LEAN_LADDER_L4_ROWS_START_CHECKS": "smoke"}}
 STAGES["ladder_l4_rows_r64_smoke"] = [(environment, step, _LADDER_L4_ROWS_R64_SMOKE) for environment, step in _LADDER_L4_ROWS_R64]
 
+# L4t2: two more one-change checks, on what L4t left open (spec ladder-loop, "L4t2: two more one-change checks, on what L4t left
+# open"; `gpu/ladder_l4_rows2.py`). Labelled pretrained on published proofs. NO NEW ROUND and no new draw of the rounds' rows. It
+# runs FROM `pre_r64` alone (`ladder_loop.l4.rows2.start`: the stage names no variable), every model at ITS rank. It READS, in the
+# box's store and never writing there, L4t's FINISHED run from that start (`ladder_l4_rows_pre_r64_seed<N>`: its two stored training
+# sets `rehearse` and `reward_rows`, the per-problem rows of its three measured models with what each wrote, its problems, its
+# held-out groups, its G', its report) and the run of the check that made the start model
+# (`ladder_l4_pretrain_r64_seed<pretraining_seed>`: the adapter, its recorded rank and alpha, its sampling seeds, its rows, the rows
+# it was pretrained on); it writes `ladder_l4_rows2_pre_r64_seed<N>`. TWO models, each trained from `pre_r64` by L4t's own training
+# body and measured by L4t's own measuring body before the next is trained: `rehearse_only` (the rehearsal rows of L4t's `rehearse`
+# set and nothing else: a second pass over published proofs), then `reward_rehearse` (L4t's `reward_rows` set and as many rehearsal
+# rows as it has one-shot rows, the first of the hash order `rehearse`'s were drawn in). No step samples at another temperature.
+# Then the report: the three reads of the five models against `pre_r64`, the two questions, and the rule the arm is run with.
+_LADDER_L4_ROWS2 = [("sync", "gpu"), ("gpu", "fix_tokenizers"), ("gpu", "ladder_l4_rows2_prepare")]
+for _model in ("rehearse_only", "reward_rehearse"):
+    _LADDER_L4_ROWS2 += [("guard", None), ("gpu", f"ladder_l4_rows2_train_{_model}"), ("guard", None), ("gpu", f"ladder_l4_rows2_measure_{_model}")]
+_LADDER_L4_ROWS2 += [("guard", None), ("gpu", "ladder_l4_rows2_report")]
+STAGES["ladder_l4_rows2_r64"] = list(_LADDER_L4_ROWS2)
+# The same steps on what TWO smoke runs left in the box's store: L4t's smoke run from `pre_r64` (`ladder_l4_rows_r64_smoke`: its
+# two sets of a handful of rows, its three models' rows on the fixture) and the smoke run of the check of the adapter's rank
+# (`ladder_l4_rank_smoke`: the adapter `pre_r64`, rank 64, its rows, the fixture's twelve rows it was pretrained on), with the
+# 12-row fixture in the pretraining file's place and the fixtures' held-out set, in a run directory of its own. That check's own
+# report reads INCONCLUSIVE, which a real run is refused for; this stage sets nothing for it: it goes on only because L4t's smoke
+# run, which it reads, recorded that IT went on, and it records that.
+_LADDER_L4_ROWS2_SMOKE = {"environment": {"RLVR_LEAN_LADDER_DATA": _LADDER_L4_PRETRAIN_SMOKE["environment"]["RLVR_LEAN_LADDER_DATA"],
+                                          "RLVR_LEAN_LADDER_L4_FILE": _LADDER_L4_PRETRAIN_SMOKE["environment"]["RLVR_LEAN_LADDER_L4_FILE"],
+                                          "RLVR_LEAN_LADDER_L4_RANK_RUN": "ladder_l4_rank_smoke", "RLVR_LEAN_LADDER_L4_ROWS2_L4T_RUN": "ladder_l4_rows_r64_smoke",
+                                          "RLVR_LEAN_LADDER_L4_ROWS2_RUN": "ladder_l4_rows2_r64_smoke"}}
+STAGES["ladder_l4_rows2_r64_smoke"] = [(environment, step, _LADDER_L4_ROWS2_SMOKE) for environment, step in _LADDER_L4_ROWS2]
+
+# L4p: how much more pretraining? The dose of a second pass (spec ladder-loop, "L4p: how much more pretraining? The dose of a
+# second pass"; `gpu/ladder_l4_dose.py`). A labelled check of the PRETRAINING, labelled pretrained on published proofs: NO ROUND
+# and no row of a round. It runs FROM `pre_r64` alone (`ladder_loop.l4.dose.start`: the stage names no variable), every model at
+# ITS rank. It READS, in the box's store and never writing there, L4t2's FINISHED run from that start
+# (`ladder_l4_rows2_pre_r64_seed<N>`: the stored training set of `rehearse_only`, its per-problem rows and what it wrote, its
+# problems, its held-out groups, its G', its report) and the run of the check that made the start model
+# (`ladder_l4_pretrain_r64_seed<pretraining_seed>`: the adapter, its recorded rank and alpha, its sampling seeds, its rows, the rows
+# it was pretrained on); it writes `ladder_l4_dose_pre_r64_seed<N>`. THREE models, each trained from `pre_r64` by L4t's own training
+# body and measured by L4t's own measuring body before the next is trained, each on rows of the file `pre_r64` was pretrained on
+# along the hash order L4t's rehearsal draw uses: `matched_1262` FIRST (as many rows as L4t2's stored `reward_rehearse` set has
+# published rows, the first of that order: they ARE those rows, the control L4t2 left that model without), then `second_half` (the
+# first half of the order: `rehearse_only`'s rows are its first), then `second_full` (every row of the file). No step samples at
+# another temperature. Then the report: the rounds' hard rows beside the same published rows (`reward_rehearse` minus
+# `matched_1262` on G'), the primary on all of G (`second_full` minus `rehearse_only`), the overfitting reads of each model
+# against `pre_r64`, the dose.
+_LADDER_L4_DOSE = [("sync", "gpu"), ("gpu", "fix_tokenizers"), ("gpu", "ladder_l4_dose_prepare")]
+for _model in ("matched_1262", "second_half", "second_full"):
+    _LADDER_L4_DOSE += [("guard", None), ("gpu", f"ladder_l4_dose_train_{_model}"), ("guard", None), ("gpu", f"ladder_l4_dose_measure_{_model}")]
+_LADDER_L4_DOSE += [("guard", None), ("gpu", "ladder_l4_dose_report")]
+STAGES["ladder_l4_dose_r64"] = list(_LADDER_L4_DOSE)
+# `matched_1262` AND ITS READ, A JOB OF THEIR OWN IN THE SAME RUN DIRECTORY, so that the read arrives before the two long trainings:
+# the prepare step, that model trained and measured, and the report with it alone measured (`ladder_l4_dose_report_matched`: the
+# dose's primary and what stands on the two other models NOT READ there). The stage above then finds the prepare step and that
+# model done, goes on with the two others, and writes the whole report.
+STAGES["ladder_l4_dose_r64_matched"] = [("sync", "gpu"), ("gpu", "fix_tokenizers"), ("gpu", "ladder_l4_dose_prepare"), ("guard", None), ("gpu", "ladder_l4_dose_train_matched_1262"),
+                                        ("guard", None), ("gpu", "ladder_l4_dose_measure_matched_1262"), ("guard", None), ("gpu", "ladder_l4_dose_report_matched")]
+# The whole stage's steps on what TWO smoke runs left in the box's store: L4t2's smoke run (`ladder_l4_rows2_r64_smoke`: its two
+# stored sets, `rehearse_only`'s four rows and `reward_rehearse`'s four of which two are published rows, and their rows on the
+# fixture) and the smoke run of the check of the adapter's rank (`ladder_l4_rank_smoke`: the adapter `pre_r64`, rank 64, its rows,
+# the fixture's twelve rows it was pretrained on), with the 12-row fixture in the pretraining file's place and the fixtures'
+# held-out set, in a run directory of its own: `matched_1262` is two rows, `second_half` six and `second_full` twelve. That
+# check's own report reads INCONCLUSIVE, which a real run is refused for; this stage sets nothing for it: it goes on only because
+# L4t2's smoke run, which it reads, recorded that IT went on, and it records that.
+_LADDER_L4_DOSE_SMOKE = {"environment": {"RLVR_LEAN_LADDER_DATA": _LADDER_L4_PRETRAIN_SMOKE["environment"]["RLVR_LEAN_LADDER_DATA"],
+                                         "RLVR_LEAN_LADDER_L4_FILE": _LADDER_L4_PRETRAIN_SMOKE["environment"]["RLVR_LEAN_LADDER_L4_FILE"],
+                                         "RLVR_LEAN_LADDER_L4_RANK_RUN": "ladder_l4_rank_smoke", "RLVR_LEAN_LADDER_L4_DOSE_L4T2_RUN": "ladder_l4_rows2_r64_smoke",
+                                         "RLVR_LEAN_LADDER_L4_DOSE_RUN": "ladder_l4_dose_r64_smoke"}}
+STAGES["ladder_l4_dose_r64_smoke"] = [(environment, step, _LADDER_L4_DOSE_SMOKE) for environment, step in _LADDER_L4_DOSE]
+
 # L4b: the arm again, from the larger pretrained model (spec ladder-loop, "L4b: the arm again, from the larger pretrained model";
 # `gpu/ladder_l4b.py` on the L2 stage's arm `t010_assembly_pre_r64`). Labelled pretrained on published proofs. L4's arm again with
 # what L4r and L4t name: it STARTS FROM `pre_r64` (the check of the adapter's rank's model: only read, in
@@ -510,24 +578,40 @@ STAGES["ladder_l4_rows_r64_smoke"] = [(environment, step, _LADDER_L4_ROWS_R64_SM
 # It READS, in the box's store, that check's run, the L1 run and L2's two of the task's seed, and, when they are there, the base
 # arm's run and the rank-16 arm's; it writes the map's run and the arm's (`ladder_l2_t010_assembly_pre_r64_seed<N>`, with the rule
 # in its name when it is not `old`). Every adapter is KEPT. Resumes as Step 2 does.
-def _l4b_steps(rounds: int) -> list:
+#
+# L4c: the arm from `pre_r64` with a rule L4t2 names (spec ladder-loop, "L4c: the arm from `pre_r64` with a rule L4t2 names";
+# `domain/ladder_round/l4c.py`). A FOURTH rule, `ladder_l4b_reward_rehearse` (the rows `reward_rows` keeps and as many rows of the
+# pretraining file as that kept set has one-shot rows), and, for the TWO rules whose sets hold rehearsal rows (`rehearse`,
+# `reward_rehearse`) and for no other, two more steps after the arm's own and before its report: `ladder_l4b_train_rehearsal_alone`
+# (ONE more model, from `pre_r64` at its rank, on the rehearsal rows of the last model's set alone) and
+# `ladder_l4b_measure_rehearsal_alone` (measured as the twin is). The report then reads `with` against it beside the primary. WHICH
+# job is queued, or none, is L4t2's line "the arm's rule" and nothing else. The stages of `old` and `reward_rows` are what they were.
+def _l4b_steps(rounds: int, rehearsal_alone: bool = False) -> list:
     renamed = {"ladder_l4_prepare": "ladder_l4b_prepare", "ladder_l4_report": "ladder_l4b_report"}
     steps = [(environment, renamed.get(step, step)) for environment, step in _l4_steps(rounds)]
     after = steps.index(("gpu", "fix_tokenizers")) + 1
-    return steps[:after] + [("gpu", "ladder_l4b_map"), ("guard", None)] + steps[after:]
+    steps = steps[:after] + [("gpu", "ladder_l4b_map"), ("guard", None)] + steps[after:]
+    if rehearsal_alone:         # the arm's own separation: after the two measurements, before the report (whose guard stands before the first of the two)
+        steps = steps[:-1] + [("gpu", "ladder_l4b_train_rehearsal_alone"), ("guard", None), ("gpu", "ladder_l4b_measure_rehearsal_alone"), ("guard", None)] + steps[-1:]
+    return steps
 
 
-_LADDER_L4B_RULES = ("old", "reward_rows", "rehearse")
+_LADDER_L4B_RULES = ("old", "reward_rows", "rehearse", "reward_rehearse")
+_LADDER_L4B_WITH_REHEARSAL = ("rehearse", "reward_rehearse")     # the rules whose sets hold rehearsal rows (`domain.ladder_round.l4b.WITH_REHEARSAL`): their arm carries its own separation
 # The same steps in the L2 smoke run's world, from the SMOKE run of the check of the adapter's rank (`ladder_l4_rank_smoke`: its
 # adapter `pre_r64`, rank 64, and its rows on the fixture): TWO rounds of two problems, the map of the fixture's four base-map
 # problems in a run directory of its own (`ladder_l4b_map_smoke`), the 12-row fixture in the pretraining file's place (the rule
 # `rehearse` draws among its rows), the two checks' minimums at zero. That smoke run's own report reads INCONCLUSIVE, which a real
 # run from it would be refused for: `RLVR_LEAN_LADDER_L2_START_CHECKS=smoke` (these stages alone) goes on, and the prepare steps
 # record it. The fixture's problems are solved by every attempt or by none, so the rule `reward_rows` may keep no row: a model's
-# set then holds at least two (`RLVR_LEAN_LADDER_L2_RULE_MINIMUM`), each marked as not kept by the rule.
+# set then holds at least two (`RLVR_LEAN_LADDER_L2_RULE_MINIMUM`), each marked as not kept by the rule. (`reward_rehearse` keeps
+# by the same rule: the rows the minimum adds are rows of its kept set, and a one-shot row among them brings a rehearsal row.)
+# The smoke stages of the two rules with rehearsal rows run the two steps of `rehearsal_alone` too: they are the only run before
+# the real one in which a model is trained on an arm's rehearsal rows alone, served and measured.
 for _rule in _LADDER_L4B_RULES:
+    _alone = _rule in _LADDER_L4B_WITH_REHEARSAL
     _LADDER_L4B = {"environment": {"RLVR_LEAN_LADDER_L2_ARM": "t010_assembly_pre_r64", "RLVR_LEAN_LADDER_L2_RULE": _rule}}
-    STAGES[f"ladder_l4b_{_rule}"] = [(environment, step, _LADDER_L4B) for environment, step in _l4b_steps(6)]
+    STAGES[f"ladder_l4b_{_rule}"] = [(environment, step, _LADDER_L4B) for environment, step in _l4b_steps(6, _alone)]
     _LADDER_L4B_SMOKE = {"environment": {**_LADDER_L2_SMOKE["environment"], "RLVR_LEAN_LADDER_L2_RUN": f"ladder_l4b_{_rule}_smoke",
                                          "RLVR_LEAN_LADDER_L2_ARM": "t010_assembly_pre_r64", "RLVR_LEAN_LADDER_L2_RULE": _rule,
                                          "RLVR_LEAN_LADDER_L2_ROUNDS": "2", "RLVR_LEAN_LADDER_L2_PROBLEMS": "2", "RLVR_LEAN_LADDER_L3D2_STORED": "none",
@@ -535,7 +619,98 @@ for _rule in _LADDER_L4B_RULES:
                                          "RLVR_LEAN_LADDER_L4_MAP_RUN": "ladder_l4b_map_smoke", "RLVR_LEAN_LADDER_L4_MINIMUMS": "0,0",
                                          "RLVR_LEAN_LADDER_L4_FILE": _LADDER_L4_PRETRAIN_SMOKE["environment"]["RLVR_LEAN_LADDER_L4_FILE"],
                                          "RLVR_LEAN_LADDER_L2_START_CHECKS": "smoke", "RLVR_LEAN_LADDER_L2_RULE_MINIMUM": "2"}}
-    STAGES[f"ladder_l4b_{_rule}_smoke"] = [(environment, step, _LADDER_L4B_SMOKE) for environment, step in _l4b_steps(2)]
+    STAGES[f"ladder_l4b_{_rule}_smoke"] = [(environment, step, _LADDER_L4B_SMOKE) for environment, step in _l4b_steps(2, _alone)]
+
+# L5: do DEEP solves teach what ordinary solves do not? One step-matched check (spec ladder-loop, "L5: do DEEP solves teach what
+# ordinary solves do not? One step-matched check"; `gpu/ladder_l5.py`). Labelled pretrained on published proofs. A scout: one seed,
+# NO ROUND, no assembly, no challenger. It runs FROM `pre_r64` alone (`ladder_loop.l5.start`: the stage names no variable), every
+# model at ITS rank. It READS, in the box's store and never writing there: `pre_r64`'s OWN MAP
+# (`ladder_l4_map_pre_r64_seed<pretraining_seed>`, made by `ladder_l4b_map`: each base-map problem's k of 8, its problems as the map
+# sampled them, its stored attempts with their texts), L4t2's FINISHED run from that start (`ladder_l4_rows2_pre_r64_seed<N>`, as
+# L4p reads it: the problems of the measured sets, the held-out groups, G', how a model is measured) and the run of the check that
+# made the start model (`ladder_l4_pretrain_r64_seed<pretraining_seed>`: the adapter, its rank and alpha, its rows, the rows it was
+# pretrained on); it writes `ladder_l5_deep_pre_r64_seed<N>`. THE DEEP SEARCH FIRST: `ladder_l5_search_prepare` draws 1,000 of the
+# map problems `pre_r64` failed in all 8 map attempts, and THE HELD-ASIDE SET, 600 of the candidates that draw did not take (a draw
+# of its own); `ladder_l5_search` has `pre_r64` make 56 more attempts at each searched problem (about 56,000 attempts: the long
+# step), as a round's episodes run, with a sampling seed of its own. `ladder_l5_prepare` then builds the three sets of 2D rows (D:
+# the deep solves, at most 400): `published`, `shallow`, `deep`; with fewer than 150 deep solves it builds none, the ten steps
+# after it train and measure nothing, and the report says that the search is the finding. `ladder_l5_held_aside_start`: `pre_r64`
+# itself makes 16 fresh attempts at each held-aside problem (its 8 stored map attempts chose the set). Each model is trained from
+# `pre_r64` by L4t's own training body, measured by L4t's own measuring body, and measured on the held-aside set
+# (`ladder_l5_held_aside_<model>`: the same 16 attempts, the ONE sampling seed of the four) before the next is trained. Then the
+# report: the checks, the primary ON THE HELD-ASIDE SET (`deep` minus `published`), the mechanism (`deep` minus `shallow`) and the
+# replication (`shallow` minus `published`) there too, G' and the goal problems beside each, the branch for what follows.
+# A FURTHER SEED (spec "L5, further seeds"; `--seeds N` with N other than `ladder_loop.l5.search_seed`, 0) is THIS stage and these
+# steps: its first step READS the finished run of the search's seed (`ladder_l5_deep_pre_r64_seed0`) and every stored run that
+# task read, and refuses before anything is written when that run is missing, unfinished, not to be read, INCONCLUSIVE or made
+# otherwise; `ladder_l5_search` runs NO search and `ladder_l5_held_aside_start` measures nothing (each says so and marks nothing);
+# the three sets are drawn by the task's own seed from that one search; the three models are trained and measured as seed 0's were,
+# with the sampling seeds seed 0 used. It writes `ladder_l5_deep_pre_r64_seed<N>`. The read over the seeds is a tool, not a step.
+_LADDER_L5 = [("sync", "gpu"), ("gpu", "fix_tokenizers"), ("gpu", "ladder_l5_search_prepare"), ("guard", None), ("gpu", "ladder_l5_search"), ("guard", None),
+              ("gpu", "ladder_l5_prepare"), ("guard", None), ("gpu", "ladder_l5_held_aside_start")]
+for _model in ("published", "shallow", "deep"):
+    _LADDER_L5 += [("guard", None), ("gpu", f"ladder_l5_train_{_model}"), ("guard", None), ("gpu", f"ladder_l5_measure_{_model}"), ("guard", None),
+                   ("gpu", f"ladder_l5_held_aside_{_model}")]
+_LADDER_L5 += [("guard", None), ("gpu", "ladder_l5_report")]
+STAGES["ladder_l5_deep"] = list(_LADDER_L5)
+# The same steps on what THREE smoke runs left in the box's store: the map of the smoke `pre_r64` on the fixtures' four base-map
+# problems (`ladder_l4b_map_smoke`, made by the smoke stage of any rule of L4b's arm), L4t2's smoke run
+# (`ladder_l4_rows2_r64_smoke`) and the smoke run of the check of the adapter's rank (`ladder_l4_rank_smoke`), with the 12-row
+# fixture in the pretraining file's place and the fixtures' held-out set, in a run directory of its own. THE FIXTURE'S MODEL
+# SOLVES EVERY BASE-MAP PROBLEM in its map (k = 3, 8, 8, 8): no problem is failed every time and one is an ordinary solve. So this
+# stage ALONE sets `RLVR_LEAN_LADDER_L5_SMOKE_PROBLEMS=1`: the search attempts ONE problem the rule did not give, the held-aside
+# set holds ONE other, `shallow` takes its one ordinary solve among the two that are left (as loosely, when the rule's own is not
+# among them), one deep solve is enough, and every problem and row so taken is marked as NOT the rule's. (One and one: the map has
+# four problems, and the held-aside set shares none with the search or with a training set.) The prepare step REFUSES that variable
+# in a run directory of the seed's own or on the pool's base map, so no real run takes that path. The smoke `pre_r64`'s own report
+# reads INCONCLUSIVE, which a real run is refused for; this stage sets nothing for it: it goes on only because L4t2's smoke run,
+# which it reads, recorded that IT went on.
+_LADDER_L5_SMOKE = {"environment": {"RLVR_LEAN_LADDER_DATA": _LADDER_L4_PRETRAIN_SMOKE["environment"]["RLVR_LEAN_LADDER_DATA"],
+                                    "RLVR_LEAN_LADDER_L4_FILE": _LADDER_L4_PRETRAIN_SMOKE["environment"]["RLVR_LEAN_LADDER_L4_FILE"],
+                                    "RLVR_LEAN_LADDER_L4_RANK_RUN": "ladder_l4_rank_smoke", "RLVR_LEAN_LADDER_L4_MAP_RUN": "ladder_l4b_map_smoke",
+                                    "RLVR_LEAN_LADDER_L5_L4T2_RUN": "ladder_l4_rows2_r64_smoke", "RLVR_LEAN_LADDER_L5_RUN": "ladder_l5_deep_smoke",
+                                    "RLVR_LEAN_LADDER_L5_SMOKE_PROBLEMS": "1"}}
+STAGES["ladder_l5_deep_smoke"] = [(environment, step, _LADDER_L5_SMOKE) for environment, step in _LADDER_L5]
+
+# L6: a second round. Does the cycle compound? (spec ladder-loop, "L6: a second round. Does the cycle compound?"; `gpu/ladder_l6.py`).
+# Labelled pretrained on published proofs. One seed. ROUND 1 IS L5's AND IS ONLY READ: the finished run of the seed that made L5's
+# deep search (`ladder_l5_deep_pre_r64_seed<l5.search_seed>`: the problems it searched and solved, its held-aside set, `pre_r64`'s
+# rows on it, and M(1), its model `deep`, whose adapter that run keeps), with every stored run that task read (`pre_r64`'s map,
+# L4t2's finished run, the run of the check that made `pre_r64`) and, WHEN IT IS ON THE BOX, L4p's run
+# (`ladder_l4_dose_pre_r64_seed<N>`: `second_full`'s rows on G and its adapter; NOT THERE otherwise, nothing refused). It writes
+# `ladder_l6_cycle_pre_r64_seed<N>` and nothing else. `ladder_l6_search_prepare` refuses, before anything is written, a round 1 that
+# is missing, unfinished, not to be read, INCONCLUSIVE or made otherwise, and stores SEARCH 2's problems: what search 1 left
+# unsolved and the candidates neither draw took (held to partition the candidates with round 1's solves and the held-aside set).
+# `ladder_l6_search`, the long step: M(1), served at rank 64 from round 1's run, makes 64 attempts at each. `ladder_l6_prepare`
+# builds the four sets of 2N rows (N: every deep solve of both rounds); with fewer than 150 round-2 solves it builds none, the
+# thirteen steps after it train and measure nothing, and the report says that the search is the finding. Each model is then
+# trained from `pre_r64` by L4t's own training body, measured by L4t's own measuring body, and measured on the held-aside set by
+# L5's own body (16 attempts, round 1's sampling seed for that set) before the next is trained. `ladder_l6_held_aside_second_full`:
+# the stored model `second_full`, served from L4p's run, on the held-aside set the same way (it says NOT THERE and marks nothing
+# when that adapter is not on the box). Then the report.
+_LADDER_L6 = [("sync", "gpu"), ("gpu", "fix_tokenizers"), ("gpu", "ladder_l6_search_prepare"), ("guard", None), ("gpu", "ladder_l6_search"), ("guard", None),
+              ("gpu", "ladder_l6_prepare")]
+for _model in ("published2", "one_round", "two_rounds", "long_ordinary"):
+    _LADDER_L6 += [("guard", None), ("gpu", f"ladder_l6_train_{_model}"), ("guard", None), ("gpu", f"ladder_l6_measure_{_model}"), ("guard", None),
+                   ("gpu", f"ladder_l6_held_aside_{_model}")]
+_LADDER_L6 += [("guard", None), ("gpu", "ladder_l6_held_aside_second_full"), ("guard", None), ("gpu", "ladder_l6_report")]
+STAGES["ladder_l6_cycle"] = list(_LADDER_L6)
+# The same steps on what the smoke runs left in the box's store: L5's smoke run (`ladder_l5_deep_smoke`: round 1, and the adapter
+# `deep` it keeps), the three it read (`ladder_l4b_map_smoke`, `ladder_l4_rows2_r64_smoke`, `ladder_l4_rank_smoke`) and, for
+# `second_full`, L4p's (`ladder_l4_dose_r64_smoke`), with the 12-row fixture in the pretraining file's place and the fixtures'
+# held-out set, in a run directory of its own. It names the runs L5's smoke stage names, by L5's own variables (L5's functions
+# read them), and NOT L5's smoke-only variable: round 1's two looser draws are made again as that run recorded them. THE FIXTURE'S
+# MAP LEAVES SEARCH 2 NO PROBLEM (its model failed none in every map attempt), and
+# round 1's smoke run reads INCONCLUSIVE (a training of two rows has no loss to compare), which a real run is refused for. So this
+# stage ALONE sets `RLVR_LEAN_LADDER_L6_SMOKE_PROBLEMS=2`: round 1 is read all the same (recorded); search 2 attempts the two map
+# problems no search took and that are not held aside; one round-2 solve is enough; `long_ordinary` takes its ordinary solves among
+# the map problems the searches attempted (a fixture's were all solved in the map). Every problem and row so taken is marked as NOT
+# the rule's. The first step REFUSES that variable in a run directory of the seed's own or on the pool's base map, so no real run
+# takes that path.
+_LADDER_L6_SMOKE = {"environment": {**{name: value for name, value in _LADDER_L5_SMOKE["environment"].items() if name != "RLVR_LEAN_LADDER_L5_SMOKE_PROBLEMS"},
+                                    "RLVR_LEAN_LADDER_L6_RUN": "ladder_l6_cycle_smoke",
+                                    "RLVR_LEAN_LADDER_L6_L4P_RUN": "ladder_l4_dose_r64_smoke", "RLVR_LEAN_LADDER_L6_SMOKE_PROBLEMS": "2"}}
+STAGES["ladder_l6_cycle_smoke"] = [(environment, step, _LADDER_L6_SMOKE) for environment, step in _LADDER_L6]
 SOUNDNESS_ALARM_EXIT = 3       # `gpu.__main__`'s code for a proof of both sides of one statement (it cannot be imported here)
 
 

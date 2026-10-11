@@ -109,14 +109,18 @@ def _arm_runs(config: dict) -> list[ArmNames]:
 
 
 def _cap_torch_memory(config: dict) -> None:
-    """A PyTorch stage may not take the desktop's reserve: past the cap it fails in its own process."""
-    import torch
+    """A PyTorch stage may not take the desktop's reserve: past the cap it fails in its own process. Under
+    the cap its allocator keeps its memory in segments that can grow (`memory_budget.allocator_setting`),
+    which must be said before CUDA starts in this process: so it is said here, first."""
+    from rlvr_lean.gpu.memory_budget import ALLOCATOR_VARIABLE, allocator_setting, gpu_total_mib, process_memory_fraction
 
-    from rlvr_lean.gpu.memory_budget import gpu_total_mib, process_memory_fraction
+    os.environ[ALLOCATOR_VARIABLE] = allocator_setting(os.environ)
+    import torch
 
     fraction = process_memory_fraction(gpu_total_mib(), config["gpu"]["desktop_reserve_gb"], config["gpu"]["torch_overhead_gb"])
     torch.cuda.set_per_process_memory_fraction(fraction)
-    print(f"PyTorch memory cap {fraction} of the card (reserve {config['gpu']['desktop_reserve_gb']} GiB for the desktop)", flush=True)
+    print(f"PyTorch memory cap {fraction} of the card (reserve {config['gpu']['desktop_reserve_gb']} GiB for the desktop); "
+          f"{ALLOCATOR_VARIABLE}={os.environ[ALLOCATOR_VARIABLE]}", flush=True)
 
 
 def _epochs(config: dict, names: ArmNames) -> int:

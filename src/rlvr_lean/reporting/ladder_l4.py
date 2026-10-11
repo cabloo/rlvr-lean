@@ -34,11 +34,14 @@ from rlvr_lean.domain.ladder_round.ceiling import interval_text, still_writes_pr
 from rlvr_lean.domain.ladder_round.l3d import WITH, WITHOUT
 from rlvr_lean.domain.ladder_round.l3d2 import round_table
 from rlvr_lean.domain.ladder_round.l4 import INCONCLUSIVE, NOT_READ, PRE, arm_checks, goal_set_again, l4_branch, map_summary, pretraining_checks, the_training_ran
+from rlvr_lean.domain.ladder_round.l4_rows2 import ADDS as THE_READ_ADDS
+from rlvr_lean.domain.ladder_round.l4_rows2 import HOLDS, KEY, three_reads
 from rlvr_lean.domain.ladder_round.l4b import NARROWER, breadth_beside, with_breadth
+from rlvr_lean.domain.ladder_round.l4c import REHEARSAL_ALONE, SHORTER, long_proofs_beside, separation, with_the_long_proofs, with_the_separation
 from rlvr_lean.domain.ladder_round.read import GOAL, group_ids, paired_change
 from rlvr_lean.domain.problem_pool.episodes import RUNGS
 from rlvr_lean.reporting.ladder_ceiling import ALL, FOUR_PLUS, LOOP, RUNG_PART, _named, _rate, attempts_on_g, goal_sets, lean_did_not_answer, per_attempt, solved, verified_lines
-from rlvr_lean.reporting.ladder_l2 import _health, _split
+from rlvr_lean.reporting.ladder_l2 import MAXIMUM_SHARE_WITHOUT_AN_ANSWER, _health, _split
 from rlvr_lean.reporting.ladder_l3d1 import BASE, by_attempts_alone
 
 L4 = "l4"
@@ -233,10 +236,51 @@ def build_pretrain_report(prepare: Mapping, train: Mapping, groups: Sequence[Map
 
 
 # ------------------------------------------------------------------------------------------------ the arm
+def the_rounds_apart(alone: Mapping, of_with: Mapping, of_the_start: Mapping, again: Sequence[str], goal_ids: Sequence[str], long_ids: Sequence[str], fresh: Mapping | None,
+                     settings: Mapping, resamples: int, seed: int, start: str) -> dict:
+    """THE ARM'S OWN SEPARATION (spec, "L4c: the arm from `pre_r64` with a rule L4t2 names"), read beside the primary for
+    an arm whose training rule adds rehearsal rows. `alone`: the one more model, `rehearsal_alone` (the start model
+    trained one more pass on the rehearsal rows of the last model's set alone): its training step's summary (`train`),
+    its rows' losses in the order trained (`row_losses`), the rows its training loop recorded (`rows`), its per-problem
+    rows on the rungs and on G (a list a sampling), as a measured model's. `of_with`, `of_the_start`: the same of `with`
+    and of the start model. `fresh`: G's second sampling, or None (a run with one sampling: nothing is read).
+
+    ITS CHECKS FIRST, the ones a measured model has: its training ran (`l4.the_training_ran`, as the third check reads
+    the two measured trainings); it still writes proofs (`still_writes_proofs`, as the fourth); Lean answered each of
+    its sets. One that fails makes the separation NOT READ and changes NOTHING ELSE: these are not checks of the run,
+    its sets are not among those that make a report not to be read, and the task queued again samples a set Lean did
+    not answer again. Then on G' over the fresh attempts, `with` minus `rehearsal_alone`, paired by problem
+    (`l4c.separation`); `rehearsal_alone` itself against the start model is L4t2's read ADDS (`l4_rows2.three_reads`)."""
+    on_the_fresh = lambda model, other: per_attempt(model[GOAL][1], other[GOAL][1], list(again), resamples, seed) if fresh else dict(NOT_MEASURED)      # noqa: E731
+    own_sets = {f"rungs_{REHEARSAL_ALONE}": alone[RUNG_PART], **{f"goal_{REHEARSAL_ALONE}_{index}": rows for index, rows in enumerate(alone[GOAL], start=1)}}
+    unanswered = sorted(name for name, rows in own_sets.items() if lean_did_not_answer(rows))
+    checks = {
+        "its_training_ran": the_training_ran(alone["row_losses"], adapter_against_the_start(alone["train"]), settings),
+        "it_still_writes_proofs": still_writes_proofs(alone[RUNG_PART], settings["maximum_share_without_an_answer"]),
+        "lean_answered": {"what": f"Lean gave a verdict on all but at most {MAXIMUM_SHARE_WITHOUT_AN_ANSWER} of the attempts of each of its sets; the task queued again "
+                                  "samples a set it did not answer again from the kept adapter", "maximum": MAXIMUM_SHARE_WITHOUT_AN_ANSWER,
+                          "share_without_an_answer": {name: _health(rows)["share_without_an_answer"] for name, rows in own_sets.items()},
+                          "sets_not_answered": unanswered, "passes": not unanswered}}
+    failed = [name for name, check in checks.items() if not check["passes"]]
+    on_g, on_g_of_the_start = attempts_on_g(alone[GOAL]), attempts_on_g(of_the_start[GOAL])
+    difference = on_the_fresh(of_with, alone)
+    of_alone = three_reads(on_the_fresh(alone, of_the_start), solved(on_g, on_g_of_the_start, goal_ids), per_attempt(on_g, on_g_of_the_start, long_ids, resamples, seed),
+                           start)[KEY[THE_READ_ADDS]]
+    rows = alone["rows"]
+    return {"what": f"the loop's rows, apart from the rehearsal: on G' over the fresh attempts, `with` minus `{REHEARSAL_ALONE}` (`{start}` trained one more pass on the "
+                    "rehearsal rows of the last model's set alone, in that set's order, and measured as the twin is), paired by problem, 95% bootstrap over problems",
+            **separation(difference, of_alone, start, failed), "difference": difference, "rehearsal_alone_minus_the_start": of_alone,
+            "checks_of_rehearsal_alone": {"what": "the checks a measured model has, read on this one model: any FAIL makes the separation NOT READ and changes nothing else",
+                                          **checks},
+            "rehearsal_alone": {"rows": len(rows), "rows_by_origin": {origin: sum(row["origin"] == origin for row in rows) for origin in sorted({row["origin"] for row in rows})},
+                                "training": {key: value for key, value in alone["train"].items() if key != "checkpoints"}}}
+
+
 def build_l4_report(prepare: Mapping, own: Mapping, arm_prepare: Mapping, again: Sequence[str], trains: Mapping[str, Mapping], row_losses: Mapping[str, Sequence[float]],
                     trained_on: Mapping[str, Sequence[str]], assembled_lines: Sequence[int], rounds: Mapping[int, Mapping], groups: Sequence[Mapping],
                     lengths: Mapping[str, Mapping], base: Mapping, models: Mapping[str, Mapping], base_arm: Sequence[Sequence[Mapping]] | None, settings: Mapping,
-                    target_rate: float, evaluation: Mapping, start: str = PRE, breadth: bool = False, rehearsed: Mapping[str, Sequence[str]] | None = None) -> dict:
+                    target_rate: float, evaluation: Mapping, start: str = PRE, breadth: bool = False, rehearsed: Mapping[str, Sequence[str]] | None = None,
+                    long_proofs: bool = False, rehearsal_alone: Mapping | None = None) -> dict:
     """`prepare`: the summary of the step that read the stored runs into the arm's run (`ladder_l3d2_prepare`); `own`:
     `ladder_l4_prepare`'s (the pretraining run it stands on and that run's two checks); `arm_prepare`: the arm's own.
     `again`: G', the ids the pretraining's report stored. `trains`, `row_losses`, `trained_on`: by training of the arm
@@ -253,7 +297,14 @@ def build_l4_report(prepare: Mapping, own: Mapping, arm_prepare: Mapping, again:
     overfitting" is read BESIDE the primary on every branch (`l4b.breadth_beside`: the goal problems solved at least
     once in all the attempts, `with` against the start model, and the share of distinct attempts on G), and the branch
     says NARROWER when it lost more than it gained (`l4b.with_breadth`). `rehearsed`: by training, the problems of its
-    REHEARSAL rows, for an arm whose training rule adds them (`trained_on` then holds the rounds' rows alone)."""
+    REHEARSAL rows, for an arm whose training rule adds them (`trained_on` then holds the rounds' rows alone).
+
+    AN ARM WITH REHEARSAL ROWS (L4c; with the two defaults the report is L4b's own, byte for byte). `long_proofs`: the
+    goal problems of 4 lines or more, `with` minus the start model over all the attempts, are read BESIDE the primary,
+    and the branch says SHORTER when the interval is wholly below zero (`l4c.long_proofs_beside`: L4t2's read HOLDS THE
+    LONG PROOFS, failing). `rehearsal_alone`: the arm's one more model of that name (`the_rounds_apart`): the separation
+    is read beside the primary, and a primary that "adds" is reported with it after it (`l4c.with_the_separation`).
+    `rehearsal_alone` is NOT one of the report's models: none of L4's own reads, checks or sets moves with it."""
     resamples, seed = evaluation["bootstrap_resamples"], evaluation["bootstrap_seed"]
     goal_ids, rung_ids = group_ids(groups, GOAL), {name: group_ids(groups, name) for name in RUNGS}
     sets = goal_sets(goal_ids, lengths)
@@ -312,6 +363,13 @@ def build_l4_report(prepare: Mapping, own: Mapping, arm_prepare: Mapping, again:
     if breadth:         # the condition "without overfitting", beside the primary on every branch: NARROWER is said whatever the primary says
         read_beside = breadth_beside(solved_on_g[PRIMARY][ALL], distinct[WITH][GOAL]["mean_share_distinct"], distinct[start][GOAL]["mean_share_distinct"], start)
         branch = with_breadth(branch, read_beside)
+    read_long = read_apart = None
+    if long_proofs:     # L4c: the long proofs, beside the primary. L4t2's own read HOLDS THE LONG PROOFS, on the arm's last model: SHORTER is that read failing
+        read_long = long_proofs_beside(three_reads(primary, solved_on_g[PRIMARY][ALL], by_length[PRIMARY][FOUR_PLUS], start)[KEY[HOLDS]], start)
+        branch = with_the_long_proofs(branch, read_long)
+    if rehearsal_alone is not None:       # L4c: the arm's own separation, beside the primary; a primary that "adds" is reported with it after it
+        read_apart = the_rounds_apart(rehearsal_alone, who[WITH], who[start], again, goal_ids, sets[FOUR_PLUS], fresh, settings, resamples, seed, start)
+        branch = with_the_separation(branch, read_apart)
     said_branch = branch.get("reported_as", branch["name"])
     inconclusive = branch["name"] == INCONCLUSIVE
     health, not_to_be_read = _sets_health(who)
@@ -330,6 +388,8 @@ def build_l4_report(prepare: Mapping, own: Mapping, arm_prepare: Mapping, again:
                     "goal_set_again": len(again), **primary},
         "beside_the_primary": beside,
         **({"breadth_beside_the_primary": read_beside} if breadth else {}),
+        **({"the_long_proofs_beside_the_primary": read_long} if long_proofs else {}),
+        **({"the_rounds_apart_from_the_rehearsal": read_apart} if rehearsal_alone is not None else {}),
         "secondary": {
             "by_length_group": {"what": f"successes per attempt over all {attempts} attempts a problem by the length group of each goal problem's shortest published "
                                         "proof, on the problems of 4 lines or more and on all of G; for every pair of models read",
@@ -404,6 +464,23 @@ def build_l4_report(prepare: Mapping, own: Mapping, arm_prepare: Mapping, again:
                      f"distinct attempts on G {shares['with']} against {shares[start]}: "
                      + (f"{NARROWER} (lost more than gained with the sign test under {read_beside['level']:g})" if read_beside["narrower"] else
                         f"not narrower by the sign test at {read_beside['level']:g}"))
+    if long_proofs and not inconclusive:
+        lines.append(f"{SAY}: BESIDE IT, THE LONG PROOFS (read on every branch): the {len(sets[FOUR_PLUS])} goal problems of 4 lines or more, successes per attempt over "
+                     f"their {attempts} attempts, `with` minus `{start}`: {_rate(by_length[PRIMARY][FOUR_PLUS])}: "
+                     + (f"{SHORTER} (the interval is wholly below zero)" if read_long["shorter"] else "not shorter (the interval is not wholly below zero)" if read_long["read"]
+                        else "not read (no goal problem of 4 lines or more was measured)"))
+    if rehearsal_alone is not None and not inconclusive:
+        its, of_alone = read_apart["checks_of_rehearsal_alone"], read_apart["rehearsal_alone"]
+        lines.append(f"{SAY}: BESIDE IT, `{REHEARSAL_ALONE}` (`{start}` trained one more pass on the {of_alone['rows']:,} rehearsal rows of M({last})'s set ALONE, in that "
+                     f"set's order; measured as the twin is), ITS OWN CHECKS, which decide the separation and nothing else: its training ran "
+                     f"({_ran(f'`{REHEARSAL_ALONE}`', its['its_training_ran'])}): {_verdict(its['its_training_ran'])}; it still writes proofs "
+                     f"({its['it_still_writes_proofs']['share']} of its {its['it_still_writes_proofs']['attempts']:,} attempts on the three rungs without an answer; under "
+                     f"{its['it_still_writes_proofs']['maximum']} is asked): {_verdict(its['it_still_writes_proofs'])}; Lean answered (at most "
+                     f"{its['lean_answered']['maximum']} of each of its sets without an answer: "
+                     + "; ".join(f"{name} {share}" for name, share in its["lean_answered"]["share_without_an_answer"].items()) + f"): {_verdict(its['lean_answered'])}")
+        lines.append(f"{SAY}: BESIDE IT, THE ROUNDS APART FROM THE REHEARSAL (read on every branch): on G' over {of_the_fresh}, `with` minus `{REHEARSAL_ALONE}`, paired by "
+                     f"problem, 95% bootstrap over problems: {_rate(read_apart['difference'])}: {read_apart['name']}. {read_apart['reason']}"
+                     + (". Queue the task again: its measure step samples that set again from the kept adapter" if its["lean_answered"]["sets_not_answered"] else ""))
     lines.append(f"{SAY}: {'INCONCLUSIVE' if inconclusive else 'BRANCH: ' + said_branch}. {branch['reason']}")
     if not inconclusive:
         lines.append(f"{SAY}: SECONDARY, G' by the length of the shortest published proof, `with` minus `{start}` over {of_the_fresh}: "
@@ -454,13 +531,18 @@ def build_l4_report(prepare: Mapping, own: Mapping, arm_prepare: Mapping, again:
         "can_this_run_see_a_win": {"what": "the checks the spec reads before the branch; when any fails the run is INCONCLUSIVE and nothing else is said", **checks},
         "the_other_trainings": {"what": "the trainings whose models are not measured (the rounds before the last), read as the third check reads the two that "
                                         "are: for information, they decide nothing", **others},
-        **({"primary": None, "beside_the_primary": None, **({"breadth_beside_the_primary": None} if breadth else {}), "secondary": None,
+        **({"primary": None, "beside_the_primary": None, **({"breadth_beside_the_primary": None} if breadth else {}),
+            **({"the_long_proofs_beside_the_primary": None} if long_proofs else {}), **({"the_rounds_apart_from_the_rehearsal": None} if rehearsal_alone is not None else {}),
+            "secondary": None,
             "measured_and_not_read": {"why": "a check failed: the run is INCONCLUSIVE, and these numbers say nothing about what the loop adds on top of pretraining. "
                                              "They are kept for whoever repairs the run", **measured}} if inconclusive else measured),
         "models": {BASE: "the base model, from stored attempts: nothing here measured it again",
                    start: f"`{start}`: {LABEL} ({own['pretraining_rows']:,} proofs of the pool's `pretrain` half), measured by its own stage: its rows are that run's",
                    WITH: f"`with`: M({last}), the arm's last model: `{start}` trained one more pass on the rounds' proofs",
-                   WITHOUT: f"`without`: the twin of M({last}), from `{start}` on its one-shot rows alone", **({LOOP: names[LOOP]} if LOOP in who else {})},
+                   WITHOUT: f"`without`: the twin of M({last}), from `{start}` on its one-shot rows alone", **({LOOP: names[LOOP]} if LOOP in who else {}),
+                   **({REHEARSAL_ALONE: f"`{REHEARSAL_ALONE}`: `{start}` trained one more pass on the rehearsal rows of M({last})'s set alone, in that set's order; measured "
+                                        "as the twin is. The arm's own separation: it is read beside the primary and is no model of any other read"}
+                      if rehearsal_alone is not None else {})},
         "trainings": {name: {key: value for key, value in entry.items() if key != "checkpoints"} for name, entry in trains.items()},
         "the_pretraining": {key: own.get(key) for key in ("pretraining_run", "start_adapter", "pretraining_rows", "pretraining_file_sha256", "goal_set_again")},
         **({"a_further_seed": {**further, "sampling_seeds": prepare["sampling_seeds"]}} if further else {}),       # absent at the pretraining's own seed

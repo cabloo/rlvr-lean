@@ -27,7 +27,7 @@ from rlvr_lean.domain.ladder_round.assembly import attempts_alone, training_orde
 from rlvr_lean.domain.ladder_round.ceiling import training_example  # noqa: E402
 from rlvr_lean.domain.ladder_round.l4 import BRANCHES, INCONCLUSIVE, PRETRAIN, half_of  # noqa: E402
 from rlvr_lean.domain.ladder_round.l4_rows import rehearsal_rows, uniform  # noqa: E402
-from rlvr_lean.domain.ladder_round.l4b import RULES  # noqa: E402
+from rlvr_lean.domain.ladder_round.l4b import RULES, WITH_REHEARSAL  # noqa: E402
 from rlvr_lean.domain.problem_pool.episodes import reward  # noqa: E402
 from rlvr_lean.runner import entry  # noqa: E402
 from rlvr_lean.gpu import __main__ as gpu_main  # noqa: E402
@@ -41,9 +41,16 @@ RULE, MINIMUM, START_CHECKS, MAP_RUN = ladder_l2.L2_RULE_VARIABLE, ladder_l2.L2_
 STEPS = {**ladder_l2.STEPS, **ladder_l3d2.STEPS, **ladder_l4.STEPS, **ladder_l4_rank.STEPS, **ladder_l4b.STEPS}
 ORDER = ["ladder_l4b_map", "ladder_l2_prepare", "ladder_l4b_prepare", "ladder_l3d2_prepare", "ladder_l2_embed", "ladder_l2_round_1", "ladder_l2_train_1", "ladder_l2_round_2",
          "ladder_l2_train_2", "ladder_l3d2_train_without", "ladder_l3d2_measure_with", "ladder_l3d2_measure_without", "ladder_l4b_report"]
+# L4c: an arm whose rule adds rehearsal rows carries its own separation: two more steps, after its own and before its report (`test_ladder_l4c_stage.py`).
+ALONE = ["ladder_l4b_train_rehearsal_alone", "ladder_l4b_measure_rehearsal_alone"]
 RANK_64 = {"rank": 64, "alpha": 128}
 # What every training set of an arm WITHOUT a rule holds of a row: what it held before a rule could be said.
 ROW_KEYS = {"row", "id", "problem_id", "side", "attempt_id", "theorem", "completion", "verified_attempts", "round", "batch", "origin", "resolved_after_attempt", "minimised"}
+
+
+def _order(rule):
+    """The stage's GPU steps for an arm with the training rule `rule`, two rounds."""
+    return [*ORDER[:-1], *ALONE, ORDER[-1]] if rule in WITH_REHEARSAL else ORDER
 
 
 def _stage(config, monkeypatch, name, until=None, rounds=2):
@@ -129,7 +136,7 @@ def test_the_start_of_an_arm_and_of_l4t_is_resolved_by_one_function(l4b, monkeyp
         ladder_l2.assembly_arm(config)
     monkeypatch.setitem(arms[L4B_ARM], "start", "pre_r64")
     monkeypatch.setitem(arms[L4B_ARM], "rule", "newest")
-    with pytest.raises(ValueError, match="and for its training rule, one of .'old', 'reward_rows', 'rehearse'."):
+    with pytest.raises(ValueError, match="and for its training rule, one of .'old', 'reward_rows', 'rehearse', 'reward_rehearse'."):
         ladder_l2.assembly_arm(config)
     monkeypatch.setitem(arms[L4B_ARM], "rule", "old")
     monkeypatch.setenv(RULE, "newest")
@@ -146,7 +153,8 @@ def test_the_start_of_an_arm_and_of_l4t_is_resolved_by_one_function(l4b, monkeyp
         monkeypatch.setenv(RULE, rule)
         names[rule] = (ladder_l2.rule_of(config), ladder_l2._store(ladder_l2.arm_config(config)).root.name)
     assert names == {"old": ("old", "ladder_l2_t010_assembly_pre_r64_seed0"), "reward_rows": ("reward_rows", "ladder_l2_t010_assembly_pre_r64_reward_rows_seed0"),
-                     "rehearse": ("rehearse", "ladder_l2_t010_assembly_pre_r64_rehearse_seed0")}
+                     "rehearse": ("rehearse", "ladder_l2_t010_assembly_pre_r64_rehearse_seed0"),
+                     "reward_rehearse": ("reward_rehearse", "ladder_l2_t010_assembly_pre_r64_reward_rehearse_seed0")}
     monkeypatch.delenv(RULE)
     assert ladder_l2.rule_of(config) == "old" == arms[L4B_ARM]["rule"]            # no variable: the arm's own setting
     gpu = {path.name: path.read_text() for path in (Path(ladder_l2.__file__).parent).glob("*.py")}
@@ -162,7 +170,8 @@ def test_the_arm_from_pre_r64_runs_with_each_rule_every_model_at_rank_64(l4b, mo
     name = l4b.task(rule)
     summaries = _stage(config, monkeypatch, name)
     store, map_run, start = l4b.store(), l4b.map_run(), r64_.rank / "adapters" / "pre_r64"
-    assert list(summaries) == ORDER and store.root.name == "ladder_l2_t010_assembly_pre_r64_" + ("" if rule == "old" else f"{rule}_") + "seed0"
+    alone = rule in WITH_REHEARSAL                                                # L4c: such an arm trains and measures one more model, `rehearsal_alone`
+    assert list(summaries) == _order(rule) and store.root.name == "ladder_l2_t010_assembly_pre_r64_" + ("" if rule == "old" else f"{rule}_") + "seed0"
     assert {path: _all(path) for path in read_only} == read_only                  # `pre`'s run, the rank-16 arm's and the rank check's are only read: file for file what they were
 
     # ---- THE MAP FIRST, in a run directory of its own: `pre`'s map step under `pre_r64`'s names, the model server started for rank 64
@@ -189,14 +198,14 @@ def test_the_arm_from_pre_r64_runs_with_each_rule_every_model_at_rank_64(l4b, mo
 
     # ---- EVERY ENGINE of the arm is started for rank 64 (the map, the two rounds, the two measurements), and round 1 is attempted by `pre_r64`
     # (one engine's kit a sampled set: the map; two batches a round; the rungs and G's two samplings for each measured model)
-    assert len(kits) == 1 + 2 + 2 + 3 + 3 and all(kit["max_lora_rank"] == 64 and kit["rank"] == 64 and {**kit["vllm"], "max_lora_rank": 16} == config["vllm"] for kit in kits)
+    assert len(kits) == 1 + 2 + 2 + 3 + 3 + (3 if alone else 0) and all(kit["max_lora_rank"] == 64 and kit["rank"] == 64 and {**kit["vllm"], "max_lora_rank": 16} == config["vllm"] for kit in kits)
     assert [kit["adapter"] for kit in kits[1:3]] == [("the start adapter", start)] * 2 and not any(kit["adapter"] == ("the start adapter", start) for kit in kits[3:])
     assert (config["lora"]["rank"], config["lora"]["alpha"], config["vllm"]["max_lora_rank"]) == (16, 32, 16)                      # and the config itself is not changed
     assert (summaries["ladder_l2_round_1"]["attempted_by_the_start_adapter"], summaries["ladder_l2_round_2"]["attempted_by_the_start_adapter"]) == (True, False)
 
     # ---- EVERY TRAINING (M(1), M(2), the twin) attaches the START ADAPTER's rank and alpha, starts from it, and the adapter it saved is read back
-    assert [(call["lora"]["rank"], call["lora"]["alpha"], call["more"], call["max_lora_rank"]) for call in calls] == [(64, 128, {"start": start}, 16)] * 3
-    assert [list(call["schedule"]["checkpoint_steps"]) for call in calls] == [["m1"], ["m2"], ["without"]]
+    assert [(call["lora"]["rank"], call["lora"]["alpha"], call["more"], call["max_lora_rank"]) for call in calls] == [(64, 128, {"start": start}, 16)] * (4 if alone else 3)
+    assert [list(call["schedule"]["checkpoint_steps"]) for call in calls] == [["m1"], ["m2"], ["without"], *([["rehearsal_alone"]] if alone else [])]
     trainings = {"m1": summaries["ladder_l2_train_1"], "m2": summaries["ladder_l2_train_2"], "without": summaries["ladder_l3d2_train_without"]}
     for model, summary in trainings.items():
         assert summary["adapter_saved"]["rank"] == 64 and summary["adapter_saved"]["alpha"] == 128 and summary["adapter_saved"]["ranks"] == [64] and summary["peak_reserved_gb"] == 12.64
@@ -219,24 +228,27 @@ def test_the_arm_from_pre_r64_runs_with_each_rule_every_model_at_rank_64(l4b, mo
     if rule == "old":           # what every arm does: the same rows, the same order, the same fields
         assert all([{key: value for key, value in row.items() if key != "row"} for row in sets[number]] == old[number] and set(sets[number][0]) <= ROW_KEYS for number in (1, 2))
         assert [row["id"] for row in twin] == [row["id"] for row in attempts_alone(sets[2])]
-    if rule == "reward_rows":   # a row is kept when its draw is under r(k); kept by the smoke run's minimum where the rule keeps too few, and said so
+    if rule in ("reward_rows", "reward_rehearse"):      # a row is kept when its draw is under r(k); kept by the smoke run's minimum where the rule keeps too few, and said so
         for number in (1, 2):
-            for row in sets[number]:
+            kept = [row for row in sets[number] if row["origin"] != "pretraining"]
+            for row in kept:
                 k = max(1, picks[row["problem_id"]]["resolved"])
                 assert (row["k"], row["n"], row["draw"]) == (k, 8, uniform(0, "l4_rows_keep", row["id"])) and row["reward"] == round(reward(k, 8, 0.10), 6)
                 assert row["kept_by"] == ("the rule" if row["draw"] < reward(k, 8, 0.10) else "the run's minimum")
-            by_the_rule = [row["id"] for row in sets[number] if row["kept_by"] == "the rule"]
+            by_the_rule = [row["id"] for row in kept if row["kept_by"] == "the rule"]
             assert by_the_rule == [row["id"] for row in old[number] if uniform(0, "l4_rows_keep", row["id"]) < reward(max(1, picks[row["problem_id"]]["resolved"]), 8, 0.10)]
-            assert summaries[f"ladder_l2_train_{number}"]["rule"]["kept_by_the_runs_minimum"] == len(sets[number]) - len(by_the_rule)
-        assert {row["id"] for row in sets[1] if row["kept_by"] == "the rule"} <= {row["id"] for row in sets[2] if row["kept_by"] == "the rule"}       # kept for M(1): kept for M(2)
+            assert summaries[f"ladder_l2_train_{number}"]["rule"]["kept_by_the_runs_minimum"] == len(kept) - len(by_the_rule)
+        assert {row["id"] for row in sets[1] if row.get("kept_by") == "the rule"} <= {row["id"] for row in sets[2] if row.get("kept_by") == "the rule"}       # kept for M(1): kept for M(2)
+    if rule == "reward_rows":
         assert [row["id"] for row in twin] == [row["id"] for row in sets[2] if row["origin"] == "attempt"]                              # the twin: the same rule, the assembled rows left out
-    if rule == "rehearse":      # all the rounds' rows, and as many rows of the pretraining file as the model has one-shot rows, the first of the same hash order
+    if alone:   # as many rows of the pretraining file as the set has one-shot rows, the first of ONE hash order; with `rehearse`, beside ALL the rounds' rows
         fixture = _file_rows(FIXTURE)
         in_order = rehearsal_rows([{"problem_id": row["problem_id"]} for row in fixture], len(fixture), 0)
         for number in (1, 2):
             rehearsal = [row for row in sets[number] if row["origin"] == "pretraining"]
             one_shot = sum(row["origin"] == "attempt" for row in sets[number])
-            assert len(rehearsal) == one_shot and (number == 1 or one_shot > 0) and sorted(row["id"] for row in sets[number] if row["origin"] != "pretraining") == sorted(row["id"] for row in old[number])
+            assert len(rehearsal) == one_shot and (number == 1 or one_shot > 0)
+            assert rule != "rehearse" or sorted(row["id"] for row in sets[number] if row["origin"] != "pretraining") == sorted(row["id"] for row in old[number])
             assert sorted(row["id"] for row in rehearsal) == sorted(row["id"] for row in in_order[:one_shot])
             # STORED BY ID AND PLACE, never with text; of the `pretrain` half; and what the training was handed is the file's own example for it.
             assert all({"theorem", "completion", "statement", "proof"}.isdisjoint(row) and half_of(row["problem_id"], 0) == PRETRAIN for row in rehearsal)
@@ -248,7 +260,7 @@ def test_the_arm_from_pre_r64_runs_with_each_rule_every_model_at_rank_64(l4b, mo
         assert sorted((first.index(row["id"]) for row in sets[2] if row["origin"] == "pretraining")) == list(range(sum(row["origin"] == "pretraining" for row in sets[2])))
         # The twin: the same rule with the assembled rows left out. Its rehearsal rows are the last model's, and it was handed their text too.
         assert [row["id"] for row in twin] == [row["id"] for row in sets[2] if row["origin"] != "assembled"] and summaries["ladder_l3d2_train_without"]["rule"] == {
-            "rule": "rehearse", "what": summaries["ladder_l3d2_train_without"]["rule"]["what"], "one_shot_rows": sum(row["origin"] == "attempt" for row in twin),
+            "rule": rule, "what": summaries["ladder_l3d2_train_without"]["rule"]["what"], "one_shot_rows": sum(row["origin"] == "attempt" for row in twin),
             "rehearsal_rows": sum(row["origin"] == "pretraining" for row in twin)}
         assert len(calls[2]["examples"]) == len(twin) and not any("completion" in row for row in twin if row["origin"] == "pretraining")
     else:
@@ -295,7 +307,7 @@ def test_the_arm_from_pre_r64_runs_with_each_rule_every_model_at_rank_64(l4b, mo
     # THE FIFTH CHECK: no row of the seven... here three trainings is barred; the rehearsal rows are of the `pretrain` half and are NAMED, not barred.
     barred = report["can_this_run_see_a_win"]["no_training_row_is_of_the_pretrain_half_or_held_out"]
     assert barred["passes"] is True and barred["barred_problems"] == 0
-    if rule == "rehearse":
+    if alone:
         assert barred["rehearsal_rows_of_the_pretrain_half"] == {"M(1)": sum(row["origin"] == "pretraining" for row in sets[1]), "M(2)": sum(row["origin"] == "pretraining" for row in sets[2]),
                                                                   "`without`": sum(row["origin"] == "pretraining" for row in twin)} and barred["barred_rehearsal_rows"] == 0
         assert barred["rows"] == {"M(1)": sum(row["origin"] != "pretraining" for row in sets[1]), "M(2)": sum(row["origin"] != "pretraining" for row in sets[2]),
@@ -303,7 +315,10 @@ def test_the_arm_from_pre_r64_runs_with_each_rule_every_model_at_rank_64(l4b, mo
     else:
         assert "rehearsal_rows_of_the_pretrain_half" not in barred and barred["rows"] == {"M(1)": len(sets[1]), "M(2)": len(sets[2]), "`without`": len(twin)}
     assert json.loads(store.path(ladder_l4b.REPORT_FILE).read_text()) == json.loads(json.dumps(report, default=str)) and store.is_done(ladder_l4b.REPORT)
-    assert not store.path(ladder_l4.ARM_REPORT_FILE).exists() and report["adapters"]["there"] == ["m1", "m2", "without"] and report["adapters"]["start_adapter"] == str(start)
+    assert not store.path(ladder_l4.ARM_REPORT_FILE).exists() and report["adapters"]["there"] == ["m1", "m2", *(["rehearsal_alone"] if alone else []), "without"]
+    assert report["adapters"]["start_adapter"] == str(start)
+    # L4c: under `old` and `reward_rows` the arm has no such model: no step, no file, no key of the report.
+    assert alone == ("the_rounds_apart_from_the_rehearsal" in report) == ("the_long_proofs_beside_the_primary" in report) == bool([path for path in store.root.iterdir() if "rehearsal_alone" in path.name])
 
     # ---- a rerun returns what is stored: nothing is sampled, checked or trained again; and the map is not made again
     solver_calls, sent, trained = r64_.l4.solver.calls, len(r64_.l4.lean.sources), len(calls)
@@ -321,7 +336,7 @@ def test_the_arm_from_pre_r64_runs_with_each_rule_every_model_at_rank_64(l4b, mo
     assert "fixture_c3" in broken["can_this_run_see_a_win"]["no_training_row_is_of_the_pretrain_half_or_held_out"]["first"] and half_of("fixture_c3", 0) == PRETRAIN
     assert broken["breadth_beside_the_primary"] is None and "breadth_beside_the_primary" in broken["measured_and_not_read"] and not any("SECONDARY" in line or "WITHOUT OVERFITTING" in line for line in broken["lines"])
     store.write_rows(ladder_assembly.training_set_file(2), stored)
-    if rule == "rehearse":
+    if alone:
         heldout = store.read_rows(ladder_l3d2.GROUPS_FILE)[0]["problem_id"]
         index = next(position for position, row in enumerate(stored) if row["origin"] == "pretraining")
         for wrong in (heldout, "fixture_c1"):                                   # a held-out problem; a problem of the `loop` half: neither is a rehearsal row
@@ -566,10 +581,12 @@ def test_the_smoke_stages_run_from_the_smoke_pre_r64_in_the_smoke_world(arm, mon
     del calls[:]
     summaries = _stage(config, monkeypatch, stage_name)
     store = ladder_l3d2._store(config)
-    assert list(summaries) == ORDER and store.root == runs / stage_name and (runs / "ladder_l4b_map_smoke" / "l4_map_pre_r64.jsonl").exists()
+    alone = rule in WITH_REHEARSAL                                                # L4c: the smoke stage of such a rule trains, serves and measures `rehearsal_alone` too
+    assert list(summaries) == _order(rule) and store.root == runs / stage_name and (runs / "ladder_l4b_map_smoke" / "l4_map_pre_r64.jsonl").exists()
     assert {path: _all(path) for path in as_stored} == as_stored                  # the two smoke runs it reads are only read
     assert not [path.name for path in runs.iterdir() if "pre_r64" in path.name]   # no run directory of a real run was made
-    assert set(kits) == {64} and len(kits) == 1 + 2 + 2 + 2 + 2 and [(call["lora"]["rank"], call["lora"]["alpha"], call["more"]) for call in calls] == [(64, 128, {"start": rank_run / "adapters" / "pre_r64"})] * 3
+    assert set(kits) == {64} and len(kits) == 1 + 2 + 2 + 2 + 2 + (2 if alone else 0)
+    assert [(call["lora"]["rank"], call["lora"]["alpha"], call["more"]) for call in calls] == [(64, 128, {"start": rank_run / "adapters" / "pre_r64"})] * (4 if alone else 3)
     prepare, own, report = summaries["ladder_l2_prepare"], summaries["ladder_l4b_prepare"], summaries["ladder_l4b_report"]
     assert (prepare["rule"], prepare["start_run"], prepare["start_recipe"]["rank"], prepare["rule_minimum_of_a_smoke_run"]) == (rule, str(rank_run), 64, 2)
     assert (own["rank_16"]["read"], own["base_arm_run"], own["start_run_read"]["checks_waived_for_a_smoke_run"]) == (False, None, prepare["start_run_read"]["checks_waived_for_a_smoke_run"])
@@ -578,6 +595,18 @@ def test_the_smoke_stages_run_from_the_smoke_pre_r64_in_the_smoke_world(arm, mon
     assert any("L2's stored runs were not read (a smoke run)" in line for line in report["lines"]) and store.is_done(ladder_l4b.REPORT)
     section = report["measured_and_not_read"] if report["inconclusive"] else report
     assert section["secondary"]["beside_the_rank_16_arm"]["read"] is False and section["breadth_beside_the_primary"]["problems"] == 1
+    if alone:   # L4c: THE ONLY RUN BEFORE THE REAL ONE in which a model is trained on an arm's rehearsal rows alone, served and measured: the two steps, end to end
+        trained, measured = summaries[ALONE[0]], summaries[ALONE[1]]
+        of_the_last = [row for row in store.read_rows(ladder_assembly.training_set_file(2)) if row["origin"] == "pretraining"]
+        assert trained["rows"] == len(of_the_last) > 0 and trained["adapter_saved"]["ranks"] == [64] and list(calls[-1]["schedule"]["checkpoint_steps"]) == ["rehearsal_alone"]
+        assert [row["id"] for row in store.read_rows(ladder_l4b.TRAINING_ALONE_FILE)] == [row["id"] for row in of_the_last] and not any("proof" in row or "completion" in row for row in of_the_last)
+        assert calls[-1]["examples"] == [training_example(_file_rows(FIXTURE)[row["row_of_the_file"]]) for row in of_the_last]      # the fixture's own rows, read from the pretraining file
+        assert measured["model"] == "rehearsal_alone" and set(measured["goal"]) == {REACH} and report["adapters"]["there"] == ["m1", "m2", "rehearsal_alone", "without"]
+        # One sampling of G has no fresh attempts: the separation is NOT READ, and what the report read of the model is kept in it.
+        apart = section["the_rounds_apart_from_the_rehearsal"]
+        assert (apart["name"], apart["difference"]["mean"], apart["rehearsal_alone"]["rows"]) == ("NOT READ", None, len(of_the_last)) and section["the_long_proofs_beside_the_primary"]["read"] is False
+    else:
+        assert "the_rounds_apart_from_the_rehearsal" not in section and not [step for step in summaries if "rehearsal_alone" in step]
     # The map is made ONCE for every rule: the next rule's smoke task finds it done.
     sampled = arm.solver.calls
     assert ladder_l4b.ladder_l4b_map(config) == summaries["ladder_l4b_map"] and arm.solver.calls == sampled
@@ -590,24 +619,28 @@ def test_the_stages_run_the_map_first_then_l4s_steps_with_a_guard_before_every_g
         steps = [entry.step_fields(stage_entry) for stage_entry in entry.STAGES[f"ladder_l4b_{rule}"]]
         pairs = [(environment, step) for environment, step, _ in steps]
         assert pairs[:4] == [("sync", "gpu"), ("gpu", "fix_tokenizers"), ("gpu", "ladder_l4b_map"), ("guard", None)]
-        # ... then L4's own stage, step for step, with this stage's prepare step and report in the place of L4's
+        # ... then L4's own stage, step for step, with this stage's prepare step and report in the place of L4's; and for a rule with rehearsal rows (L4c) the two steps
+        # of `rehearsal_alone`, a guard after each, between the last measurement's guard and the report
         renamed = [(environment, {"ladder_l4_prepare": "ladder_l4b_prepare", "ladder_l4_report": "ladder_l4b_report"}.get(step, step)) for environment, step in of_l4]
-        assert [pair for index, pair in enumerate(pairs) if index not in (2, 3)] == renamed
+        own = [("gpu", ALONE[0]), ("guard", None), ("gpu", ALONE[1]), ("guard", None)] if rule in WITH_REHEARSAL else []
+        assert [pair for index, pair in enumerate(pairs) if index not in (2, 3)] == [*renamed[:-1], *own, renamed[-1]] and renamed[-2:] == [("guard", None), ("gpu", "ladder_l4b_report")]
         assert all(steps[index - 1][0] == "guard" for index, (environment, _, _) in enumerate(steps) if environment == "gpu" and index > 2)
         assert all(options == {"environment": {ARM: L4B_ARM, RULE: rule}} for _, _, options in steps)
         gpu_steps = [step for environment, step in pairs if environment == "gpu"]
-        assert gpu_steps[1:] == [*ORDER[:5], *(f"ladder_l2_{kind}_{number}" for number in range(1, 7) for kind in ("round", "train")), *ORDER[9:]] and all(step in STEPS for step in gpu_steps[1:])
+        assert gpu_steps[1:] == [*ORDER[:5], *(f"ladder_l2_{kind}_{number}" for number in range(1, 7) for kind in ("round", "train")), *_order(rule)[9:]] and all(step in STEPS for step in gpu_steps[1:])
         smoke = [(environment, step) for environment, step, _ in map(entry.step_fields, entry.STAGES[f"ladder_l4b_{rule}_smoke"])]
-        assert [step for environment, step in smoke if environment == "gpu"][1:] == ORDER
+        assert [step for environment, step in smoke if environment == "gpu"][1:] == _order(rule)
     assert sorted(name for name in entry.STAGES if name.startswith("ladder_l4b")) == sorted([*(f"ladder_l4b_{rule}" for rule in RULES), *(f"ladder_l4b_{rule}_smoke" for rule in RULES)])
-    assert list(ladder_l4b.STEPS) == ["ladder_l4b_map", "ladder_l4b_prepare", "ladder_l4b_report"]
+    assert list(ladder_l4b.STEPS) == ["ladder_l4b_map", "ladder_l4b_prepare", *ALONE, "ladder_l4b_report"]
     others = set(ladder_l2.STEPS) | set(ladder_l3d2.STEPS) | set(ladder_l4.STEPS) | set(ladder_l4_rank.STEPS) | set(ladder_l4_rows.STEPS)
     assert not set(ladder_l4b.STEPS) & others
-    # No other stage's task names the rule, L4b's arm or the map's run: the stages that existed are what they were.
+    # No other stage's task names the rule or L4b's arm: the stages that existed are what they were. The map's SMOKE run is named by two more stages, which READ it
+    # and run no step of the arm: L5's smoke stage, whose deep search draws its problems from that map, and L6's, whose round 1 is L5's smoke run.
     for name, steps in entry.STAGES.items():
         if not name.startswith("ladder_l4b"):
             named = {key for step in steps for key in entry.step_fields(step)[2].get("environment", {})}
-            assert not named & {RULE, MINIMUM, START_CHECKS, MAP_RUN} and all(entry.step_fields(step)[2].get("environment", {}).get(ARM) != L4B_ARM for step in steps)
+            assert not named & {RULE, MINIMUM, START_CHECKS} and all(entry.step_fields(step)[2].get("environment", {}).get(ARM) != L4B_ARM for step in steps)
+            assert (MAP_RUN in named) is (name in ("ladder_l5_deep_smoke", "ladder_l6_cycle_smoke")) and not any(entry.step_fields(step)[1] in ladder_l4b.STEPS for step in steps)
 
 
 def test_the_steps_run_through_the_gpu_entry_point(l4b, monkeypatch, tmp_path):

@@ -36,11 +36,18 @@ beside each when those rows were on the box (`old_rule_figures`), and one of thr
 rank in it (`l4_rows.old_rule_branch`). The two others are read as above with `old_rule` in `without`'s place and the start
 model in `pre`'s, and are NOT READ against an `old_rule` that is INCONCLUSIVE. `hot` is `old_rule` and the start model.
 From `pre` the report is, key for key and line for line, what it was.
+
+TWO REPORTS READ A TRAINED MODEL BY THE SAME FUNCTIONS (spec, "L4t2: two more one-change checks, on what L4t left
+open"): the world every model of a report is read on (`World`, `world_of`), a model's four checks and their lines
+(`the_four_checks`, `check_lines`) and its secondary reads and their lines (`secondary_reads`, `secondary_lines`). This
+report calls them, and L4t2's does (`reporting/ladder_l4_rows2.py`) for its own two models, each read by itself against
+the start model. Change one and both reports change; this report is what it was.
 """
 
 from __future__ import annotations
 
-from typing import Mapping, Sequence
+from dataclasses import dataclass
+from typing import Collection, Mapping, Sequence
 
 from rlvr_lean.domain.ladder_round.ceiling import interval_text, still_writes_proofs
 from rlvr_lean.domain.ladder_round.l3d import WITH, WITHOUT
@@ -137,6 +144,208 @@ def _figures(figures: Mapping, rule: str, start: str) -> str:
             f"{long['of_the_old_rule']} against {long['of_its_start']}; all of G, successes per attempt, `{rule}` minus `{start}`: {_rate(figures['per_attempt'])}")
 
 
+# ------------------------------------------------- one trained model: its checks and its secondary reads
+@dataclass(frozen=True)
+class World:
+    """What every model of ONE report is read on (`world_of`): the prepare step's summary, the models with their rows,
+    the held-out sets, G', whether Lean answered each measured set, and the bootstrap. L4t's report builds one, and so
+    does L4t2's (`reporting/ladder_l4_rows2.py`), which reads its own models by the four functions below: change one
+    and both reports change."""
+    prepare: Mapping                            # the prepare step's summary: the start, how a model is measured
+    who: Mapping[str, Mapping]                  # by model, stored or trained: `rungs`, `goal` (a list a sampling of G) and what it wrote
+    on_g: Mapping[str, Sequence[Mapping]]       # by model: its per-problem rows over all its attempts on G
+    goal_ids: Sequence[str]
+    sets: Mapping[str, Sequence[str]]           # G by length group, the problems of 4 lines or more, all of it (`goal_sets`)
+    rung_ids: Mapping[str, Sequence[str]]
+    again: Sequence[str]                        # G' of the start model
+    alone: Mapping                              # by model, by set: the goal problems solved by attempts alone (`by_attempts_alone`)
+    sets_of: Mapping[str, Sequence[str]]        # by model: its measured sets, as the report names them (its rungs, then G a sampling)
+    health: Mapping[str, Mapping]               # by measured set: its attempts and how many got no answer
+    not_to_be_read: Sequence[str]               # the measured sets Lean did not answer
+    heldout: Collection[str]
+    settings: Mapping                           # `ladder_loop.l4`
+    never: Sequence[str] | None                 # the goal problems nothing stored had solved, as GIVEN, or None
+    resamples: int
+    seed: int
+
+    @property
+    def start(self) -> str:
+        return self.prepare["start"]
+
+    @property
+    def attempts(self) -> int:
+        return self.prepare["attempts_a_goal_problem"]
+
+    @property
+    def fresh(self) -> Mapping | None:
+        """G's second sampling, whose attempts did not choose G'; None for a run with one sampling (a smoke run)."""
+        samplings = self.prepare["goal_samplings"]
+        return samplings[1] if len(samplings) > 1 else None
+
+    @property
+    def of_the_fresh(self) -> str:
+        return f"the {self.fresh['episodes']} attempts of the second sampling" if self.fresh else "a second sampling, which this run does not have"
+
+    def on_again(self, name: str, minus: str) -> dict:
+        """G', successes per attempt over the fresh attempts (the second sampling alone), `name` minus `minus`, paired
+        by problem (the arm's primary); not measured in a run with one sampling."""
+        if not self.fresh:
+            return dict(NOT_MEASURED)
+        return per_attempt(self.who[name][GOAL][1], self.who[minus][GOAL][1], list(self.again), self.resamples, self.seed)
+
+
+def world_of(prepare: Mapping, who: Mapping[str, Mapping], groups: Sequence[Mapping], lengths: Mapping[str, Mapping], again: Sequence[str], settings: Mapping,
+             evaluation: Mapping, never: Sequence[str] | None = None, also: Mapping[str, Sequence[Mapping]] | None = None) -> World:
+    """The world of one report. `who`: every model it reads, stored or trained. `groups`: the held-out groups.
+    `lengths`: by problem, its shortest published proof's length group. `again`: G', refused (ValueError) when a
+    problem of it is not a goal problem of this run. `also`: more measured sets than the models' own (L4t's samplings
+    at the hot temperature), by the name the report gives each: whether Lean answered is read on them too."""
+    resamples, seed = evaluation["bootstrap_resamples"], evaluation["bootstrap_seed"]
+    goal_ids, rung_ids = group_ids(groups, GOAL), {rung: group_ids(groups, rung) for rung in RUNGS}
+    sets = goal_sets(goal_ids, lengths)
+    on_g = {name: attempts_on_g(entry[GOAL]) for name, entry in who.items()}
+    stray = sorted(set(again) - set(goal_ids))
+    if stray:
+        raise ValueError(f"{len(stray)} problems of G' are not goal problems of this run (first: {stray[0]}): the pretraining's report is of another held-out set")
+    alone = by_attempts_alone(who, sets)
+    # ---- whether Lean answered, set by set (the stored models' sets were held to this at the prepare step too)
+    measured_sets, sets_of = {}, {}
+    for name, entry in who.items():
+        sets_of[name] = [f"rungs_{name}", *(f"goal_{name}_{index}" for index in range(1, len(entry[GOAL]) + 1))]
+        measured_sets[f"rungs_{name}"] = entry[RUNG_PART]
+        measured_sets.update({f"goal_{name}_{index}": rows for index, rows in enumerate(entry[GOAL], start=1)})
+    measured_sets.update(also or {})
+    health = {name: _health(rows) for name, rows in measured_sets.items()}
+    not_to_be_read = sorted(name for name, rows in measured_sets.items() if lean_did_not_answer(rows))
+    return World(prepare, who, on_g, goal_ids, sets, rung_ids, again, alone, sets_of, health, not_to_be_read, {row["problem_id"] for row in groups}, settings, never,
+                 resamples, seed)
+
+
+def the_four_checks(world: World, name: str, train: Mapping, row_losses: Sequence[float], trained_rows: Sequence[Mapping], own_sets: Sequence[str],
+                    read_against: str) -> dict:
+    """The four checks the spec reads FIRST on one trained model. `train`: its training step's summary. `row_losses`:
+    its rows' losses in the order trained. `trained_rows`: the rows its training loop recorded. `own_sets`: the
+    measured sets its read stands on (its own, and those of the models it is read against, said in `read_against`)."""
+    unanswered = [key for key in own_sets if key in world.not_to_be_read]
+    return {
+        "its_training_ran": the_training_ran(row_losses, adapter_against_the_start(train), world.settings),
+        "it_still_writes_proofs": still_writes_proofs(world.who[name][RUNG_PART], world.settings["maximum_share_without_an_answer"]),
+        "lean_answered": {"what": f"Lean gave a verdict on all but at most {MAXIMUM_SHARE_WITHOUT_AN_ANSWER} of the attempts of each set read: the model's own, which "
+                                  f"the task queued again samples again, and {read_against} it is read against",
+                          "maximum": MAXIMUM_SHARE_WITHOUT_AN_ANSWER, "share_without_an_answer": {key: world.health[key]["share_without_an_answer"] for key in own_sets},
+                          "sets_not_answered": unanswered, "passes": not unanswered},
+        "no_barred_row": no_barred_row(trained_rows, world.heldout, world.settings["half_seed"])}
+
+
+def check_lines(world: World, of: str, name: str, what_it_is: str, train: Mapping, checks: Mapping, own_sets: Sequence[str]) -> list[str]:
+    """The four checks of one trained model as its lines say them, each PASS or FAIL. `of`: what its lines begin with.
+    `what_it_is`: the model, in words."""
+    ran, writes, answered, barred = (checks[key] for key in ("its_training_ran", "it_still_writes_proofs", "lean_answered", "no_barred_row"))
+    return [
+        f"{of} ({what_it_is}; {train['rows']:,} rows, {train['steps']:,} optimizer steps, from `{world.start}`), CHECK 1, its training ran (the "
+        "adapter saved is not the start adapter's; the mean loss over the last tenth of its rows is not above the first tenth's by more than "
+        f"{world.settings['standard_errors_allowed']:g} standard errors of their difference): {_ran(f'`{name}`', ran)}: {_verdict(ran)}",
+        f"{of}, CHECK 2, it still writes proofs: {writes['share']} of its {writes['attempts']:,} attempts on the three rungs got no answer; under {writes['maximum']} "
+        f"is asked: {_verdict(writes)}",
+        f"{of}, CHECK 3, Lean answered (at most {MAXIMUM_SHARE_WITHOUT_AN_ANSWER} of each set read without an answer): "
+        + "; ".join(f"{key} {world.health[key]['share_without_an_answer']}" for key in own_sets) + f": {_verdict(answered)}",
+        f"{of}, CHECK 4, no row it was trained on is a held-out problem or, among its rounds' rows, a problem of the `pretrain` half: {barred['held_out_problems']} "
+        f"held-out problems and {barred['problems_of_the_pretrain_half_among_the_rounds_rows']} of the `pretrain` half among its {barred['rows_of_the_rounds']:,} "
+        f"rounds' rows" + (f"; its {barred['rehearsal_rows_of_the_pretrain_half']:,} rehearsal rows ARE of the `pretrain` half (published proofs `pre` was trained "
+                           "on), and are named as such" if barred["rehearsal_rows_of_the_pretrain_half"] else "") + f": {_verdict(barred)}"]
+
+
+def _stand_beside(names: Sequence[str]) -> str:
+    """Whose own counts stand beside a model's, as its read says it; nothing for no one."""
+    if not names:
+        return ""
+    owned = [f"`{name}`'s" for name in names]
+    return f"; {owned[0] if len(owned) == 1 else ', '.join(owned[:-1]) + ' and ' + owned[-1]} own count{'s stand' if len(owned) > 1 else ' stands'} beside"
+
+
+def secondary_reads(world: World, name: str, versus: str, others: Sequence[str], counted_beside: Sequence[str], trained_rows: Sequence[Mapping]) -> dict:
+    """One trained model's secondary reads: G' over the fresh attempts against the start model; by proof length; solved
+    by attempts alone and reliably; the three rungs; the share of distinct attempts; the lines of verified proofs; the
+    goal problems nothing stored had solved, when their ids were GIVEN; the rows it was trained on. `versus`: the model
+    its breadth is read against (the start model itself, for a model read BY ITSELF against it). `others`: the models
+    named beside it in a table. `counted_beside`: those whose own count of the never-solved problems stands beside."""
+    start, model, who, on_g, sets = world.start, world.who[name], world.who, world.on_g, world.sets
+    resamples, seed, by_itself = world.resamples, world.seed, versus == world.start
+    on_again = world.on_again(name, start)
+    unsolved = never_solved(world.never, on_g[name], on_g[start], world.goal_ids)
+    if unsolved["given"]:
+        unsolved = {**unsolved, "what": "the goal problems nothing stored had solved, as the file given in the run directory lists them: how many the model solves at "
+                                        "least once in all its attempts on G" + _stand_beside(counted_beside),
+                    **{f"solved_by_{other}": never_solved(world.never, on_g[other], on_g[start], world.goal_ids)["solved"] for other in counted_beside}}
+    seen_twice = bool(name == REHEARSE and on_again.get("low") is not None and on_again["low"] > 0)
+    return {
+        "the_goal_set_again": {"what": f"G' (the goal problems `{start}` does not solve in its {world.prepare['goal_samplings'][0]['episodes']}-attempt sampling): successes per attempt over "
+                                       f"{world.of_the_fresh}, `{name}` minus `{start}` (the arm's primary)", "goal_set_again": len(world.again), **on_again,
+                               **({"seen_twice": f"`rehearse` beats `{start}` on G' with an interval above zero. It trains again on published proofs `{start}` has seen: a "
+                                                 "model that only gains from seeing them twice would show exactly this"} if seen_twice else {})},
+        "by_length_group": {"what": "by the length group of each goal problem's shortest published proof, and on the problems of 4 lines or more: the reliability "
+                                    f"(successes per attempt, `{name}` minus `{start}`) and the breadth (solved at least once, `{name}` against `{versus}`)",
+                            "problems": {group: len(ids) for group, ids in sets.items()},
+                            f"minus_{start}": {group: per_attempt(on_g[name], on_g[start], ids, resamples, seed) for group, ids in sets.items() if group != ALL},
+                            f"against_{versus}": {group: solved(on_g[name], on_g[versus], ids) for group, ids in sets.items() if group != ALL}},
+        **({} if by_itself else {f"goal_problems_solved_against_{start}": {
+            "what": f"goal problems solved at least once in their {world.attempts} attempts, `{name}` against `{start}`: gained, lost, the two-sided sign test",
+            **solved(on_g[name], on_g[start], world.goal_ids)}}),
+        "goal_problems_solved_by_attempts_alone": {
+            "what": "each model's one-shot attempts at a goal problem cut into episodes of 8 in the order drawn; goal problems resolved in at least one, a quarter, "
+                    "half (RELIABLY) and nine tenths of their episodes", **{other: world.alone[other] for other in (*others, name)}},
+        "the_three_rungs": {"what": f"fresh pass rate on each held-out rung ({world.prepare['rung_episodes']} episodes a problem), paired by problem: `{name}` minus `{start}`"
+                                    + ("" if by_itself else f", and `{name}` minus `{versus}`"), "problems": {rung: len(world.rung_ids[rung]) for rung in RUNGS},
+                            f"minus_{start}": {rung: paired_change(model[RUNG_PART], who[start][RUNG_PART], world.rung_ids[rung], resamples, seed) for rung in RUNGS},
+                            **({} if by_itself else {f"minus_{versus}": {rung: paired_change(model[RUNG_PART], who[versus][RUNG_PART], world.rung_ids[rung], resamples, seed)
+                                                                         for rung in RUNGS}})},
+        "distinct_attempts": {"what": "the share of a model's attempts at one problem and side that are distinct, on the three rungs and on G",
+                              **{other: who[other]["distinct_attempts"] for other in (*others, name)}},
+        "verified_proof_lines": {"what": "the line counts of the proofs each model verifies on G over all its attempts",
+                                 **{other: verified_lines(who[other]["verified_proof_lines"][GOAL]) for other in (*others, name)}},
+        "never_solved_before": unsolved,
+        "trained_on": trained_on(trained_rows)}
+
+
+def secondary_lines(world: World, of: str, name: str, versus: str, others: Sequence[str], counted_beside: Sequence[str], secondary: Mapping) -> list[str]:
+    """One trained model's secondary reads (`secondary_reads`) as its lines say them."""
+    start, again, sets, alone, who, attempts = world.start, world.again, world.sets, world.alone, world.who, world.attempts
+    by_itself = versus == start
+    by_length, rungs, record, unsolved = secondary["by_length_group"], secondary["the_three_rungs"], secondary["trained_on"], secondary["never_solved_before"]
+    on_again = secondary["the_goal_set_again"]
+    return [
+        f"{of}, SECONDARY, G' ({len(again)} goal problems `{start}` does not solve in its first sampling), successes per attempt over {world.of_the_fresh}, `{name}` minus "
+        f"`{start}` (the arm's primary): {_rate(on_again)}" + (f". NOTE: {on_again['seen_twice']}" if "seen_twice" in on_again else ""),
+        f"{of}, SECONDARY, by the length of the shortest published proof, successes per attempt, `{name}` minus `{start}`: "
+        + "; ".join(f"{_named(group)} ({len(sets[group])}): {_rate(entry)}" for group, entry in by_length[f"minus_{start}"].items()),
+        f"{of}, SECONDARY, by the length of the shortest published proof, goal problems solved at least once, `{name}` against `{versus}`: "
+        + "; ".join(f"{_named(group)}: {entry['resolved_after']} to {entry['resolved_before']}, {_split(entry)}" for group, entry in by_length[f"against_{versus}"].items()),
+        *([] if by_itself else [
+            f"{of}, SECONDARY, goal problems solved at {attempts} attempts, `{name}` against `{start}`: "
+            f"{secondary[f'goal_problems_solved_against_{start}']['resolved_after']} to "
+            f"{secondary[f'goal_problems_solved_against_{start}']['resolved_before']}, {_split(secondary[f'goal_problems_solved_against_{start}'])}"]),
+        f"{of}, SECONDARY, goal problems solved in at least one episode of 8 one-shot attempts / reliably (in at least half of their episodes): "
+        + "; ".join(f"{_named(group)} ({len(sets[group])}): " + ", ".join(f"`{other}` {alone[other][group]['solved_at_least_once']} / {alone[other][group]['reliably']}"
+                                                                          for other in (*others, name)) for group in (ALL, FOUR_PLUS)),
+        f"{of}, SECONDARY, the three rungs ({world.prepare['rung_episodes']} episodes a problem): `{name}` minus `{start}`: "
+        + "; ".join(f"{rung} {interval_text(rungs[f'minus_{start}'][rung])}" for rung in RUNGS)
+        + ("" if by_itself else f". `{name}` minus `{versus}`: " + "; ".join(f"{rung} {interval_text(rungs[f'minus_{versus}'][rung])}" for rung in RUNGS)),
+        f"{of}, SECONDARY, the share of distinct attempts (on the rungs, on G): "
+        + "; ".join(f"`{other}` {who[other]['distinct_attempts'][RUNG_PART]['mean_share_distinct']}, {who[other]['distinct_attempts'][GOAL]['mean_share_distinct']}"
+                    for other in (*others, name)),
+        f"{of}, SECONDARY, the lines of the proofs each model verifies on G: " + "; ".join(f"`{other}` {_lines(who[other]['verified_proof_lines'][GOAL])}"
+                                                                                         for other in (*others, name)),
+        f"{of}, SECONDARY, the goal problems nothing stored had solved: "
+        + (f"of the {unsolved['goal_problems']} listed, `{name}` solves {unsolved['solved']}" + _named_problems(unsolved["problem_ids"])
+           + "".join(("; " if index == 0 else " and ") + f"`{other}` " + ("solves " if index == 0 else "") + f"{unsolved[f'solved_by_{other}']}"
+                     for index, other in enumerate(counted_beside))
+           + (f"; {unsolved['not_goal_problems_of_this_run']} more ids of the file are not goal problems of this run and are not counted"
+              if unsolved["not_goal_problems_of_this_run"] else "")
+           if unsolved["given"] else "not given (no file of their ids is in the run directory; the stage does not compute it)"),
+        f"{of}, SECONDARY, the rows it was trained on: {record['rows']:,}, by origin " + ", ".join(f"{key} {count:,}" for key, count in record["rows_by_origin"].items())
+        + "; by k " + (", ".join(f"{key}: {count:,}" for key, count in record["rows_by_k"].items()) or "none") + f"; their proofs: {_lines(record['rows_by_lines'])}"]
+
+
 def build_rows_report(prepare: Mapping, trains: Mapping[str, Mapping], losses: Mapping[str, Sequence[float]], trained: Mapping[str, Sequence[Mapping]],
                       groups: Sequence[Mapping], lengths: Mapping[str, Mapping], stored: Mapping[str, Mapping], models: Mapping[str, Mapping],
                       hot: Mapping[str, Mapping], again: Sequence[str], settings: Mapping, evaluation: Mapping, never: Sequence[str] | None = None,
@@ -156,9 +365,6 @@ def build_rows_report(prepare: Mapping, trains: Mapping[str, Mapping], losses: M
     models (the start model in `pre`'s) and is read BY ITSELF first, against the start model (`l4_rows.old_rule_branch`);
     `hot` is `old_rule` and the start model; `again` is the start model's G'. `rank_16`: the stored `without` and `pre`
     (`goal`, and what each wrote), which stand beside `old_rule`'s own read, or None when they were not on the box."""
-    resamples, seed = evaluation["bootstrap_resamples"], evaluation["bootstrap_seed"]
-    goal_ids, rung_ids = group_ids(groups, GOAL), {rung: group_ids(groups, rung) for rung in RUNGS}
-    sets = goal_sets(goal_ids, lengths)
     start = prepare["start"]
     from_pre = start == PRE
     against = reference_of(start)                               # the model in `without`'s place: the stored `without`, or this run's `old_rule`
@@ -168,28 +374,11 @@ def build_rows_report(prepare: Mapping, trains: Mapping[str, Mapping], losses: M
     hot_models = HOT_OF if from_pre else (against, start)
     rank = (prepare.get("start_recipe") or {}).get("rank")      # the start adapter's, which every model of a run from another start has
     who = {**{name: stored[name] for name in stored_names}, **{name: models[name] for name in trained_models}}
-    on_g = {name: attempts_on_g(entry[GOAL]) for name, entry in who.items()}
-    samplings, attempts = prepare["goal_samplings"], prepare["attempts_a_goal_problem"]
-    fresh = samplings[1] if len(samplings) > 1 else None
+    world = world_of(prepare, who, groups, lengths, again, settings, evaluation, never,
+                     {f"goal_{HOT}_{name}_{index}": rows for name, entry in hot.items() for index, rows in enumerate(entry[GOAL], start=1)})
+    goal_ids, rung_ids, sets, on_g, sets_of, health, not_to_be_read = world.goal_ids, world.rung_ids, world.sets, world.on_g, world.sets_of, world.health, world.not_to_be_read
+    resamples, seed, attempts, fresh = world.resamples, world.seed, world.attempts, world.fresh
     in_again = set(again)
-    stray = sorted(in_again - set(goal_ids))
-    if stray:
-        raise ValueError(f"{len(stray)} problems of G' are not goal problems of this run (first: {stray[0]}): the pretraining's report is of another held-out set")
-    second = lambda entry: entry[GOAL][1]      # noqa: E731
-    of_the_fresh = f"the {fresh['episodes']} attempts of the second sampling" if fresh else "a second sampling, which this run does not have"
-    alone = by_attempts_alone(who, sets)
-    heldout = {row["problem_id"] for row in groups}
-
-    # ---- whether Lean answered, set by set (the stored models' sets were held to this at the prepare step too)
-    measured_sets, sets_of = {}, {}
-    for name, entry in who.items():
-        sets_of[name] = [f"rungs_{name}", *(f"goal_{name}_{index}" for index in range(1, len(entry[GOAL]) + 1))]
-        measured_sets[f"rungs_{name}"] = entry[RUNG_PART]
-        measured_sets.update({f"goal_{name}_{index}": rows for index, rows in enumerate(entry[GOAL], start=1)})
-    for name, entry in hot.items():
-        measured_sets.update({f"goal_{HOT}_{name}_{index}": rows for index, rows in enumerate(entry[GOAL], start=1)})
-    health = {name: _health(rows) for name, rows in measured_sets.items()}
-    not_to_be_read = sorted(name for name, rows in measured_sets.items() if lean_did_not_answer(rows))
 
     # ---- what the stored models give: `without`'s own reliability (the figure the spec sets beside), and each one's breadth
     if from_pre:
@@ -216,17 +405,9 @@ def build_rows_report(prepare: Mapping, trains: Mapping[str, Mapping], losses: M
         versus = start if name == against else against          # `old_rule` itself is read against the model it was trained from
         by_itself = versus == start
         own_sets = [*sets_of[name], *sets_of[start], *([] if by_itself else sets_of[versus])]      # what this model's read stands on: its own sets, and the two it is read against
-        unanswered = [key for key in own_sets if key in not_to_be_read]
         read_against = ("the stored ones of `pre` and `without`" if from_pre else f"the stored ones of `{start}`" if by_itself else
                         f"the stored ones of `{start}` and this run's own of `{versus}`")
-        checks = {
-            "its_training_ran": the_training_ran(losses[name], adapter_against_the_start(trains[name]), settings),
-            "it_still_writes_proofs": still_writes_proofs(model[RUNG_PART], settings["maximum_share_without_an_answer"]),
-            "lean_answered": {"what": f"Lean gave a verdict on all but at most {MAXIMUM_SHARE_WITHOUT_AN_ANSWER} of the attempts of each set read: the model's own, which "
-                                      f"the task queued again samples again, and {read_against} it is read against",
-                              "maximum": MAXIMUM_SHARE_WITHOUT_AN_ANSWER, "share_without_an_answer": {key: health[key]["share_without_an_answer"] for key in own_sets},
-                              "sets_not_answered": unanswered, "passes": not unanswered},
-            "no_barred_row": no_barred_row(trained[name], heldout, settings["half_seed"])}
+        checks = the_four_checks(world, name, trains[name], losses[name], trained[name], own_sets, read_against)
         failed_of[name] = [check for check, entry in checks.items() if not entry["passes"]]
         breadth = solved(on_g[name], on_g[versus], goal_ids)
         kept = per_attempt(on_g[name], on_g[start], goal_ids, resamples, seed)
@@ -234,15 +415,7 @@ def build_rows_report(prepare: Mapping, trains: Mapping[str, Mapping], losses: M
                   rows_branch(checks, breadth, kept, against=versus, start=start, against_failed=None if from_pre else failed_of[versus]))
         inconclusive = branch["name"] == INCONCLUSIVE
         set_aside = inconclusive or "not_read_against" in branch       # nothing is read of it: a check of its own failed, or the model it is read against is INCONCLUSIVE
-        on_again = per_attempt(second(model), second(who[start]), list(again), resamples, seed) if fresh else dict(NOT_MEASURED)
-        unsolved = never_solved(never, on_g[name], on_g[start], goal_ids)
         counted_beside = (WITH, WITHOUT) if from_pre else () if by_itself else (versus,)
-        if unsolved["given"]:
-            unsolved = {**unsolved, "what": "the goal problems nothing stored had solved, as the file given in the run directory lists them: how many the model solves at "
-                                            "least once in all its attempts on G" + ("; `with`'s and `without`'s own counts stand beside" if from_pre else
-                                                                                     "" if by_itself else f"; `{versus}`'s own count stands beside"),
-                        **{f"solved_by_{other}": never_solved(never, on_g[other], on_g[start], goal_ids)["solved"] for other in counted_beside}}
-        seen_twice = bool(name == REHEARSE and on_again.get("low") is not None and on_again["low"] > 0)
         others = [other for other in beside if other != name]
         measured = {
             "primary": {"what": f"breadth: the goal problems solved at least once in their {attempts} attempts, `{name}` against `{versus}` ("
@@ -252,33 +425,7 @@ def build_rows_report(prepare: Mapping, trains: Mapping[str, Mapping], losses: M
                                            f"problem, a 95% bootstrap interval over problems. In its figures `of_the_base` is the side compared with: `{start}`",
                                    **kept, **({} if by_itself else {f"of_{versus}": reference["without_minus_pre"] if from_pre else
                                                                     per_attempt(on_g[versus], on_g[start], goal_ids, resamples, seed)})},
-            "secondary": {
-                "the_goal_set_again": {"what": f"G' (the goal problems `{start}` does not solve in its {samplings[0]['episodes']}-attempt sampling): successes per attempt over "
-                                               f"{of_the_fresh}, `{name}` minus `{start}` (the arm's primary)", "goal_set_again": len(again), **on_again,
-                                       **({"seen_twice": f"`rehearse` beats `{start}` on G' with an interval above zero. It trains again on published proofs `{start}` has seen: a "
-                                                         "model that only gains from seeing them twice would show exactly this"} if seen_twice else {})},
-                "by_length_group": {"what": "by the length group of each goal problem's shortest published proof, and on the problems of 4 lines or more: the reliability "
-                                            f"(successes per attempt, `{name}` minus `{start}`) and the breadth (solved at least once, `{name}` against `{versus}`)",
-                                    "problems": {group: len(ids) for group, ids in sets.items()},
-                                    f"minus_{start}": {group: per_attempt(on_g[name], on_g[start], ids, resamples, seed) for group, ids in sets.items() if group != ALL},
-                                    f"against_{versus}": {group: solved(on_g[name], on_g[versus], ids) for group, ids in sets.items() if group != ALL}},
-                **({} if by_itself else {f"goal_problems_solved_against_{start}": {
-                    "what": f"goal problems solved at least once in their {attempts} attempts, `{name}` against `{start}`: gained, lost, the two-sided sign test",
-                    **solved(on_g[name], on_g[start], goal_ids)}}),
-                "goal_problems_solved_by_attempts_alone": {
-                    "what": "each model's one-shot attempts at a goal problem cut into episodes of 8 in the order drawn; goal problems resolved in at least one, a quarter, "
-                            "half (RELIABLY) and nine tenths of their episodes", **{other: alone[other] for other in (*others, name)}},
-                "the_three_rungs": {"what": f"fresh pass rate on each held-out rung ({prepare['rung_episodes']} episodes a problem), paired by problem: `{name}` minus `{start}`"
-                                            + ("" if by_itself else f", and `{name}` minus `{versus}`"), "problems": {rung: len(rung_ids[rung]) for rung in RUNGS},
-                                    f"minus_{start}": {rung: paired_change(model[RUNG_PART], who[start][RUNG_PART], rung_ids[rung], resamples, seed) for rung in RUNGS},
-                                    **({} if by_itself else {f"minus_{versus}": {rung: paired_change(model[RUNG_PART], who[versus][RUNG_PART], rung_ids[rung], resamples, seed)
-                                                                                 for rung in RUNGS}})},
-                "distinct_attempts": {"what": "the share of a model's attempts at one problem and side that are distinct, on the three rungs and on G",
-                                      **{other: who[other]["distinct_attempts"] for other in (*others, name)}},
-                "verified_proof_lines": {"what": "the line counts of the proofs each model verifies on G over all its attempts",
-                                         **{other: verified_lines(who[other]["verified_proof_lines"][GOAL]) for other in (*others, name)}},
-                "never_solved_before": unsolved,
-                "trained_on": trained_on(trained[name])}}
+            "secondary": secondary_reads(world, name, versus, others, counted_beside, trained[name])}
         if by_itself:       # the cap's question: the four figures the old rule is read by, and beside each the stored ones of the rank the rounds were made at
             measured = {"by_itself": {"what": f"`{name}` read BY ITSELF against `{start}`, the model it was trained from, which is the cap's question: the goal problems "
                                               f"solved at least once in the {attempts} attempts (gained, lost, the two-sided sign test), the share of distinct attempts on "
@@ -295,20 +442,8 @@ def build_rows_report(prepare: Mapping, trains: Mapping[str, Mapping], losses: M
                       "training": {key: value for key, value in trains[name].items() if key != "checkpoints"}}
 
         # ---- its lines: the checks first, then the primary, what stands beside it, the branch and the secondary reads
-        ran, writes, answered, barred = (checks[key] for key in ("its_training_ran", "it_still_writes_proofs", "lean_answered", "no_barred_row"))
         of = f"{SAY}: `{name}`"
-        own = [
-            f"{of} ({IS[name]}; {trains[name]['rows']:,} rows, {trains[name]['steps']:,} optimizer steps, from `{prepare['start']}`), CHECK 1, its training ran (the "
-            "adapter saved is not the start adapter's; the mean loss over the last tenth of its rows is not above the first tenth's by more than "
-            f"{settings['standard_errors_allowed']:g} standard errors of their difference): {_ran(f'`{name}`', ran)}: {_verdict(ran)}",
-            f"{of}, CHECK 2, it still writes proofs: {writes['share']} of its {writes['attempts']:,} attempts on the three rungs got no answer; under {writes['maximum']} "
-            f"is asked: {_verdict(writes)}",
-            f"{of}, CHECK 3, Lean answered (at most {MAXIMUM_SHARE_WITHOUT_AN_ANSWER} of each set read without an answer): "
-            + "; ".join(f"{key} {health[key]['share_without_an_answer']}" for key in own_sets) + f": {_verdict(answered)}",
-            f"{of}, CHECK 4, no row it was trained on is a held-out problem or, among its rounds' rows, a problem of the `pretrain` half: {barred['held_out_problems']} "
-            f"held-out problems and {barred['problems_of_the_pretrain_half_among_the_rounds_rows']} of the `pretrain` half among its {barred['rows_of_the_rounds']:,} "
-            f"rounds' rows" + (f"; its {barred['rehearsal_rows_of_the_pretrain_half']:,} rehearsal rows ARE of the `pretrain` half (published proofs `pre` was trained "
-                               "on), and are named as such" if barred["rehearsal_rows_of_the_pretrain_half"] else "") + f": {_verdict(barred)}"]
+        own = check_lines(world, of, name, IS[name], trains[name], checks, own_sets)
         if by_itself and not set_aside:
             own += [
                 f"{of}, READ BY ITSELF against `{start}`, the model it was trained from (the cap's question; {attempts} attempts a goal problem): "
@@ -324,39 +459,7 @@ def build_rows_report(prepare: Mapping, trains: Mapping[str, Mapping], losses: M
                 f"{_rate(kept)}; `{versus}`'s is {interval_text(measured['beside_the_primary'][f'of_{versus}'])}"]
         own.append(f"{of}: {'INCONCLUSIVE' if inconclusive else ('OUTCOME: ' if by_itself else 'BRANCH: ') + branch['name']}. {branch['reason']}")
         if not set_aside:
-            secondary = measured["secondary"]
-            by_length, rungs, record = secondary["by_length_group"], secondary["the_three_rungs"], secondary["trained_on"]
-            own += [
-                f"{of}, SECONDARY, G' ({len(again)} goal problems `{start}` does not solve in its first sampling), successes per attempt over {of_the_fresh}, `{name}` minus "
-                f"`{start}` (the arm's primary): {_rate(on_again)}" + (f". NOTE: {secondary['the_goal_set_again']['seen_twice']}" if seen_twice else ""),
-                f"{of}, SECONDARY, by the length of the shortest published proof, successes per attempt, `{name}` minus `{start}`: "
-                + "; ".join(f"{_named(group)} ({len(sets[group])}): {_rate(entry)}" for group, entry in by_length[f"minus_{start}"].items()),
-                f"{of}, SECONDARY, by the length of the shortest published proof, goal problems solved at least once, `{name}` against `{versus}`: "
-                + "; ".join(f"{_named(group)}: {entry['resolved_after']} to {entry['resolved_before']}, {_split(entry)}" for group, entry in by_length[f"against_{versus}"].items()),
-                *([] if by_itself else [
-                    f"{of}, SECONDARY, goal problems solved at {attempts} attempts, `{name}` against `{start}`: "
-                    f"{secondary[f'goal_problems_solved_against_{start}']['resolved_after']} to "
-                    f"{secondary[f'goal_problems_solved_against_{start}']['resolved_before']}, {_split(secondary[f'goal_problems_solved_against_{start}'])}"]),
-                f"{of}, SECONDARY, goal problems solved in at least one episode of 8 one-shot attempts / reliably (in at least half of their episodes): "
-                + "; ".join(f"{_named(group)} ({len(sets[group])}): " + ", ".join(f"`{other}` {alone[other][group]['solved_at_least_once']} / {alone[other][group]['reliably']}"
-                                                                                  for other in (*others, name)) for group in (ALL, FOUR_PLUS)),
-                f"{of}, SECONDARY, the three rungs ({prepare['rung_episodes']} episodes a problem): `{name}` minus `{start}`: "
-                + "; ".join(f"{rung} {interval_text(rungs[f'minus_{start}'][rung])}" for rung in RUNGS)
-                + ("" if by_itself else f". `{name}` minus `{versus}`: " + "; ".join(f"{rung} {interval_text(rungs[f'minus_{versus}'][rung])}" for rung in RUNGS)),
-                f"{of}, SECONDARY, the share of distinct attempts (on the rungs, on G): "
-                + "; ".join(f"`{other}` {who[other]['distinct_attempts'][RUNG_PART]['mean_share_distinct']}, {who[other]['distinct_attempts'][GOAL]['mean_share_distinct']}"
-                            for other in (*others, name)),
-                f"{of}, SECONDARY, the lines of the proofs each model verifies on G: " + "; ".join(f"`{other}` {_lines(who[other]['verified_proof_lines'][GOAL])}"
-                                                                                                 for other in (*others, name)),
-                f"{of}, SECONDARY, the goal problems nothing stored had solved: "
-                + (f"of the {unsolved['goal_problems']} listed, `{name}` solves {unsolved['solved']}" + _named_problems(unsolved["problem_ids"])
-                   + "".join(("; " if index == 0 else " and ") + f"`{other}` " + ("solves " if index == 0 else "") + f"{unsolved[f'solved_by_{other}']}"
-                             for index, other in enumerate(counted_beside))
-                   + (f"; {unsolved['not_goal_problems_of_this_run']} more ids of the file are not goal problems of this run and are not counted"
-                      if unsolved["not_goal_problems_of_this_run"] else "")
-                   if unsolved["given"] else "not given (no file of their ids is in the run directory; the stage does not compute it)"),
-                f"{of}, SECONDARY, the rows it was trained on: {record['rows']:,}, by origin " + ", ".join(f"{key} {count:,}" for key, count in record["rows_by_origin"].items())
-                + "; by k " + (", ".join(f"{key}: {count:,}" for key, count in record["rows_by_k"].items()) or "none") + f"; their proofs: {_lines(record['rows_by_lines'])}"]
+            own += secondary_lines(world, of, name, versus, others, counted_beside, measured["secondary"])
         lines_of[name] = own
 
     # ---- `hot`: read, not branched

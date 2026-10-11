@@ -19,6 +19,14 @@ model's own. A labelled diagnostic says what limits the loop is what it trains o
 on other provers' published proofs, the same model solves 245 of the 392 never-solved problems to the base's
 59. That is a ceiling measured on borrowed proofs, not a result of the loop.
 
+Started from a model pretrained on such proofs, the loop has not been shown to add to what more pretraining
+gives. Trained on the proofs it finds within 8 attempts, beside published ones, the model gets sharper on
+what it could already do and narrower, and the published proofs beside them do the adding; a whole second
+pass over the published proofs gave the best pretraining-only model measured, in a stage that read
+inconclusive by its own check. One test is open: at one seed, training on solves that took a deeper search
+shows no difference on the test fixed before the run and a lead on the goal set. Two further seeds are in
+progress and there is no verdict yet.
+
 The repository contains the loop and the full record of results, including the ones that came out negative.
 The distributed Lean checking pool built to feed it is a project of its own, [lean-pool](https://github.com/cabloo/lean-pool).
 
@@ -44,6 +52,10 @@ The distributed Lean checking pool built to feed it is a project of its own, [le
 | The loop from a pretrained model (one seed; labelled **pretrained on published proofs**) | Does the loop add anything on top of a model pretrained on published proofs? | **Not shown on top of pretraining.** On the 210 goal problems the pretrained model could not solve: +0.0012 successes per attempt [−0.0022, +0.0058]. Six rounds make it more reliable on what it could already do (+17% successes per attempt on the goal set) and narrower (227 distinct goal problems solved against 238) (`ladder-l4-RESULT.md`) |
 | The adapter's size, a labelled check of the pretraining (one seed) | Is the pretrained model capped by the size of its adapter? | **The adapter's size capped the pretrained model.** The same pretraining at rank 64 in the place of 16: +0.0133 successes per attempt on the goal set [+0.0077, +0.0192] (80.0 against 66.7 per 1,000), 107 goal problems solved reliably against 94; 3.9 points worse on the easy rung (`ladder-l4r-RESULT.md`) |
 | Training rules on the stored rounds, from the rank-64 pretrained model (one seed) | What should a round train on? | **The old rule narrows at rank 64 too**: 217 goal problems solved against 245 (gained 25, lost 53), nothing gained per attempt. Reward-weighted rows and rows mixed with published proofs both give the breadth back (241 and 234) without a clear gain per attempt on all goal problems (`ladder-l4t-RESULT.md`) |
+| Two more one-change checks on the stored rounds, from the rank-64 pretrained model (one seed) | Was the gain of training on own proofs mixed with published ones the loop's? | **The gain is a second pass over the published proofs.** The published rows alone do as well on the pretrained model's failures (16.2 against 15.7 successes per 1,000, against 8.4 for the pretrained model) and better beside: 252 goal problems solved against 234, 124 reliably. Reward-weighted rows with published rows beside them give the first model above the pretrained one on all goal problems per attempt (+0.0104 [+0.0014, +0.0194]), but whose gain that is, the rounds' rows or the published ones, is not separated (`ladder-l4t2-RESULT.md`) |
+| Six fresh rounds from the rank-64 pretrained model, with a control trained on the same published rows alone (one seed) | Is the six-round model's gain the rounds'? | **The gain is not shown to be the rounds'.** Against the pretrained model the six-round model adds on its failures (13.2 successes per 1,000 against 8.4, +0.0048 [+0.0006, +0.0097]). Against the control it is behind: 13.2 against 19.3 (−0.0062 [−0.0110, −0.0017]), 229 goal problems solved against 258 (gained 19, lost 48, p = 0.001), 120 solved reliably against 135. The model's own proofs made it sharper on what it could do and narrower; the published rows beside them did the adding. Not a verdict on the idea: the run's budget is a small fraction of the reference's (`ladder-l4c-RESULT.md`) |
+| The dose of a second pass, a labelled check of the pretraining (one seed) | Do the model's own proofs of hard problems add to the same published proofs alone? How much does more pretraining give? | Part 1: **not separated**, and the own proofs cost breadth: 19.1 successes per 1,000 on the pretrained model's failures against 20.2 for the published rows alone (−0.0011 [−0.0071, +0.0049]); 247 goal problems solved against 264. Part 2: **inconclusive by its own check**; read outside it, a whole second pass over the published proofs is the best pretraining-only model measured (108.9 successes per 1,000 against 80.0, 267 goal problems solved against 245, 139 reliably against 107). Two trainings of one kind differ by about 6 per 1,000 and 5 goal problems (`ladder-l4p-RESULT.md`) |
+| Hard-won solves (seed 0; **two further seeds in progress, no verdict yet**) | Do solves that took a deeper search teach what the same number of published proofs does not? | **Not separated at this size** on the test fixed before the run: on 600 held-aside hard problems, 51.5 successes per 1,000 against 50.8 (+0.0006 [−0.0060, +0.0073]). On the goal set that model is the best measured so far (112.5 per 1,000 against 103.1; 275 goal problems solved against 262; 151 reliably), mostly by solving more often what the pretrained model already reached. One training each: **a lead, not a result** (`ladder-l5-RESULT.md`) |
 
 Every stage was run from a written spec whose pass, fail and void conditions were committed before the run.
 The specs and result notes are in [`docs/spec/`](docs/spec/).
@@ -318,6 +330,56 @@ published proofs, solves 238 of the 392 goal problems and 94 reliably. One seed 
   the six-round arm from the larger model (L4b in the spec) is not run as specified
   ([`ladder-l4t-RESULT.md`](docs/spec/ladder-l4t-RESULT.md)).
 
+### Beside published proofs, the model's ordinary solves sharpen it and narrow it; a test of hard-won solves is open
+
+Everything here starts from the rank-64 pretrained model, is at one seed, and is labelled pretrained on
+published proofs. Nothing in it shows the loop adding to what more pretraining gives.
+
+- **The mixed rule's gain was a second pass over published proofs.** On the stored rounds, a model trained on
+  the mixed set's 3,422 published proofs and nothing else does as well on the pretrained model's failures as
+  the mix (16.2 successes per 1,000 against 15.7; the pretrained model 8.4) and solves more goal problems (252
+  against 234). Reward-weighted rows with published rows beside them give the first trained model above the
+  pretrained one on all goal problems per attempt (+0.0104 [+0.0014, +0.0194], a bootstrap added after the
+  run and not one of the fixed reads), but whose gain that is, the rounds' rows or the published ones, is not
+  separated ([`ladder-l4t2-RESULT.md`](docs/spec/ladder-l4t2-RESULT.md)).
+- **Six fresh rounds with a control: the gain is not shown to be the rounds'.** Six rounds from the
+  pretrained model, trained on reward-weighted rows with published rows beside them, and one more model
+  trained on those published rows alone. Against the pretrained model the six-round model adds on its
+  failures (13.2 successes per 1,000 against 8.4, +0.0048 [+0.0006, +0.0097]). Against the control it is
+  behind there (13.2 against 19.3, −0.0062 [−0.0110, −0.0017]) and solves fewer goal problems (229 against
+  258; gained 19, lost 48, p = 0.001). The model's own proofs made it sharper on what it could do and
+  narrower, and the published rows beside them did the adding. The note does not call this a refutation of
+  the idea, and says why: the run could have seen a win, but its budget is a small fraction of the
+  reference's, and at 8 attempts a problem a round's proofs are ones the model could already write. The
+  control is one training and is not matched in steps
+  ([`ladder-l4c-RESULT.md`](docs/spec/ladder-l4c-RESULT.md)).
+- **A whole second pass of pretraining is the best pretraining-only model, in a stage that read inconclusive
+  by its own check.** First a matched control: the 1,262 published proofs of the reward-weighted mix alone.
+  The mix is not separated from it on the pretrained model's failures (19.1 successes per 1,000 against 20.2,
+  −0.0011 [−0.0071, +0.0049]) and solves fewer goal problems (247 against 264). Then the dose of a second
+  pass: the model trained on the whole pass failed the check on its training loss, so by the rule fixed
+  before the run the stage's primary names no branch; the note says so, and says the check was the wrong one
+  for a second pass. Read outside that check, a whole second pass over the 24,866 published proofs gives
+  108.9 successes per 1,000 attempts on the goal set against the pretrained model's 80.0, 267 goal problems
+  solved against 245, and 139 solved reliably against 107. The published-only models also give the spread:
+  two trainings of one kind differ by about 6 per 1,000 and 5 goal problems, so no difference between two
+  single trained models smaller than about twice that is an effect, and which training rule gives the
+  breadth back is not settled by one training each
+  ([`ladder-l4p-RESULT.md`](docs/spec/ladder-l4p-RESULT.md)).
+- **Hard-won solves: no difference on the test fixed before the run, a lead on the goal set, and two
+  further seeds in progress.** The pretrained model made 56 more attempts at 1,000 pool problems it had
+  failed 8 of 8 and solved 520. Three models were trained at equal steps: on 800 published proofs (the bar),
+  on 400 ordinary solves and 400 published proofs, and on 400 of the deep solves and the same 400 published
+  proofs. On 600 held-aside hard problems the model trained on deep solves is level with the bar: 51.5
+  successes per 1,000 against 50.8 (+0.0006 [−0.0060, +0.0073]), not separated at this size. On the goal set
+  it is the best model measured so far (112.5 per 1,000 against 103.1; 275 goal problems solved against
+  262), mostly by solving more often what the pretrained model already reached; the one sign of reach is the
+  long problems solved at least once, 36 against 25. One training each: a lead, not a result. Two further
+  seeds are in progress, their reads fixed before they ran, and there is no verdict yet
+  ([`ladder-l5-RESULT.md`](docs/spec/ladder-l5-RESULT.md)).
+- **A second round** (L6 in the spec: the model trained on the first round's deep solves searches again, and
+  two rounds are read against published proofs at equal steps) is specified and built, and has not been run.
+
 ### A defect worth describing
 
 The first two experiments reported a fourfold drop in held-out loss after one round, and a selection score
@@ -351,7 +413,7 @@ certificates, recovered with a 29-entry rename table taken from Mathlib's own de
   an FP8 export and LoRA adapters for sampling at about 2,500 tokens per second.
 - **Statistics.** Paired by problem, bootstrap over problems, sign tests for solved/unsolved flips, one seed
   as a scout and three to conclude, and a distinction kept between a run that failed and an idea that failed.
-- **Tests.** About 980 tests for the loop (the pool's 1,100 are in its own repository). The model and Lean are
+- **Tests.** About 1,100 tests for the loop (the pool's 1,100 are in its own repository). The model and Lean are
   replaced by stand-ins, so the suite runs with no GPU and no network. The tests that read the published-proof
   fixtures or the pool's derived data skip here, because neither is distributed.
 
@@ -404,14 +466,22 @@ model. Training on what that search assembles is not shown to add to it, and the
 barely moved the problems whose proof needs 4 lines or more (+0.00064 successes per attempt over three
 seeds); the one thing measured that moves them is training on proofs written by stronger provers, which is a
 ceiling and not the loop's doing. Run from a model pretrained on such proofs, six rounds of the loop make it
-more reliable and narrower, and are not shown to take it to problems it could not solve. None of this is yet
-the aim, which is to do reliably what could not be done before. Three things are open.
+more reliable and narrower, and are not shown to take it to problems it could not solve. Against more
+pretraining the loop has not come out ahead: beside published proofs, the proofs the model finds within 8
+attempts sharpen it and narrow it, the published proofs alone do as well or better, and a whole second pass
+over them is the best pretraining-only model measured (in a stage that read inconclusive by its own check).
+None of this is yet the aim, which is to do reliably what could not be done before. Four things are open.
 
-- **What a round should train on.** From a pretrained model, the loop's own proofs as every arm has used them
-  cost the model its long proofs, at either adapter size, and neither of the two other rules tried is shown
-  to beat the pretrained model on all goal problems per attempt. Two more one-change checks on the stored
-  rounds are specified and come before any further arm
-  ([`ladder-loop.spec.md`](docs/spec/ladder-loop.spec.md), L4t2).
+- **Whether hard-won solves teach what published proofs do not.** At one seed, training on solves that took
+  a deeper search shows no difference from the same number of published proofs on the test fixed before the
+  run, and a lead on the goal set that is mostly reliability: a lead, not a result. Two further seeds are in
+  progress and there is no verdict yet. A second round, in which the model trained on those solves searches
+  again, is specified and built and has not been run
+  ([`ladder-loop.spec.md`](docs/spec/ladder-loop.spec.md), L5 and L6).
+- **Where pretraining stops, and what one training is worth.** A third pass was not run, nor the other half
+  of the pool's published proofs. Two trainings of one kind differ by about 6 successes per 1,000 attempts
+  and 5 goal problems, so which training rule gives the breadth back is not settled by one training each
+  ([`ladder-l4p-RESULT.md`](docs/spec/ladder-l4p-RESULT.md)).
 - **A search that builds longer arguments.** The assembled proofs are recombinations of failed attempts and
   come out short. Lemmas proposed for a goal are another thing, and are not built.
 - **A deeper pool.** About 650,000 published proofs have not been re-checked yet; the pool's thin middle is

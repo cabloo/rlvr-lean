@@ -54,11 +54,13 @@ reads and refuses what that check's run recorded, and stores the START ADAPTER's
 arm and of its twin attaches that rank (`config_for`), each adapter saved is read back and held to it before its step is
 marked done (`adapter_saved`), and every step that samples starts the model server with that rank as its largest.
 
-THE TRAINING RULE OF AN ARM (L4b; `rule: old | reward_rows | rehearse`, `domain/ladder_round/l4b.py`) is one setting, read
-in `assembly_arm` and nowhere else; the stage names another by `RLVR_LEAN_LADDER_L2_RULE`. It is applied where M(r)'s
-training set is built (`ladder_assembly.train_round`, from `rule_inputs`); a run with another rule than `old` has the
-rule in its run directory's name, and a run keeps the rule it was prepared with. An arm that says no rule is trained as
-every arm was, and writes what it wrote.
+THE TRAINING RULE OF AN ARM (L4b; `rule: old | reward_rows | rehearse`, and L4c's fourth, `reward_rehearse`;
+`domain/ladder_round/l4b.py`) is one setting, read in `assembly_arm` and nowhere else; the stage names another by
+`RLVR_LEAN_LADDER_L2_RULE`. It is applied where M(r)'s training set is built (`ladder_assembly.train_round`, from
+`rule_inputs`); a run with another rule than `old` has the rule in its run directory's name, and a run keeps the rule it
+was prepared with. An arm that says no rule is trained as every arm was, and writes what it wrote. A rule whose sets hold
+REHEARSAL rows (`l4b.WITH_REHEARSAL`: `rehearse`, `reward_rehearse`) is handed the rows the start model was pretrained on,
+without their text, and reads a row's text from the pretraining file, held to the SHA-256 that model's run recorded.
 """
 
 from __future__ import annotations
@@ -78,7 +80,7 @@ from rlvr_lean.data.ladder_round_export import BASE_MAP_SET
 from rlvr_lean.domain.ladder_round.assembly import counted
 from rlvr_lean.domain.ladder_round.l4 import MAP_FILE, MAP_STEP  # noqa: F401 - `pre`'s own map by its ONE name: `the_start_of` gives an arm from `pre` these
 from rlvr_lean.domain.ladder_round.l4 import LOOP, START_MODEL, check_start_map, half_of, map_summary, refuse_the_other_half
-from rlvr_lean.domain.ladder_round.l4b import OLD, REHEARSE, RULES
+from rlvr_lean.domain.ladder_round.l4b import OLD, RULES, WITH_REHEARSAL
 from rlvr_lean.domain.ladder_round.challenger import SCORED, expected_rewards, fact_features, feature_names, fit_pass_rate_model, fit_projection
 from rlvr_lean.domain.ladder_round.read import arm_reward, group_ids, paired_change, stop_rule
 from rlvr_lean.domain.ladder_round.rounds import (
@@ -115,8 +117,8 @@ ASSEMBLY_ARM_OPTIONS = {"start": ("pre",), "candidates": ("loop_half",), "h0": (
 # ... and, for L4b's arm: another start than `pre` (a model of the check of the adapter's rank: `the_start_of` says where it
 # lives), and the TRAINING RULE, which the stage may name in the place of the arm's own.
 ANOTHER_START = "a model of the check of the adapter's rank (`pre_r64`)"
-L2_RULE_VARIABLE = "RLVR_LEAN_LADDER_L2_RULE"            # another training rule than the arm's own `rule` (the stage names the one L4t read: `old`, `reward_rows`, `rehearse`)
-L2_RULE_MINIMUM_VARIABLE = "RLVR_LEAN_LADDER_L2_RULE_MINIMUM"   # a smoke run: `reward_rows` keeps at least this many rows for each model (the rule keeps none of a fixture's rows)
+L2_RULE_VARIABLE = "RLVR_LEAN_LADDER_L2_RULE"            # another training rule than the arm's own `rule` (the stage names it: `old`, `reward_rows`, `rehearse`, `reward_rehearse`)
+L2_RULE_MINIMUM_VARIABLE = "RLVR_LEAN_LADDER_L2_RULE_MINIMUM"   # a smoke run: a rule that keeps rows by their reward keeps at least this many for each model (it keeps none of a fixture's rows)
 L2_START_CHECKS_VARIABLE = "RLVR_LEAN_LADDER_L2_START_CHECKS"   # `smoke` (a smoke run alone): the run that made the start model may have failed ITS checks (twelve rows have no loss to compare)
 L4_PRETRAIN_RUN_VARIABLE = "RLVR_LEAN_LADDER_L4_PRETRAIN_RUN"   # another run directory of the pretraining stage than the seed's own (a smoke run)
 START_REQUEST_ID = 100                                   # the start adapter as vLLM serves it: an id no round's model has
@@ -289,16 +291,17 @@ def _recorded_file(start) -> str:
 
 def rule_inputs(config: dict, store: ArtifactStore, number: int) -> dict | None:
     """What `ladder_assembly.train_round` needs to apply this task's arm's rule to M(`number`): the rule; the arm's target
-    rate; every batch's per-problem results of rounds 1 to `number` (each problem's k of n); for `rehearse` the rows the
-    start model was pretrained on, without their text, and how a stored set's rehearsal rows get their text (from the
-    pretraining file, held to the SHA-256 the run that made the start model recorded). None for an arm that states no rule."""
+    rate; every batch's per-problem results of rounds 1 to `number` (each problem's k of n); for a rule with rehearsal
+    rows (`rehearse`, `reward_rehearse`) the rows the start model was pretrained on, without their text, and how a stored
+    set's rehearsal rows get their text (from the pretraining file, held to the SHA-256 the run that made the start model
+    recorded). None for an arm that states no rule."""
     rule = rule_of(config)
     if rule is None:
         return None
     sizes = _sizes(config, store)
     picks = [row for earlier in rounds_of(config) if earlier <= number for batch in range(1, sizes["batches"] + 1) for row in _results(store, batch_set(earlier, batch))]
     inputs = {"name": rule, "target_rate": config["ladder_loop"]["challenger"]["target_rate"], "picks": picks, "at_least": rule_minimum()}
-    if rule == REHEARSE:
+    if rule in WITH_REHEARSAL:
         from rlvr_lean.gpu import ladder_l4_start
 
         start = the_start_of(config)
@@ -310,10 +313,10 @@ def rule_inputs(config: dict, store: ArtifactStore, number: int) -> dict | None:
 def examples_of(config: dict, rows: list[dict]) -> list[dict]:
     """A stored training set of this task's arm as the training's examples, in its order (`ladder_l4_start.examples_of`:
     a rehearsal row's text is read from the pretraining file, held to the SHA-256 the start model's run recorded). A set
-    with no rehearsal row, which is every set of an arm without the rule `rehearse`, reads no file."""
+    with no rehearsal row, which is every set of an arm whose rule adds none, reads no file."""
     from rlvr_lean.gpu import ladder_l4_start
 
-    return ladder_l4_start.examples_of(rows, _recorded_file(the_start_of(config)) if rule_of(config) == REHEARSE else "")
+    return ladder_l4_start.examples_of(rows, _recorded_file(the_start_of(config)) if rule_of(config) in WITH_REHEARSAL else "")
 
 
 def start_map(config: dict, base_map: list[dict]) -> list[dict]:
@@ -574,8 +577,8 @@ def ladder_l2_prepare(config: dict) -> dict:
         if options.get("rule"):
             if options.get("h0", True):
                 raise RuntimeError(f"the arm {arm_name()} has a training rule and reads H0: a rule gives a k to a round's own rows and to no other. Nothing was written")
-            if options["rule"] == REHEARSE and not options.get("start"):
-                raise RuntimeError(f"the arm {arm_name()} has the rule `{REHEARSE}` and names no start: its rehearsal rows are rows a start model was pretrained on. "
+            if options["rule"] in WITH_REHEARSAL and not options.get("start"):
+                raise RuntimeError(f"the arm {arm_name()} has the rule `{options['rule']}` and names no start: its rehearsal rows are rows a start model was pretrained on. "
                                    "Nothing was written")
             harvest.update({"rule": options["rule"], "rule_of_the_arms_own_setting": config["ladder_loop"][ASSEMBLY_ARMS][arm_name()]["rule"],
                             "rule_minimum_of_a_smoke_run": rule_minimum()})

@@ -8,8 +8,15 @@ sampling, the branch, the secondary reads), read with the start model in `pre`'s
                        the attempts, `with` against the start model (gained, lost, the two-sided sign test), and the
                        share of distinct attempts on G; NARROWER is written when it lost more than it gained with the
                        sign test under 0.05, whatever the primary says (`build_l4_report(breadth=True)`)
-  the fifth check      the rehearsal rows of the rule `rehearse` ARE of the `pretrain` half and are named as such; a
-                       round's row of that half, and any held-out problem, are barred as ever
+  the fifth check      the rehearsal rows of a rule that adds them (`l4b.WITH_REHEARSAL`) ARE of the `pretrain` half and
+                       are named as such; a round's row of that half, and any held-out problem, are barred as ever
+  the separation       (spec, "L4c: the arm from `pre_r64` with a rule L4t2 names") for a rule with rehearsal rows, and
+                       for no other: beside the primary, the long proofs (SHORTER when `with` falls on the goal problems
+                       of 4 lines or more, the interval wholly below zero) and the arm's own separation (`with` minus
+                       `rehearsal_alone` on G' over the fresh attempts; `rehearsal_alone`'s own three checks first, a
+                       failed one making the separation NOT READ and changing nothing else):
+                       `build_l4_report(long_proofs=True, rehearsal_alone=...)`. Under `old` and `reward_rows` the report
+                       is what L4b's build wrote
   the rule             the rounds' table with the rule's kept share: of each round's rows, how many the last model was
                        trained on, in all and by k
   rank 16 beside       the rank-16 arm's stored figures beside each, when its report was on the box (never a reason
@@ -27,7 +34,9 @@ from rlvr_lean.domain.ladder_round.ceiling import interval_text
 from rlvr_lean.domain.ladder_round.l3d import WITH, WITHOUT
 from rlvr_lean.domain.ladder_round.l4 import PRE
 from rlvr_lean.domain.ladder_round.l4_rows import PRETRAINING, with_k
-from rlvr_lean.domain.ladder_round.l4b import REHEARSE, by_origin, kept_share
+from rlvr_lean.domain.ladder_round.l4_rows2 import EXPLORATORY
+from rlvr_lean.domain.ladder_round.l4b import WITH_REHEARSAL, by_origin, kept_share
+from rlvr_lean.domain.ladder_round.l4c import REHEARSAL_ALONE
 from rlvr_lean.domain.ladder_round.read import GOAL
 from rlvr_lean.domain.problem_pool.episodes import RUNGS
 from rlvr_lean.reporting.ladder_ceiling import ALL, FOUR_PLUS, _rate, attempts_on_g
@@ -35,6 +44,7 @@ from rlvr_lean.reporting.ladder_l4 import PRIMARY, SAY, build_l4_report
 
 L4B = "L4b"
 SPEC = "docs/spec/ladder-loop.spec.md, L4b: the arm again, from the larger pretrained model"
+SPEC_OF_THE_SEPARATION = "docs/spec/ladder-loop.spec.md, L4c: the arm from `pre_r64` with a rule L4t2 names"
 RANK_16_SECTIONS = ("by_length_group", "the_three_rungs", "goal_problems_solved_by_attempts_alone", "goal_problems_solved", "with_minus_without", "by_round", "distinct_attempts")
 
 
@@ -99,21 +109,28 @@ def _figure(entry: Mapping | None) -> str:
 
 
 def build_l4b_report(read: Sequence, own: Mapping, trained_rows: Mapping[str, Sequence[Mapping]], last_set: Sequence[Mapping], rank_16: Mapping | None = None,
-                     never: Sequence[str] | None = None) -> dict:
+                     never: Sequence[str] | None = None, rehearsal_alone: Mapping | None = None) -> dict:
     """`read`: the arguments of `build_l4_report`, in its order (`gpu/ladder_l4.read_for_the_arms_report`), the start
     model's rows under its own name in the models. `own`: `ladder_l4b_prepare`'s summary (the start model, its rank,
     the rule, the five checks' first two as read on the start model). `trained_rows`: by training of the arm, the rows
     it was trained on as the training loop recorded them (`problem_id`, `origin`). `last_set`: the last model's
     training set. `rank_16`: what the prepare step kept of the rank-16 arm's stored report (`read`: whether it was on
-    the box). `never`: the goal problems nothing stored had solved, when a file of them was given; None otherwise."""
+    the box). `never`: the goal problems nothing stored had solved, when a file of them was given; None otherwise.
+    `rehearsal_alone` (L4c: a rule with rehearsal rows, and no other): the arm's one more model of that name, as
+    `reporting/ladder_l4.the_rounds_apart` takes it. An arm with rehearsal rows CARRIES ITS OWN SEPARATION: its report is
+    refused (ValueError) without that model, and an arm without them is refused one."""
     (prepare, _, arm_prepare, again, trains, row_losses, _, assembled_lines, rounds, groups, lengths, base, models, base_arm, settings, target_rate, evaluation) = read
     start, rule, recipe = own["start"], own["rule"], own["start_recipe"]
-    rehearsing = rule == REHEARSE
-    # The fifth check reads the rounds' rows; the rehearsal rows of the rule `rehearse` stand apart, named as what they are. Under any other rule EVERY row is a round's.
+    rehearsing = rule in WITH_REHEARSAL
+    if rehearsing != (rehearsal_alone is not None):
+        raise ValueError(f"the rule `{rule}` " + (f"adds rehearsal rows and the report was not given `{REHEARSAL_ALONE}`: an arm with rehearsal rows carries its own "
+                                                 "separation, and is not read without it" if rehearsing else
+                                                 f"adds no rehearsal row and the report was given `{REHEARSAL_ALONE}`: that model is an arm with rehearsal rows' alone"))
+    # The fifth check reads the rounds' rows; the rehearsal rows of a rule that adds them stand apart, named as what they are. Under any other rule EVERY row is a round's.
     of_the_rounds = {name: [row["problem_id"] for row in rows if not (rehearsing and row["origin"] == PRETRAINING)] for name, rows in trained_rows.items()}
     rehearsed = {name: [row["problem_id"] for row in rows if row["origin"] == PRETRAINING] for name, rows in trained_rows.items()} if rehearsing else None
     report = build_l4_report(prepare, own, arm_prepare, again, trains, row_losses, of_the_rounds, assembled_lines, rounds, groups, lengths, base, models, base_arm, settings,
-                             target_rate, evaluation, start=start, breadth=True, rehearsed=rehearsed)
+                             target_rate, evaluation, start=start, breadth=True, rehearsed=rehearsed, long_proofs=rehearsing, rehearsal_alone=rehearsal_alone)
     inconclusive = report["inconclusive"]
     section = report["measured_and_not_read"] if inconclusive else report
     last = prepare["rounds"][-1]
@@ -149,6 +166,10 @@ def build_l4b_report(read: Sequence, own: Mapping, trained_rows: Mapping[str, Se
              f"config's own are {recipe.get('rank_of_the_config')} and {recipe.get('alpha_of_the_config')}): round 1 is attempted by it, the challenger starts from ITS OWN map, "
              f"and EVERY MODEL of the arm and its twin is trained from it AT ITS RANK. THE TRAINING RULE is `{rule}`. The read is L4's with `{start}` in `{PRE}`'s place; G' is "
              f"`{start}`'s ({len(again)} goal problems it does not solve in its first sampling)")
+    if rehearsing:      # L4c: the arm carries its own separation
+        first += (f". ITS RULE ADDS REHEARSAL ROWS (published proofs `{start}` was pretrained on), so THE ARM CARRIES ITS OWN SEPARATION: after the last round one more model, "
+                  f"`{REHEARSAL_ALONE}`, is trained from `{start}` on the {len(rehearsal_alone['rows']):,} rehearsal rows of M({last})'s set ALONE, in that set's order, and measured as "
+                  "the twin is; beside the primary `with` is read against it, and the long proofs are read with it")
     lines = [first, *report["lines"]]
     if not inconclusive:
         share = of_the_rule
@@ -189,6 +210,8 @@ def build_l4b_report(read: Sequence, own: Mapping, trained_rows: Mapping[str, Se
     return {**report, "spec": SPEC, "check": L4B, "headline": headline, "lines": lines, "start": start, "rank": recipe["rank"], "alpha": recipe["alpha"], "rule": rule,
             "the_start_model": {key: own.get(key) for key in ("start", "start_adapter", "start_recipe", "pretraining_run", "start_run_read", "goal_set_again_made_here", "map",
                                                               "map_file")},
+            **({"spec_of_the_separation": SPEC_OF_THE_SEPARATION} if rehearsing else {}),
             "what_it_cannot_say": ["one seed: a positive read licenses two more seeds of this arm from the same start model, and nothing more",
-                                   "the rule was named by L4t on the rank-16 rounds' rows; this arm is what confirms it, on rounds its own models made",
+                                   (f"the rule was named by L4t2 on the rank-16 rounds' rows, and {EXPLORATORY}; this arm is what confirms it, on rounds its own models made"
+                                    if rehearsing else "the rule was named by L4t on the rank-16 rounds' rows; this arm is what confirms it, on rounds its own models made"),
                                    "rank 64 is not the whole model, and one learning rate and one pass a training: a null here is not a null for a larger or longer training"]}

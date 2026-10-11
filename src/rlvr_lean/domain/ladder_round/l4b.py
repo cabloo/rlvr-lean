@@ -11,7 +11,16 @@ rounds 1 to r as L4t applies it to all six (`rule_set`), with L4t's own function
   rehearse      all the rounds' rows, and with them as many rows of the pretraining file as the model has one-shot
                 rows, the rows of the smallest content hash: M(r)'S REHEARSAL ROWS ARE THE FIRST OF M(r + 1)'S
 
+A FOURTH RULE (spec, "L4c: the arm from `pre_r64` with a rule L4t2 names"; what is the arm's beside it is `l4c.py`):
+
+  reward_rehearse   the rows `reward_rows` keeps (the SAME draw against r(k), by the same two functions), and with them
+                    as many rows of the pretraining file as that KEPT set has one-shot rows: the first of the hash
+                    order `rehearse` draws from (the same function). Both parts nest across the rounds, so M(r)'s
+                    rehearsal rows are the first of M(r + 1)'s, and are among `rehearse`'s own
+
 The twin is the same rule with the assembled rows left out (`twin_of`): the last model's set, in its order, without them.
+A rule whose sets hold rehearsal rows is one of `WITH_REHEARSAL`: a rehearsal row is a published proof, named by its id
+and its place in the file and never stored with its text.
 
 THE READ is L4's with the start model in `pre`'s place, and BESIDE THE PRIMARY, on every branch, the condition "without
 overfitting" (`breadth_beside`, `with_breadth`): the goal problems solved at least once in all the attempts, `with`
@@ -38,8 +47,9 @@ from rlvr_lean.domain.ladder_round.l4_rows import (
 )
 from rlvr_lean.domain.repair.accumulate import proof_line_count
 
-OLD, REWARD_ROWS, REHEARSE = "old", "reward_rows", "rehearse"
-RULES = (OLD, REWARD_ROWS, REHEARSE)            # what an arm's `rule` may say; an arm that says none is trained as every arm was
+OLD, REWARD_ROWS, REHEARSE, REWARD_REHEARSE = "old", "reward_rows", "rehearse", "reward_rehearse"
+RULES = (OLD, REWARD_ROWS, REHEARSE, REWARD_REHEARSE)   # what an arm's `rule` may say; an arm that says none is trained as every arm was
+WITH_REHEARSAL = (REHEARSE, REWARD_REHEARSE)    # the rules whose sets hold rehearsal rows: rows of the file the start model was pretrained on
 NARROWER = "NARROWER"                           # lost more goal problems than gained against the start model, the sign test under the level
 ON_FEWER = "adds per attempt, on fewer problems"       # how a primary that "adds" is reported when the model is also NARROWER
 ORIGINS = (ATTEMPT, ASSEMBLED, PRETRAINING)     # where a row of a set made by a rule is from (an arm with a rule reads no H0)
@@ -50,27 +60,32 @@ def rule_set(by_round: Mapping[int, Sequence[Mapping]], picks: Sequence[Mapping]
              pretraining: Sequence[Mapping] | None = None, at_least: int = 0) -> list[Mapping]:
     """What M(`number`) is trained on under `rule`, IN THE ORDER IT IS TRAINED (the arm's content hash). `by_round`: the
     rounds' stored training examples. `picks`: every batch's per-problem results of rounds 1 to `number` (each problem's
-    k of n). `pretraining` (`rehearse` alone): the rows the start model was pretrained on, in the file's order, WITHOUT
-    their text. `at_least` (`reward_rows` in a smoke run alone): `l4_rows.kept_rows`' minimum.
+    k of n). `pretraining` (a rule of `WITH_REHEARSAL` alone): the rows the start model was pretrained on, in the file's
+    order, WITHOUT their text. `at_least` (a rule that keeps rows by their reward, in a smoke run alone):
+    `l4_rows.kept_rows`' minimum.
 
-    `old`: the rows themselves, as every arm orders them. The two others: every row of the rounds gets its `lines`, its
+    `old`: the rows themselves, as every arm orders them. The others: every row of the rounds gets its `lines`, its
     `k` and `n` (`l4_rows.with_k`: refused for a row no round picked, an H0 row, or stored rounds that do not agree).
     `reward_rows`: the rows whose draw is under their reward, each with its `reward`, `draw` and `kept_by`.
-    `rehearse`: every row of the rounds, and as many rehearsal rows as there are one-shot rows among them."""
+    `rehearse`: every row of the rounds, and as many rehearsal rows as there are one-shot rows among them.
+    `reward_rehearse`: the rows `reward_rows` keeps, and as many rehearsal rows as there are ONE-SHOT rows among THOSE
+    (an assembled row brings none): the first of the hash order `rehearse`'s are drawn in."""
     rows = training_set(by_round, number)
     if rule == OLD:
         return training_order(rows, seed)
     if rule not in RULES:
         raise ValueError(f"{rule!r} is not a training rule: an arm's rule is one of {list(RULES)}")
     of_the_rounds = with_k([{**row, "lines": proof_line_count(row["completion"])} for row in rows], picks)
+    # What the set holds of the rounds' rows: those the reward keeps (ONE draw and ONE keep rule for the two rules that keep by it), or all of them.
+    own = kept_rows(reward_draws(of_the_rounds, target_rate, seed), seed, at_least) if rule in (REWARD_ROWS, REWARD_REHEARSE) else of_the_rounds
     if rule == REWARD_ROWS:
-        return kept_rows(reward_draws(of_the_rounds, target_rate, seed), seed, at_least)
+        return own
     if pretraining is None:
-        raise ValueError(f"the rule `{REHEARSE}` draws its rehearsal rows among the rows the start model was pretrained on, and none were given")
-    one_shot = [row for row in of_the_rounds if row["origin"] == ATTEMPT]
-    rehearsal = rehearsal_rows(pretraining, len(one_shot), seed)
+        raise ValueError(f"the rule `{rule}` draws its rehearsal rows among the rows the start model was pretrained on, and none were given")
+    one_shot = [row for row in own if row["origin"] == ATTEMPT]
+    rehearsal = rehearsal_rows(pretraining, len(one_shot), seed)        # ONE hash order for both rules: fewer rows asked for are the first of more
     rehearse_set(one_shot, rehearsal, seed)         # as many of the one as of the other, and no id twice: refused otherwise
-    return training_order([*of_the_rounds, *rehearsal], seed)
+    return training_order([*own, *rehearsal], seed)
 
 
 def twin_of(ordered: Sequence[Mapping]) -> list[Mapping]:
@@ -91,7 +106,8 @@ def by_origin(rows: Sequence[Mapping]) -> dict[str, int]:
 
 def kept_share(of_the_rounds: Sequence[Mapping], kept: Collection[str]) -> dict:
     """The rule's kept share: of the rounds' rows (`id`, `k`), how many are in the set (`kept`: its rows' ids), in all and
-    by k. Under `old` and under `rehearse` every row of the rounds is kept; under `reward_rows` the share follows r(k)."""
+    by k. Under `old` and under `rehearse` every row of the rounds is kept; under `reward_rows` and `reward_rehearse` the
+    share follows r(k)."""
     def share(rows: Sequence[Mapping]) -> dict:
         inside = sum(row["id"] in kept for row in rows)
         return {"rows": len(rows), "kept": inside, "share": round(inside / len(rows), 5) if rows else None}

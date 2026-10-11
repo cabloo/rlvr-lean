@@ -61,6 +61,31 @@ def process_memory_fraction(total_mib: int, reserve_gb: float, process_overhead_
     return int(budget_gb / total_gb * 1000) / 1000
 
 
+ALLOCATOR_VARIABLE = "PYTORCH_CUDA_ALLOC_CONF"
+ALLOCATOR_SETTING = "expandable_segments:True"
+CACHE_SLACK_GB = 0.25
+
+
+def allocator_setting(environ) -> str:
+    """What a PyTorch training stage sets `PYTORCH_CUDA_ALLOC_CONF` to before CUDA starts: what is already
+    there, else `expandable_segments:True`.
+
+    Why it exists (2026-10-09, task 15f70151): a rank-64 training ran out of memory AT the cap with 10.65 GiB
+    allocated, 0.9 GiB reserved and not allocated, and 0.55 GiB asked: the room was there and was in pieces.
+    The trainings before it had fitted the same rows, in another order, with nothing to spare. The setting
+    changes how the allocator keeps its memory, never a number the training computes.
+    """
+    return environ.get(ALLOCATOR_VARIABLE) or ALLOCATOR_SETTING
+
+
+def cache_to_release(reserved_bytes: int, allocated_bytes: int, slack_gb: float = CACHE_SLACK_GB) -> bool:
+    """Whether the allocator's cache should be handed back before the next row: it holds more than
+    `slack_gb` beyond what is allocated. A training takes one row at a time and rows differ in length, so
+    what one row freed is the wrong shape for the next; between rows nothing but the model, the adapter and
+    the optimizer is allocated, and releasing the rest costs milliseconds and no accuracy."""
+    return reserved_bytes - allocated_bytes > slack_gb * MIB_PER_GIB * MIB_PER_GIB * 1024
+
+
 def token_budget_batches(token_counts: list[int], budget: int, block_tokens: int = 16) -> list[tuple[int, int]]:
     """Contiguous (start, stop) groups of sequences whose cache need fits `budget` tokens.
 

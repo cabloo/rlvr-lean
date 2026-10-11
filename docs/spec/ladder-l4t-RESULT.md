@@ -146,3 +146,13 @@ by another session at 17:10 UTC after it began to drop under load; the other rea
 last measurement (`pre_r64` at 1.2) ran through both. No attempt of any set was left without an answer (the
 largest share is 0.008%), so nothing was read from a damaged set; the two samplings at 1.2 took 44 and 64
 minutes where a measurement at 1.0 took 39 to 54.
+
+**Did the overloaded server make proofs time out, which would read as failures?** Checked afterwards, at the
+other session's suggestion: that server's checks were taking over 30 seconds from about 16:06 to 17:11 UTC, while
+`rehearse` and `old_rule` at 1.2 were being measured. A proof that times out in Lean is a failed attempt, so a
+set measured then could be biased down. The share of goal attempts that timed out is the same for the sets
+measured inside that hour and outside it: `old_rule` 2.5% and 2.3% (first and second sampling, before it),
+`reward_rows` 2.4% and 2.6% (before it), `rehearse` 2.6% and 2.3% (inside it), `old_rule` at 1.2 2.5% and 2.3%
+(inside it). The share follows the model, not the hour: the pretrained models time out more at any hour (`pre`
+3.9% and 3.5% on a freshly restarted pool; `pre_r64` 4.4% and 4.2%), as models that write longer proofs do.
+No excess in the window is seen.

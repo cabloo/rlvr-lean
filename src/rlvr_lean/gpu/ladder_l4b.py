@@ -19,6 +19,19 @@ modules, under the arm's settings; the three steps here are what a start that is
   ladder_l4b_report    the read fixed before the run (`reporting/ladder_l4b.py`: L4's, with the breadth beside the
                        primary on every branch)
 
+AN ARM WHOSE RULE ADDS REHEARSAL ROWS CARRIES ITS OWN SEPARATION (spec, "L4c: the arm from `pre_r64` with a rule L4t2
+names"; `domain/ladder_round/l4c.py`). Under `rehearse` and `reward_rehearse`, and under no other rule, two more steps
+after the arm's own and before the report, each written as the twin's is and on the functions the twin's uses:
+
+  ladder_l4b_train_rehearsal_alone     ONE more model, `rehearsal_alone`: from the start model at its rank, one pass, on
+                       the rehearsal rows of the LAST model's set alone, in that set's order with the other rows left out
+                       (`l4c.rehearsal_alone_set`). A rehearsal row's text is read from the pretraining file, held to the
+                       SHA-256 the start model's run recorded; the set is stored by id and place
+  ladder_l4b_measure_rehearsal_alone   it is measured as the twin is (`ladder_ceiling.measure_model`: the three rungs, G
+                       as often as the twin, the twin's sampling seeds), its sets' problems being `with`'s
+
+Under `old` and `reward_rows` the arm has no such model: the two steps refuse, and the run is what L4b's build wrote.
+
 Every adapter is kept. A rerun resumes at the first step, batch and block not done.
 """
 
@@ -28,21 +41,28 @@ import json
 import os
 from pathlib import Path
 
+from rlvr_lean.domain.ladder_round.ceiling import the_training_took
+from rlvr_lean.domain.ladder_round.l3d import WITH, tenth
+from rlvr_lean.domain.ladder_round.l3d2 import L3D2
 from rlvr_lean.domain.ladder_round.l4 import goal_set_again, pretraining_checks
-from rlvr_lean.domain.ladder_round.l4b import REHEARSE
+from rlvr_lean.domain.ladder_round.l4b import WITH_REHEARSAL
+from rlvr_lean.domain.ladder_round.l4c import REHEARSAL_ALONE, rehearsal_alone_set
 from rlvr_lean.domain.ladder_round.read import GOAL, group_ids
 from rlvr_lean.gpu import ladder_assembly, ladder_ceiling, ladder_l2, ladder_l3d2, ladder_l4, ladder_l4_rank, ladder_l4_start
-from rlvr_lean.gpu.ladder_ceiling import RUNG_PART, Reading, _need, stored_file
+from rlvr_lean.gpu.ladder_ceiling import RUNG_PART, Model, Reading, _need, goal_set, measure_model, one_pass, rung_set, stored_file
 from rlvr_lean.gpu.ladder_dose import _runs
-from rlvr_lean.gpu.ladder_l3d1 import WROTE
+from rlvr_lean.gpu.ladder_l3d1 import WROTE, what_else_a_model_wrote
 from rlvr_lean.gpu.ladder_l4 import AGAIN_FILE, L4, LABEL, _say
-from rlvr_lean.gpu.ladder_round import _stand_in, _write_json, training_seed
+from rlvr_lean.gpu.ladder_round import _results, _stand_in, _write_json, training_seed
 from rlvr_lean.infrastructure.artifact_store import ArtifactStore
 from rlvr_lean.reporting.ladder_ceiling import attempts_on_g
 
 STAGE = "ladder_l4b"
 SETTING = "ladder_loop.l4.again"
 MAP, PREPARE, REPORT = ladder_l4_start.MAP_STAGE_STEP, f"{STAGE}_prepare", f"{STAGE}_report"
+TRAIN_ALONE, MEASURE_ALONE = f"{STAGE}_train_{REHEARSAL_ALONE}", f"{STAGE}_measure_{REHEARSAL_ALONE}"     # L4c: the two steps of an arm with rehearsal rows, and their markers
+TRAINING_ALONE_FILE, LOSS_ALONE_FILE = f"l4b_training_{REHEARSAL_ALONE}.jsonl", f"l4b_loss_{REHEARSAL_ALONE}.json"   # ... the rows of that model, by id and place; its rows' losses
+MAX_LEFTOVER_GB = ladder_l3d2.MAX_LEFTOVER_GB
 REPORT_FILE = "report_ladder_l4b.json"
 RANK_16_FILE = "l4b_rank_16.json"                       # what is kept of the rank-16 arm's stored report, or why it was not read
 NEVER_SOLVED_FILE = "l4b_never_solved.jsonl"            # GIVEN, not made here: one `problem_id` a row, the goal problems nothing stored has ever solved
@@ -170,7 +190,7 @@ def ladder_l4b_prepare(config: dict) -> dict:
     failed = [name for name, check in checks.items() if not check["passes"]]
     if failed and not read["checks_waived"]:
         raise RuntimeError(f"`{start.name}` ({start.directory.name}) cannot carry the arm: its checks failed ({', '.join(failed)}). The arm is not run on it; nothing was written.")
-    if rule == REHEARSE:        # the rehearsal rows are rows the start model was pretrained on: the pretraining file must be that file, before anything is sampled
+    if rule in WITH_REHEARSAL:  # the rehearsal rows are rows the start model was pretrained on: the pretraining file must be that file, before anything is sampled
         ladder_l4_start.pretrained_on(start.directory, of_start["pretraining_file_sha256"], start.name)
     # ---- from here on files are written: G', the start model's rows and what it wrote, the base arm's rows and the rank-16 arm's figures when they are on the box
     store.write_rows(AGAIN_FILE, [{"problem_id": problem_id} for problem_id in again])
@@ -203,6 +223,104 @@ def ladder_l4b_prepare(config: dict) -> dict:
     return summary
 
 
+# ------------------------------------------------------------------------- the arm's own separation (L4c)
+def _with_rehearsal_rows(config: dict, what: str) -> str:
+    """The rule of the stage's arm, refused (RuntimeError) unless its sets hold rehearsal rows: `rehearsal_alone` is a
+    model of an arm with such a rule, and of no other. `what`: the step that asks."""
+    rule = ladder_l2.rule_of(config)
+    if rule not in WITH_REHEARSAL:
+        raise RuntimeError(f"{what} is not a step of the arm {ladder_l2.arm_name()} with the training rule `{rule}`: `{REHEARSAL_ALONE}` is trained on the rehearsal rows of the "
+                           f"last model's set, and only a rule of {list(WITH_REHEARSAL)} adds any. The stages of the two other rules do not run this step")
+    return rule
+
+
+def ladder_l4b_train_rehearsal_alone(config: dict) -> dict:
+    """THE ARM'S OWN SEPARATION (spec L4c, "What is added to L4b's build", 2): ONE more model after the last round,
+    `rehearsal_alone`. FROM the start model at its rank, by the code the twin is trained by (one pass, the same recipe
+    and adapter seed), on the rehearsal rows of the LAST model's set ALONE, in that set's order with the other rows left
+    out. The set is stored by id and place, never with text: a row's text is read from the pretraining file, held to the
+    SHA-256 the start model's run recorded, as the round's own trainings read it."""
+    store = _arm_store(config)
+    what = f"the training of `{REHEARSAL_ALONE}`"
+    rule = _with_rehearsal_rows(config, what)
+    if store.is_done(TRAIN_ALONE):
+        return store.done_summary(TRAIN_ALONE)
+    last, seed, batch = ladder_l3d2.last_round(config), training_seed(config), config["training"]["effective_batch"]
+    for needed in (PREPARE, f"ladder_l2_train_{last}"):
+        _need(store, needed, what, STAGE)
+    ordered = store.read_rows(ladder_assembly.training_set_file(last))
+    try:
+        rows = [{**row, "row": position, "row_of_with": row["row"]} for position, row in enumerate(rehearsal_alone_set(ordered))]
+    except ValueError as error:
+        raise RuntimeError(f"M({last})'s training set ({ladder_assembly.training_set_file(last)}): {error}. Nothing was trained") from error
+    store.write_rows(TRAINING_ALONE_FILE, rows)
+    examples = ladder_l2.examples_of(config, rows)
+    steps = -(-len(rows) // batch)
+    start = ladder_l2.start_directory(config)
+    _say(f"L4c: training `{REHEARSAL_ALONE}` (the rule `{rule}`) from `{start.name}` on the {len(rows)} rehearsal rows of M({last})'s set alone, M({last})'s order with its "
+         f"{len(ordered) - len(rows)} other rows left out, {steps} optimizer steps")
+    result, step_rows, row_losses, positions = one_pass(ladder_l2.config_for(config, store), examples, {REHEARSAL_ALONE: steps}, seed, batch, store.root / ladder_assembly.ADAPTERS,
+                                                        f"{STAGE}_{ladder_l2.arm_name()}_{REHEARSAL_ALONE}_seed{seed}", positions=True, start=start)
+    result.pop("checkpoints")
+    _write_json(store, LOSS_ALONE_FILE, {
+        "stage": L4, "label": LABEL, "model": REHEARSAL_ALONE, "seed": seed, "stand_in_engine": _stand_in(), "rows": len(row_losses), "steps": result["steps"], "effective_batch": batch,
+        "what": "row_losses: each training row's mean loss per target token, in the order trained, read BEFORE the update of the optimizer step it was in. "
+                "rows_trained: the id of the row each of those losses is of, from the positions the training loop recorded step by step",
+        "row_losses": row_losses, "rows_trained": [rows[position]["id"] for position in positions],
+        "training_steps": [{**row, "rows_seen": min(row["step"] * batch, len(row_losses))} for row in step_rows]})
+    took = the_training_took(row_losses, tenth(len(row_losses), config["ladder_loop"]["l3d"]["step_2"]["loss_share_of_rows"]))
+    summary = {"stage": L4, "label": LABEL, "check": "L4c", "model": REHEARSAL_ALONE, "seed": seed, "rule": rule, "trained_from": f"the stored adapter {start}",
+               "rows": len(rows), "rows_of_with": len(ordered), "left_out": len(ordered) - len(rows),
+               "what": f"the arm's own separation: `{start.name}` trained one more pass on the rehearsal rows of M({last})'s set alone (published proofs it was pretrained on), "
+                       "by the code the twin is trained by",
+               "order": f"M({last})'s, with every row that is not a rehearsal row left out and no row moved",
+               "first_step_loss": step_rows[0]["mean_loss"], "last_step_loss": step_rows[-1]["mean_loss"], "mean_loss_over_the_first_rows": took["first"],
+               "mean_loss_over_the_last_rows": took["last"], "rows_compared": took["rows_compared"], "stand_in_engine": _stand_in(), **result}
+    summary.update(ladder_l2.adapter_saved(config, store.root / ladder_assembly.ADAPTERS / REHEARSAL_ALONE, REHEARSAL_ALONE))     # refused, and the step not marked done, at another rank than the start adapter's
+    store.mark_done(TRAIN_ALONE, summary)           # the adapter is saved: keep it whatever follows
+    if summary.get("allocated_after_cleanup_gb", 0) > MAX_LEFTOVER_GB:
+        raise RuntimeError(f"{summary['allocated_after_cleanup_gb']} GB is still allocated on the GPU after the training of `{REHEARSAL_ALONE}` was released")
+    return summary
+
+
+def alone_set(part: str, name: str = REHEARSAL_ALONE) -> str:
+    """The set a model's episodes on one part are stored under in the arm's run, as the twin's are: its rungs, or one sampling of G."""
+    return rung_set(name, L3D2) if part == RUNG_PART else goal_set(part, name, L3D2)
+
+
+def ladder_l4b_measure_rehearsal_alone(config: dict) -> dict:
+    """`rehearsal_alone` on the three held-out rungs and on G, MEASURED AS THE TWIN IS (`measure_model`: the rungs, every
+    sampling of G the twin has, the twin's sampling seeds), under a model server started for the start adapter's rank.
+    Its sets' problems are `with`'s, put beside them under its own names (the arm's prepare steps made none for it)."""
+    store = _arm_store(config)
+    what = f"the measurement of `{REHEARSAL_ALONE}`"
+    _with_rehearsal_rows(config, what)
+    for needed in (ladder_l3d2.PREPARE, TRAIN_ALONE):       # nothing is written, a set's problems neither, before the model is there
+        _need(store, needed, what, STAGE)
+    prepared, last, start = store.done_summary(ladder_l3d2.PREPARE), ladder_l3d2.last_round(config), the_start(config)
+    for part in (RUNG_PART, *(sampling["name"] for sampling in prepared["goal_samplings"])):
+        ladder_l2._ensure_problems(store, alone_set(part), alone_set(part, WITH))
+    return measure_model(ladder_l2.config_for(config, store, serving=True), store, prepared, Model(
+        name=REHEARSAL_ALONE, called=f"the model `{REHEARSAL_ALONE}`", whose=f"L4c's model `{REHEARSAL_ALONE}`", marker=MEASURE_ALONE, trained_by=TRAIN_ALONE,
+        adapter=store.root / ladder_assembly.ADAPTERS / REHEARSAL_ALONE,
+        no_adapter="this run keeps its adapters, and one trained again would not be the model its other measurements came from. The measurement cannot be made",
+        detail=f"`{start.name}` trained one more pass on the rehearsal rows of M({last})'s set alone",
+        summary={"stage": L4, "label": LABEL, "check": "L4c", "model": REHEARSAL_ALONE, "is": f"`{start.name}` trained on the rehearsal rows of M({last})'s set alone"},
+        stage=STAGE, label=L3D2, also=what_else_a_model_wrote))
+
+
+def the_alone(store: ArtifactStore, prepared: dict) -> dict:
+    """`rehearsal_alone` as the report reads it (`reporting/ladder_l4.the_rounds_apart`): what its training step
+    recorded, its rows' losses, the rows its training loop recorded (each with its problem and its origin), its
+    per-problem rows on the rungs and on G (a list a sampling) and what it wrote."""
+    stored, measured = json.loads(store.path(LOSS_ALONE_FILE).read_text()), store.done_summary(MEASURE_ALONE)
+    of = {row["id"]: row for row in store.read_rows(TRAINING_ALONE_FILE)}
+    return {"train": store.done_summary(TRAIN_ALONE), "row_losses": stored["row_losses"],
+            "rows": [{"id": row_id, "problem_id": of[row_id]["problem_id"], "origin": of[row_id]["origin"]} for row_id in stored["rows_trained"]],
+            RUNG_PART: _results(store, alone_set(RUNG_PART)), GOAL: [_results(store, alone_set(sampling["name"])) for sampling in prepared["goal_samplings"]],
+            **{key: measured[key] for key in WROTE}, "stand_in_engine": measured["stand_in_engine"]}
+
+
 # ------------------------------------------------------------------------------------------------ report
 def ladder_l4b_report(config: dict) -> dict:
     from rlvr_lean.reporting.ladder_l4b import build_l4b_report
@@ -214,12 +332,18 @@ def ladder_l4b_report(config: dict) -> dict:
     read, beside = ladder_l4.read_for_the_arms_report(config, store, prepare=PREPARE, stage=STAGE, start=own["start"], wrote=wrote)
     # The goal problems nothing stored has ever solved are GIVEN (a file of ids in the run directory), never computed here.
     never = [row["problem_id"] for row in store.read_rows(NEVER_SOLVED_FILE)] if store.path(NEVER_SOLVED_FILE).exists() else None
-    report = build_l4b_report(read, own, beside["trained_rows"], beside["last_set"], json.loads(store.path(RANK_16_FILE).read_text()), never)
+    alone = None
+    if own["rule"] in WITH_REHEARSAL:       # L4c: an arm with rehearsal rows carries its own separation, and its report is not written without it
+        for marker in (TRAIN_ALONE, MEASURE_ALONE):
+            _need(store, marker, "L4b's report (the arm's own separation)", STAGE)
+        alone = the_alone(store, store.done_summary(ladder_l3d2.PREPARE))
+    report = build_l4b_report(read, own, beside["trained_rows"], beside["last_set"], json.loads(store.path(RANK_16_FILE).read_text()), never, alone)
     report["adapters"] = {"kept": True, "what": f"every model of the arm is kept, and `{own['start']}` with them (in the directory of the run that made it)",
                           "directory": str(store.root / ladder_assembly.ADAPTERS), "start_adapter": own["start_adapter"],
                           "there": sorted(path.name for path in (store.root / ladder_assembly.ADAPTERS).glob("*") if path.is_dir())}
-    ladder_l4.write_the_arms_report(store, report, rounds, marker=REPORT, file=REPORT_FILE, wrote=wrote, also=(RANK_16_FILE,))
+    ladder_l4.write_the_arms_report(store, report, rounds, marker=REPORT, file=REPORT_FILE, wrote=wrote, also=(RANK_16_FILE, *((LOSS_ALONE_FILE,) if alone is not None else ())))
     return report
 
 
-STEPS = {MAP: ladder_l4b_map, PREPARE: ladder_l4b_prepare, REPORT: ladder_l4b_report}
+STEPS = {MAP: ladder_l4b_map, PREPARE: ladder_l4b_prepare, TRAIN_ALONE: ladder_l4b_train_rehearsal_alone, MEASURE_ALONE: ladder_l4b_measure_rehearsal_alone,
+         REPORT: ladder_l4b_report}

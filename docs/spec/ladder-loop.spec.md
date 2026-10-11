@@ -2395,6 +2395,1309 @@ From the stored rows: `old_rule` fails the first two; `reward_rows` fails the th
 - **Budget.** Trainings of about 15 and 10 minutes; a measurement took 39 to 54 minutes with the pool's 37
   workers and takes about twice that with 15: two to four hours.
 
+**Made exact by the build (2026-10-09; nothing queued, nothing run on a GPU, nothing sent to Lean; the two sets, the
+three reads and the branches above are not changed, and no fact of the section was found wrong).**
+- **The stage.** `ladder_l4_rows2_r64` (`gpu/ladder_l4_rows2.py`; rules `domain/ladder_round/l4_rows2.py`; report
+  `reporting/ladder_l4_rows2.py`), settings `ladder_loop.l4.rows2` (`start: pre_r64`, `models: [rehearse_only,
+  reward_rehearse]`; one reader; `pre` is refused: L4t from it has no `old_rule`). The stage names NO variable. Run
+  directory `ladder_l4_rows2_pre_r64_seed<N>`. Six steps, each resumable: prepare; train and measure
+  `rehearse_only`; train and measure `reward_rehearse`; report. `rehearse_only` is first: Question 1 is what an arm
+  with rehearsal rows waits on. Jobs `ladder_l4_rows2_r64_seed0.json` (est_minutes 300) and `..._smoke.json`
+  (job configs, not shipped in this copy).
+- **What is read, and refused before anything is written.** TWO runs, only read. L4t's from `pre_r64`
+  (`ladder_l4_rows_pre_r64_seed<N>`), FINISHED: the markers of its prepare and report steps, its report (one not to
+  be read is refused), its problems, its held-out groups, its G′, its two stored sets, what its three models wrote
+  and their per-problem rows with each set's marker. The rank check's, as L4t reads it (its report, its three
+  markers, `pre_r64`'s rows), and the rows `pre_r64` was pretrained on (`l4_pretraining_rows.jsonl`). **The arm's
+  run and `pre`'s run are NOT read:** the sets are made from L4t's stored sets, not from the rounds again, and the
+  pretraining rows are the start model's own record (the same file: L4t held the two records to each other). Held
+  to each other here, each a refusal: L4t's seed, start and three models; the rank and alpha L4t trained at and the
+  check's; how each was measured (sampling seeds, attempts); G′, made again from `pre_r64`'s first sampling by
+  `l4.goal_set_again`, which must be the one L4t stored; the pretraining file's SHA-256 (the snapshot's, the check's
+  record and L4t's record are one); every stored set's problems, seed, attempts, and Lean having answered.
+- **The two sets** (`l4_rows2.rehearse_only_set`, `reward_rehearse_set`). `rehearse_only` is `l4b.rehearsal_of` on
+  L4t's stored `rehearse` rows: its rehearsal rows in its order with the others left out, which is the content-hash
+  order of them. `reward_rehearse` is every row of L4t's stored `reward_rows` set as stored (its k, reward and draw
+  with it) and `l4_rows.rehearsal_rows` (L4t's own draw) asked for as many rows as that set has ONE-SHOT rows; an
+  assembled row brings none (1,262 of its 1,349). The prefix is HELD, not assumed: L4t's stored rehearsal rows must
+  be that function's draw for their own count, by id and by place in the file (another file or seed is refused),
+  and the rows drawn must be its first; then `assembly.training_order`. Each row is numbered by its place in its own
+  set. A rehearsal row that carries a text field is refused (`refuse_text`); the training step reads the text from
+  the snapshot's file, held to the SHA-256 the START model's run recorded.
+- **Trained and measured by L4t's own two step bodies, not by copies.** `ladder_l4_rows.train_a_model` and
+  `measure_a_model` under the names a `Stage` gives (L4t's are the defaults; this stage gives its own), and
+  `read_the_trained` for a report. L4t's two steps call them. The adapter saved is read back and held to rank 64
+  and alpha 128, the model server is started with that rank, the temperature is the config's: as L4t from `pre_r64`.
+- **The report.** L4t's report's pieces are functions two reports call (`reporting/ladder_l4_rows.py`: `world_of`,
+  `the_four_checks`, `check_lines`, `secondary_reads`, `secondary_lines`). In order: each trained model's four
+  checks; the three reads of the two models, then of `old_rule`, `reward_rows` and `rehearse` from L4t's stored
+  rows; Question 1; Question 2; ONE line for the arm's rule with the numbers it used; then L4t's secondary reads of
+  each trained model BY ITSELF against `pre_r64`, L4t's three models beside in each table.
+- **The three reads at the edge of zero** (`l4_rows2.three_reads`). Intervals are the reports' own, rounded to five
+  places. ADDS: the low end above zero; one that ends at zero is not above it (`old_rule`'s +0.00000). NOT
+  NARROWER: L4b's own `NARROWER`, by its function (`l4b.breadth_beside`). HOLDS THE LONG PROOFS: the high end not
+  below zero; one that ends at zero is not wholly below it.
+- **Cases the section did not name, named before any run.** (1) A check of a trained model fails: that model is
+  INCONCLUSIVE, none of its three reads is made, and a question that stands on it is INCONCLUSIVE (L4t's rule).
+  (2) A stored model that L4t's OWN report read as INCONCLUSIVE is not read here either (at seed 0: none). (3) A
+  read with nothing measured (one sampling of G: the smoke run) is NOT READ, and a model passes "all three" only
+  when all three were made. (4) Question 2, otherwise: `IT FAILS: <read>`, the reads joined by AND. (5) Question 1,
+  NOT SEPARATED: its line gives what THIS difference resolves, half the width of its interval, in place of "about
+  0.005". (6) The arm's rule: "at least" is >=, so a tie goes to `reward_rehearse`. `NO RULE IS NAMED` when
+  Question 1 is INCONCLUSIVE or NOT READ, when a rule's three reads could not all be made (an INCONCLUSIVE
+  `reward_rehearse` does NOT fall through to `rehearse`: nothing is said about its training rule, and the task is
+  queued again), and when neither rule passes all three (not possible with `rehearse`'s stored rows, which pass).
+- **The smoke stage** (`ladder_l4_rows2_r64_smoke`) reads `ladder_l4_rows_r64_smoke` and `ladder_l4_rank_smoke` and
+  nothing else, and writes `ladder_l4_rows2_r64_smoke`. The smoke `pre_r64`'s own report reads INCONCLUSIVE, which a
+  real run is refused for: this stage sets no variable for it and goes on ONLY because L4t's smoke run, which it
+  reads, recorded that IT went on (`checks_waived_for_a_smoke_run`), and records that.
+- **Measured before any run, on the pulled copies** (seed 0; copies in a scratch store; no GPU, no Lean). The
+  prepare step runs to its end: `rehearse_only` 3,422 rows, 428 optimizer steps; `reward_rehearse` 2,611 rows
+  (1,349 and 1,262), 327 optimizer steps; the 1,262 are the first of `rehearse`'s 3,422 in the draw's order, at the
+  same places of the file; `rehearse`'s 3,422 are the draw among the 24,866 rows; no rehearsal row carries text; G′
+  192; rank 64; the two runs it reads not written to. **The three reads from the stored rows are the section's:**
+  `old_rule` +0.00538 [+0.00000, +0.01272], gained 25, lost 53 (p = 0.002), −0.00636 [−0.01786, +0.00622]: fails
+  the first two. `reward_rows` +0.00615 [+0.00171, +0.01101], gained 32, lost 36, −0.01014 [−0.01903, −0.00117]:
+  fails the third. `rehearse` +0.00734 [+0.00205, +0.01358], gained 27, lost 38, +0.00809 [−0.00295, +0.01996]: all
+  three; its gained minus lost is −11. The smoke stage's prepare step runs to its end on the pulled copies of the
+  two smoke runs (4 and 4 rows; the waiver read from L4t's smoke run; `reward_rows` INCONCLUSIVE there and not read).
+  By L4t's own timings (760 s, 319 s and 1,735 s for 428, 169 and 856 steps) the two trainings are about 16 and 11
+  minutes; 85,634 generations.
+- **L4t writes what it wrote.** In the scripted world, with the code before the build and after it, L4t from `pre`
+  writes the same 237 files (79 its own) and L4t from `pre_r64` the same 300 (100 its own), every step's summary the
+  same (paths and wall-clock figures aside). On the REAL rows: L4t's report built again from the pulled steps of
+  seed 0 is the same byte for byte before and after, and is the report the box stored (its `adapters` entry aside).
+  One assertion that states where things live was brought up to date (one more smoke stage reads the rank check's
+  smoke run).
+- **Not shown without the box:** a training whose EVERY row is a rehearsal row, its text read from the snapshot's
+  file (L4t's `rehearse` mixed them with the rounds' rows); the two trainings' memory (a training takes one row at
+  a time, and every row here is a row of L4t's `rehearse` or `reward_rows` trainings, which fitted: 12.81 GB
+  reserved at the most). The smoke run is the first run of the first.
+- **Mutated.** Ninety-three one-change mutations of what this build added (the two sets and their order, the
+  prefix and what holds it, the refusal of text, each of the three reads and its edge at zero, the reads' reference
+  and their sets in the report, Question 1's three outcomes and its difference, Question 2, every case of the arm's
+  rule and the line that says it, what the prepare step holds L4t's run and the start model's to, the stage's names
+  handed to L4t's two bodies, the smoke stage's runs). The stage's tests noticed 91 as written; two assertions were
+  added for the two they missed (G′ made from the START model's first sampling and no other model's; what each
+  stored model wrote, and its rows, are its own run's), and all 93 are noticed.
+
+### L4c: the arm from `pre_r64` with a rule L4t2 names (fixed 2026-10-09, while L4t2 runs and BEFORE its read)
+
+**Under the owner's word of 2026-10-08 (night).** Labelled **pretrained on published proofs**. This is L4b's arm
+(`pre_r64`'s own map; target 1/10; six rounds of 1,000 from the `loop` half; assembly after each batch; every model
+at rank 64; the twin; the two measurements) with what "The arm's rule after L4t2" asks and nothing else. It is
+built before L4t2 is read so that the card does not wait; WHICH job is queued, or none, is L4t2's line "the arm's
+rule" and nothing else: `reward_rehearse`, `rehearse`, or no arm (NO ARM WITH REHEARSAL ROWS; NO RULE IS NAMED).
+
+**What is added to L4b's build.**
+1. **A fourth training rule of the arm, `reward_rehearse`.** In a round, on the rows of rounds 1 to r: the rows
+   `reward_rows` keeps (the same hash draw against r(k), so a row kept for M(r) is kept for every later model),
+   and as many rows of the pretraining file as that kept set has ONE-SHOT rows, the first of the hash order
+   `rehearse` draws from (so M(r)'s rehearsal rows are the first of M(r + 1)'s, and are among `rehearse`'s). Stored
+   by id and place, never with text. The twin is the same rule with the assembled rows left out.
+2. **The arm's own separation, for the two rules with rehearsal rows** (`rehearse`, `reward_rehearse`). After the
+   last round ONE more model, `rehearsal_alone`: trained FROM `pre_r64` at its rank, one pass, on the rehearsal
+   rows of the last model's set alone, in that set's order with the other rows left out; measured as the twin is
+   (the rungs, G twice, the same sampling seeds). Under `old` and `reward_rows` the arm has no such model and
+   writes what L4b's build wrote.
+
+**The read, fixed before any run.** L4b's, unchanged (five checks; the primary on G′ over the 61 fresh attempts,
+`with` minus `pre_r64`; the breadth beside it and NARROWER), and beside the primary, for a rule with rehearsal rows:
+- **The loop's rows, apart from the rehearsal:** on G′ over the 61 fresh attempts, `with` minus `rehearsal_alone`,
+  paired by problem, 95% bootstrap. Interval above zero: THE ROUNDS ADD BESIDE THE REHEARSAL. Else, if
+  `rehearsal_alone` itself has an interval above zero against `pre_r64`: THE GAIN IS NOT SHOWN TO BE THE ROUNDS'
+  (a second pass over published proofs gives it). Else: NOT SEPARATED AT THIS SIZE. A primary that reads THE LOOP
+  ADDS ON TOP OF PRETRAINING is REPORTED with this line after it, and is not called the loop's gain unless the
+  first of the three is read.
+- **The long proofs:** the goal problems of 4 lines or more, successes per attempt over the 93 attempts, `with`
+  minus `pre_r64`; an interval wholly below zero is written SHORTER beside the branch, as NARROWER is.
+- `rehearsal_alone` has the checks a measured model has (its training ran; it still writes proofs; Lean answered);
+  one that fails makes the separation NOT READ and changes nothing else.
+
+**Budget.** L4b's (the map 45 to 60 minutes, the arm six to seven hours, with the pool's 37 workers) and about an
+hour more for `rehearsal_alone`; with 15 workers the map and the measurements take about twice as long. One seed.
+
+**Made exact by the build (2026-10-09; nothing queued, nothing run on a GPU, nothing sent to Lean; the two additions, the
+read and its outcomes above are not changed, and no fact of the section was found wrong).**
+- **The fourth rule.** `reward_rehearse` is one more value of the arm's ONE setting (`l4b.RULES`; the arm's own stays
+  `old`), applied where the three others are (`l4b.rule_set`, from `ladder_assembly.train_round`): ONE call of L4t's
+  draw and keep rule for the two rules that keep by the reward (`kept_rows(reward_draws(...))`), ONE call of its
+  rehearsal draw for the two rules with rehearsal rows (`rehearsal_rows`, asked for as many rows as the KEPT set has
+  one-shot rows; an assembled row brings none), then `assembly.training_order`. So a model's rounds' rows ARE
+  `reward_rows`' set, row for row with its k, reward and draw, and its rehearsal rows are the first of the order
+  `rehearse`'s are drawn in. A rule with rehearsal rows is one of `l4b.WITH_REHEARSAL` (`rehearse`,
+  `reward_rehearse`), asked wherever `rehearse` alone was asked before: the pretraining rows handed to a round's
+  training without text, the text read from the snapshot's file held to the SHA-256 the start model's run recorded
+  (`ladder_l2.rule_inputs`, `examples_of`), that file held by the arm's prepare step before anything is sampled, the
+  fifth check naming the rehearsal rows. The twin is `l4b.twin_of`, unchanged. Stages `ladder_l4b_reward_rehearse`
+  and `..._smoke`; run directory `ladder_l2_t010_assembly_pre_r64_reward_rehearse_seed<N>`; jobs
+  `ladder_l4b_reward_rehearse_seed0.json` and `..._smoke.json` (job configs, not shipped in this copy).
+- **`rehearsal_alone`** (`domain/ladder_round/l4c.py`; two steps in `gpu/ladder_l4b.py`, written as the twin's two
+  and on the same functions). `ladder_l4b_train_rehearsal_alone`: the rehearsal rows of the last model's STORED set
+  (`training_set_m<last>.jsonl`), in its order, each with its place there (`l4c.rehearsal_alone_set`, on
+  `l4b.rehearsal_of`); stored as `l4b_training_rehearsal_alone.jsonl` by id and place (a row with a text field is
+  refused); trained by `ladder_ceiling.one_pass` from the start adapter at the rank and alpha the arm's prepare step
+  stored, with the twin's recipe and adapter seed, the text from `ladder_l2.examples_of`; the adapter
+  (`adapters/rehearsal_alone`) read back and held to rank 64 before the step is marked done; its rows' losses and the
+  training loop's own record in `l4b_loss_rehearsal_alone.json`. It needs the arm's L4b prepare step and the last
+  round's training, and refuses a last set with no rehearsal row (nothing is written).
+  `ladder_l4b_measure_rehearsal_alone`: `ladder_ceiling.measure_model` with what `ladder_l3d2_prepare` recorded for the
+  twin (the rungs, every sampling of G, the same sampling seeds), under a model server started for rank 64. Its three
+  sets (`l3d2_<part>_rehearsal_alone`) get `with`'s problems, put into `problems.jsonl` BY THIS STEP once the model is
+  trained, so a run directory prepared before this build needs nothing redone. In the stage's order the two stand
+  after `ladder_l3d2_measure_without` and before `ladder_l4b_report`, a guard before each, in the stages of the two
+  rules and in their smoke stages, and in no other; under `old` and `reward_rows` each of the two steps refuses.
+- **The report** (`build_l4b_report(rehearsal_alone=...)` on `build_l4_report(long_proofs=..., rehearsal_alone=...)`;
+  the rules in `l4c.py`). With the two arguments off, which is every default, the report is L4b's byte for byte.
+  `rehearsal_alone` IS NO MODEL OF ANY OTHER READ: it is in none of L4's tables, its sets are not among those that
+  make a report NOT TO BE READ, and the five checks do not know it (its rows are the last model's rehearsal rows,
+  which the fifth check reads there). ITS THREE CHECKS are the functions the run's own checks use: its training ran
+  (`l4.the_training_ran`: the adapter saved is not the start adapter's, the loss did not rise), it still writes
+  proofs (`still_writes_proofs` on its rung attempts), Lean answered (at most 2% of each of its three sets without an
+  answer). A failed one: the separation is NOT READ; `ok`, the branch's name, the primary, the breadth, the long
+  proofs and every secondary read are what they were (asserted key for key); and the task queued again samples a set
+  Lean did not answer again (the measure step's own rule). THE SEPARATION (`l4c.separation`): the difference is
+  `per_attempt` on G′ over the second sampling, `with` minus `rehearsal_alone`; "`rehearsal_alone` itself has an
+  interval above zero against `pre_r64`" is L4t2's read ADDS, by its own function (`l4_rows2.three_reads`). THE LONG
+  PROOFS (`l4c.long_proofs_beside`): L4t2's read HOLDS THE LONG PROOFS, by the same function, on `with` against the
+  start model; its interval is L4's own figure for that pair on the problems of 4 lines or more; SHORTER is that read
+  failing.
+- **Cases the section did not name, named before any run.** (1) At the edge of zero, as L4t2's reads: an interval that
+  ends at zero is not above it and not wholly below it. (2) NOT READ, besides a failed check: nothing measured on both
+  sides (one sampling of G: a smoke run); a failed check is said first. (3) NOT SEPARATED: its line gives what THIS
+  difference resolves, half the width of its interval. (4) THE SEPARATION IS READ ON EVERY BRANCH that is not
+  INCONCLUSIVE (its line stands beside the primary); only a primary that reads THE LOOP ADDS is REPORTED with it.
+  `reported_as` is L4b's own words, then `, SHORTER` when it is, then `; apart from the rehearsal: <outcome>`.
+  `the_loops_gain` is true only for THE ROUNDS ADD BESIDE THE REHEARSAL, false for the three others (NOT READ among
+  them), and not said for a primary that does not add. (5) INCONCLUSIVE says nothing else: neither read is printed
+  or branched on, and what was measured is kept under `measured_and_not_read`. (6) The report's `check` stays L4b
+  (the stage, the run and the report file are L4b's); `spec_of_the_separation` names this section. (7) A smoke
+  run's minimum under `reward_rehearse` (`RLVR_LEAN_LADDER_L2_RULE_MINIMUM`): the rows it adds are rows of the kept
+  set, marked as not the rule's, and a one-shot row among them brings a rehearsal row; the nesting is the rule's, not
+  the minimum's (as for `reward_rows`).
+- **A reading the section left open, and the one taken: SHORTER is read where the separation is.** The list "beside
+  the primary" is headed "for a rule with rehearsal rows", and item 2 says that under `old` and `reward_rows` the arm
+  writes what L4b's build wrote. So the long proofs are read, and SHORTER written, under `rehearse` and
+  `reward_rehearse` and under no other rule; under the two others the report is L4b's byte for byte. Reading the long
+  proofs under every rule is one argument (`long_proofs=rehearsing` in `reporting/ladder_l4b.py`), and then those
+  two rules' reports are no longer what L4b's build wrote.
+- **Under `old` and `reward_rows` the arm writes what it wrote; so do the stages before it.** In the scripted world,
+  with the code before the build and after it: the arm from `pre_r64` with `old` the same 168 files and with
+  `reward_rows` the same 168 (121 its own each), every step's summary the same key for key; the arm from `pre` the
+  same 158, the base arm the same 227, L4t from `pre` the same 237 and from `pre_r64` the same 300, L4t2 the same 199.
+  With `rehearse`: of the 168 files L4b's build wrote 165 are the same; `problems.jsonl` holds the model's three sets
+  after its own rows, the report and its marker are new; 21 files are added. The four job files of the two other
+  rules are L4b's byte for byte (their SHA-256 is asserted). The assertions of L4b's three test files that state the
+  rules, the steps and the jobs were brought up to date (a fourth rule; for a rule with rehearsal rows two more
+  steps, one more training and one more measured model, an hour more), and one of the rank check's (one more smoke
+  stage reads its smoke run); nothing they assert of `old` and `reward_rows` is changed.
+- **Measured before any run, on the pulled copies** (seed 0; links and copies in a scratch store; no GPU, no Lean).
+  The two rules on the rank-16 arm's stored rounds, as if they were this arm's (24,866 rows `pre_r64` was pretrained
+  on; the snapshot's file is the one its run recorded). `reward_rehearse`: M(1) to M(6) 504, 974, 1,418, 1,843, 2,232,
+  2,611 rows (one-shot 246, 472, 690, 896, 1,080, 1,262; assembled 12, 30, 38, 51, 72, 87; rehearsal as many as
+  one-shot); the twin 2,524 (1,262 and 1,262); `rehearsal_alone` 1,262. M(6)'s kept rows are L4t's stored
+  `reward_rows` set, id for id in its order (1,349: 1,262 one-shot, 87 assembled), and M(6) is L4t2's
+  `reward_rehearse` set, id for id in its order (2,611), by L4t2's own function on the pulled L4t run and by the set
+  its build's pre-flight stored; its rehearsal rows are the first 1,262 of `rehearse`'s 3,422 in the draw's order, at
+  the same places of the file. `rehearse`: 1,238 to 6,931 and the twin 6,844 (L4b's figures); `rehearsal_alone`
+  3,422, which is L4t2's `rehearse_only` set, id for id in its order. Under both: every model's rounds' rows are the
+  last model's rows of its rounds, in its order; M(r)'s rehearsal rows are the first of M(r + 1)'s; under
+  `reward_rehearse` they are among `rehearse`'s in every round; no rehearsal row carries text; the text of every row
+  of `rehearsal_alone` is read from the snapshot's file, held to the recorded SHA-256. OPTIMIZER STEPS:
+  `reward_rehearse` 63, 122, 178, 231, 279, 327, the twin 316 (1,516 for the seven), `rehearsal_alone` 158;
+  `rehearse` 155, 305, 453, 591, 731, 867, the twin 856 (3,958), `rehearsal_alone` 428. By L4t's timings at rank 64
+  (12.8 minutes for 428 steps, 5.5 for 169; a measurement 39 to 54 minutes with 37 workers) `rehearsal_alone` is 45
+  to 70 minutes: the section's hour. The arm's three prepare steps run to their end with each of the two rules
+  (26,029 candidates; rank 64; check 1 245 of 392; G′ 192; `..._rehearse_seed0`, `..._reward_rehearse_seed0`).
+- **The smoke run of `rehearse` queued again resumes.** A copy of the run directory the smoke run of L4b's build left
+  (`ladder_l4b_rehearse_smoke`, as pulled: 122 files), with the stage's steps run in it again: the eleven steps that
+  run finished return what is stored and no file is written again (the embedding step was not called: the stand-in
+  has another key; on the box it returns what is stored while the shared embeddings are there);
+  `ladder_l4b_train_rehearsal_alone` RUNS (4 rows of M(2)'s 8, one optimizer step, the fixture's text read from the
+  snapshot's file); `ladder_l4b_measure_rehearsal_alone` reaches its sampling (it stops there for want of the pool's
+  key), its two sets put beside `with`'s; the report is built again. So the same job queued again runs the two steps
+  and the report in that directory, WHILE THE BOX'S STORE STILL HOLDS IT and the rank check's smoke adapter: a worker
+  container made again holds neither, and the three smoke runs the stage reads are then queued first.
+- **The jobs.** `est_minutes` 600 for the two real jobs (540 and the hour); 35 for the two smoke jobs (the smoke run
+  of L4b's build took 3.4 minutes; the two steps add about one). Each real job says that WHICH is queued, or none, is
+  L4t2's line and nothing else.
+- **Not shown without the box:** `rehearsal_alone` trained at rank 64 on rows of the real file taken from an ARM's
+  last set (its rows are of the kind L4t's `rehearse` trained on, which fitted, 12.81 GB reserved at the most; L4t2's
+  smoke run showed a training whose every row is a rehearsal row); its adapter served and measured; `problems.jsonl`
+  gaining its sets in a run directory of the box. The smoke run of each of the two rules is the first run of all
+  three. With 15 workers the map and the three measurements take about twice as long, and 600 minutes may not hold.
+- **Left as L4b's build has it.** L4's own second line of the report counts a rehearsal row among "rows of the
+  rounds" and the twin's among "one-shot rows" under a rule with rehearsal rows (it did under `rehearse`); the rows by
+  origin are in the rule's own line and in each training's summary. L4b's read is not changed, its words neither.
+- **Mutated.** Eighty-nine one-change mutations of what this build added (the fourth rule and its nesting; the count
+  by ONE-SHOT rows of the kept set; the twin; `rehearsal_alone`'s set and order, how it is trained and measured, the
+  two steps' refusals and their place in the stages; the separation's three outcomes, its edge at zero and its two
+  references; its three checks and what a failed one changes; SHORTER and what it is read on; how a branch is said;
+  the two rules that are not changed, and their report). The tests noticed 87 as first written; two assertions were
+  added for the two they missed (a report that read the twin's rows on the rungs as `rehearsal_alone`'s: the stand-in
+  gives every model the same attempts; the arm's prepare step not holding the snapshot's file to the start model's
+  record under `reward_rehearse`), and all 89 are noticed.
+
+**Outcome of L4t2 (seed 0, 2026-10-09; `ladder-l4t2-RESULT.md`), and of L4c by its own rule: NO ARM WITH REHEARSAL
+ROWS IS RUN.** Both models' checks pass; 93 attempts a goal problem; every read against `pre_r64`.
+- **Question 1: THE GAIN IS A SECOND PASS OVER PUBLISHED PROOFS.** On G′ over the 61 fresh attempts `rehearse`
+  minus `rehearse_only` is −0.00051 [−0.00606, +0.00512] (15.7 against 16.2 per 1,000), and `rehearse_only` itself
+  adds: +0.00786 [+0.00367, +0.01264] against `pre_r64` (16.2 against 8.4). Its three reads all pass (gained 35,
+  lost 28; 4 lines or more +0.00930 [−0.00108, +0.01978]). The published rows alone do what the mix did, and more
+  beside: 252 goal problems solved (the mix 234, `pre_r64` 245), 124 solved reliably (114, 107), 11 of the 81
+  never-solved (4, 7).
+- **Question 2: `reward_rehearse` ADDS, KEEPS THE BREADTH AND HOLDS THE LONG PROOFS.** G′ +0.01076 [+0.00470,
+  +0.01819] (19.1 against 8.4 per 1,000); gained 32, lost 30; 4 lines or more +0.00753 [−0.00290, +0.01819]. It is
+  also the first model above `pre_r64` on ALL of G per attempt: +0.01040 [+0.00137, +0.01937] (90.4 against 80.0).
+- **The arm's rule: NO ARM WITH REHEARSAL ROWS** (Question 1 reads a second pass). L4c is built and not run.
+- **What is not known.** Whether `reward_rehearse`'s gain is its 1,349 rows of the rounds or its 1,262 published
+  rows: against `rehearse_only` (3,422 published rows and none of the rounds) it is +0.00290 [−0.00290, +0.00905]
+  on G′ and +0.00359 [−0.00499, +0.01262] on all of G, not separated, and its own control (1,262 published rows
+  alone) was not measured. And how much a second pass can give: `rehearse_only` is 14% of one.
+- **A fault of the first run:** its second training ran out of memory at the cap on a fragmented cache (task
+  15f70151: VOID for that model; the first model's stored steps were kept). Fixed in f0faa6624 (the allocator's
+  segments may grow; its cache is released between rows; no number a training computes changes), and the run
+  queued again resumed at that training, which then fitted (12.25 GB reserved at its peak).
+
+### L4p: how much more pretraining? The dose of a second pass (fixed 2026-10-09, after L4t2's read and before any run)
+
+**Under the owner's word of 2026-10-08 (night).** Labelled **pretrained on published proofs**. A labelled check of
+the PRETRAINING, as L4r was: no round, no row of a round. It is run while L4t2's outcome is with the owner because
+every way on from here needs it: a pretraining recipe needs to know where more passes stop helping, and a loop
+arm read against a start model that more of its own pretraining still improves cannot be read.
+
+**Why.** `rehearse_only` trained `pre_r64` again on 3,422 of the 24,866 published proofs it had seen once (16
+minutes) and is the broadest and most reliable model measured. Two explanations, which the dose tells apart:
+MORE TRAINING HELPS (the gain should grow with the rows), or ANY SHORT FURTHER TRAINING HELPS (a model that ended
+its one pass at a decayed learning rate is moved a little, and the gain is flat in the rows).
+
+**What runs.** Two models, each trained FROM `pre_r64` at its rank, one pass over its rows, the arm's recipe (as
+`rehearse_only` was), in the content-hash order, and measured as L4t's models were:
+- `second_half`: the first 12,433 rows of the hash order L4t's rehearsal draw uses (so `rehearse_only`'s 3,422 are
+  its first rows);
+- `second_full`: all 24,866 rows of the pretraining file, in that order.
+With `rehearse_only` (stored, read and never trained again) that is the dose at 14%, 50% and 100% of a second
+pass along ONE order. The rows' text is never stored in the run (L4t's rule).
+
+**The read, fixed before the run.** On all of G (392 problems, the 93 attempts), successes per attempt, paired by
+problem, 95% bootstrap over problems:
+- **Primary: `second_full` minus `rehearse_only`.** Interval above zero: MORE OF THE SECOND PASS HELPS (and a
+  third pass is specified next). Interval holds zero: THE FIRST SEVENTH GAVE WHAT A SECOND PASS GIVES (the gain is
+  not the amount of training; the recipe is one pass and a short second one). Interval below zero: MORE COSTS.
+- **Overfitting, read on every branch and for both models against `pre_r64`:** NARROWER (lost more goal problems
+  than gained in the 93 attempts, sign test under 0.05); the three rungs (an interval wholly below zero on a rung
+  is named); the share of distinct attempts on G. (No held-out problem is in the training text, so a model
+  cannot copy a goal problem's proof: what more passes can cost here is breadth, and that is what is read.)
+- **Checks first** (any FAIL: INCONCLUSIVE for that model): L4t's four (the training ran; it still writes proofs;
+  Lean answered; no barred row: every row is of the `pretrain` half and none is held out).
+- **Secondary:** the three reads of L4t2 for each model; `second_half` against `rehearse_only` and `second_full`
+  against `second_half` (the shape of the dose); by the length of the shortest published proof; solved reliably;
+  the lines of verified proofs; the goal problems nothing stored had solved.
+- **What it cannot say.** Whether MORE DATA would do what more passes do (the `loop` half's published proofs are
+  untouched, and using them ends the separation every loop arm stands on: that is the owner's decision). One seed.
+- **Budget.** Trainings of about 58 and 117 minutes (2.25 seconds an optimizer step, `rehearse_only`'s own), two
+  measurements of about 50 minutes with 28 pool workers: about four and a half hours.
+
+**Added the same day, after the owner's question and before any run: a third model, trained and measured FIRST,
+`matched_1262`.** The owner (2026-10-09): "I just want to make sure that this is actually creating a feedback
+cycle that is able to push the model beyond capabilities that we're able to get through pre-training alone."
+L4t2 left `reward_rehearse` (the rounds' hard rows and 1,262 published rows) without its own control.
+- `matched_1262`: the first 1,262 rows of the same hash order and nothing else, from `pre_r64`, as the two others
+  are. They are EXACTLY the published rows of L4t2's `reward_rehearse` (held, by id and place). It is also the
+  dose at 5%.
+- **The read (the owner's question at the size of one pass: do the model's own proofs of hard problems add
+  anything that the same published rows do not?).** On G′ over the 61 fresh attempts, `reward_rehearse` (stored)
+  minus `matched_1262`, paired by problem, 95% bootstrap. Interval above zero: THE ROUNDS' HARD ROWS ADD BESIDE
+  THE SAME PUBLISHED ROWS. Interval holds zero: NOT SEPARATED AT THIS SIZE (it resolves about 0.006). Interval
+  below zero: THEY COST. Beside it, deciding nothing: the same difference on all of G over the 93 attempts, the
+  goal problems solved (gained, lost, the sign test), solved reliably, and the never-solved.
+- **Two jobs, one run directory.** `matched_1262` and this read are a job of their own (about 70 minutes), so the
+  read arrives before the two long trainings; the dose job then finds that model done and goes on. The dose's
+  primary is NOT READ in the first job's report.
+- It decides no arm by itself: one pass on stale rows resolves about 0.006, and the six-round arm with its own
+  separation (L4c) is the test of the cycle.
+
+**Made exact by the build (2026-10-09; nothing queued, nothing run on a GPU, nothing sent to Lean; the three models,
+the two reads and their branches above are not changed; ONE fact of the section's "Why" was found wrong, and what
+this size can see is said, both below).**
+- **The stages.** `ladder_l4_dose_r64` (`gpu/ladder_l4_dose.py`; rules `domain/ladder_round/l4_dose.py`; report
+  `reporting/ladder_l4_dose.py`), settings `ladder_loop.l4.dose` (`start: pre_r64`, `models: [matched_1262,
+  second_half, second_full]`; one reader; a start that is not L4t2's own is refused: the dose is of one start model).
+  It names NO variable. Run directory `ladder_l4_dose_pre_r64_seed<N>`. Eight steps, each resumable: prepare; train
+  and measure `matched_1262`, then `second_half`, then `second_full`; report. **Two jobs, one run directory:**
+  `ladder_l4_dose_r64_matched` is the prepare step, `matched_1262` trained and measured, and
+  `ladder_l4_dose_report_matched`; the whole stage, queued after it, finds those three steps done, goes on, and writes
+  the whole report (queued alone it runs all three). Jobs `ladder_l4_dose_r64_matched_seed0.json` (est_minutes
+  90), `ladder_l4_dose_r64_seed0.json` (420) and `ladder_l4_dose_r64_smoke.json` (25): job configs, not shipped in
+  this copy.
+- **What is read, and refused before anything is written.** TWO runs, only read. L4t2's
+  (`ladder_l4_rows2_pre_r64_seed<N>`), FINISHED: the markers of its prepare and report steps, its report (one not to
+  be read is refused), its problems, its held-out groups, its G′, and for EACH of its two models (`rehearse_only`,
+  `reward_rehearse`) its stored training set, what it wrote, and its per-problem rows with each set's marker. The rank
+  check's, as L4t2 reads it (its report, its three markers, `pre_r64`'s rows, `l4_pretraining_rows.jsonl`). Held to
+  each other, each a refusal: L4t2's seed and start, and both models among its models; the rank and alpha L4t2
+  trained at and the check's; how each was measured; G′, made again from `pre_r64`'s first sampling, which must be
+  the one L4t2 stored; the pretraining file's SHA-256 (the snapshot's, the check's record and L4t2's record are one);
+  each stored set's problems, seed, attempts, and Lean having answered. No adapter but `pre_r64`'s is read.
+- **The three sets** (`l4_dose.dose_sets`). All are L4t's own draw (`l4_rows.rehearsal_rows`, the same call with
+  another count): `second_full` is the draw of EVERY row, `second_half` the draw of half of them (`rows_of`),
+  `matched_1262` the draw of AS MANY ROWS AS L4t2's STORED `reward_rehearse` SET HAS PUBLISHED ROWS (1,262 at seed
+  0: the count is that set's and is written nowhere as a number; the model keeps its name whatever the count). HELD,
+  not assumed, each a refusal: `second_full` holds every row of the file exactly once (by place and by id);
+  `second_half`'s rows are the first of `second_full`'s; the rows L4t2's run stored for `rehearse_only` are
+  rehearsal rows and no other, are not more than `second_half`'s, are the first of the order BY ID AND BY PLACE IN
+  THE FILE (another file or seed is refused), and stand in the content-hash order; `reward_rehearse` has at least
+  one published row and not more than `rehearse_only` has rows; `matched_1262`'s rows are the first of the order,
+  are EXACTLY the published rows of `reward_rehearse` by id and by place, and those stand in the content-hash order
+  (so `matched_1262` is that set with its rounds' rows left out and none moved). Then `assembly.training_order` for
+  each. Each row is numbered by its place in its own set. A row that carries a text field is refused
+  (`l4_rows2.refuse_text`), and a set with a held-out problem or a row that is not of the `pretrain` half
+  (`l4_rows.refuse_barred`); the training step reads the text from the snapshot's file, held to the SHA-256 the START
+  model's run recorded.
+- **Trained and measured by L4t's own two step bodies, not by copies** (`ladder_l4_rows.train_a_model`,
+  `measure_a_model`, `read_the_trained`, under this stage's `Stage`), as L4t2's two models were: the adapter saved is
+  read back and held to rank 64 and alpha 128, the model server is started with that rank, the temperature is the
+  config's.
+- **The report**, in order: each measured model's four checks (L4t's functions); THE ROUNDS' HARD ROWS
+  (`l4_dose.matched_branch`: on G′ over the fresh attempts, the stored `reward_rehearse` minus `matched_1262`; then,
+  beside it and deciding nothing, the same difference on all of G over all the attempts, the goal problems solved
+  with the sign test, those each solves reliably, and the never-solved when their file is given); the dose's primary
+  and its branch (`l4_dose.dose_branch`); the overfitting reads of each model against `pre_r64` (`l4_dose.overfitting`:
+  NARROWER by `l4b.breadth_beside`, which L4t2's read NOT NARROWER is the reverse of on the same count; the rungs
+  from the model's own secondary reads); the dose (all of G against `pre_r64` for the FOUR doses, `rehearse_only`'s
+  from the rows L4t2's run stored; then its three steps, each dose minus the one before it); L4t2's three reads of
+  each model (`l4_rows2.three_reads`); L4t's secondary reads of each model BY ITSELF against `pre_r64`
+  (`secondary_reads`: G′ over the fresh attempts, by length, solved by attempts alone and reliably, the rungs,
+  distinct attempts, the lines of verified proofs, the never-solved ids from `l4_dose_never_solved.jsonl` when given,
+  the rows it was trained on), `pre_r64` and `rehearse_only` beside, and `reward_rehearse` beside `matched_1262`.
+- **The report of the first job** (`ladder_l4_dose_report_matched`) is the same report, in the same file, on every
+  model of the stage that is trained and measured by then: after the first job, `matched_1262` alone. A model that
+  is not measured yet is NOT MEASURED YET, never INCONCLUSIVE; the dose's primary and every read that stands on such
+  a model is NOT READ and says so (its branch reads NOT READ with the model named); nothing of it is computed. What
+  stands on `matched_1262` and the stored models alone is read there: its checks, the rounds' hard rows, its
+  overfitting reads, its three reads, its secondary reads, its line of the dose and the first step (`rehearse_only`
+  minus `matched_1262`). The whole stage's own report step REFUSES while a model's steps are not done, and its
+  report replaces the first job's; the first job queued again after the whole stage ran writes the whole report.
+- **Readings the section left open, and the ones taken.** (1) **"The first 12,433 rows" is HALF THE FILE, by rule**
+  (the first ⌊n/2⌋ of the order; 12,433 of 24,866), not a number in the config: the smoke run then exercises the rule
+  itself. (2) **"In the content-hash order" / "in that order".** The hash order of the DRAW says WHICH rows a dose
+  holds (each dose's rows are the first of the next one's). Every model is TRAINED in the arm's content-hash order
+  (`assembly.training_order`, another label of the same hash), as `rehearse_only` was: so a smaller dose's rows stand in
+  the larger one's training order with the others left out, and a larger training does NOT begin with the smaller
+  one's rows. (3) **L4t's run is NOT read.** What this stage needs of it (the problems, the groups, G′) L4t2's run
+  stored after holding it to L4t's, and G′ is made again here from `pre_r64`'s own rows. (4) **A rung is named** when
+  its interval's high end is below zero; one that ends at zero is not wholly below it. (5) **Beside a model in its
+  tables** stand `pre_r64` and the stored models its reads are against; L4t's three models do not (they are not
+  doses). (6) **The dose's table** (all of G against `pre_r64` for the four doses) stands with the steps the section
+  lists; it names no outcome. (7) **`matched_1262` is a dose, so the shape has a third step,** `rehearse_only` minus
+  `matched_1262`, which the first job's report already reads. (8) **"The goal problems solved (gained, lost, the sign
+  test)" beside the rounds' hard rows** is `reward_rehearse` against `matched_1262`, gained being by the first and not
+  by the second.
+- **Cases the section did not name, named before any run.** (1) THE PRIMARY STANDS ON `second_full` AND
+  `rehearse_only` ALONE: a failed check of `second_full` makes it INCONCLUSIVE; a failed check of `second_half` or of
+  `matched_1262` makes THAT model INCONCLUSIVE by itself (none of its reads is made, and the steps of the shape that
+  stand on it are NOT READ) and the primary is still read. (2) THE ROUNDS' HARD ROWS STAND ON `matched_1262` AND
+  `reward_rehearse` ALONE: a failed check of `matched_1262` makes them INCONCLUSIVE; no other model's does. (3) A
+  stored model that L4t2's OWN report read as INCONCLUSIVE: what is read against it is NOT READ (the primary for
+  `rehearse_only`, the rounds' hard rows for `reward_rehearse`; at seed 0 both pass their checks). (4) Nothing
+  measured on both sides: NOT READ. (5) An interval that holds zero: the line gives what THIS difference resolves,
+  half the width of its interval (the section's "about 0.006" is said by the run's own figure). (6) THE FIRST SEVENTH
+  is the branch's name whatever share `rehearse_only` is (a smoke run's is a third). (7) OVERFITTING NAMES NO BRANCH
+  OF ITS OWN and does not move the primary's: NARROWER and each rung named are said in a line a model and in the
+  headline, on every branch; an INCONCLUSIVE model's are not read. (8) A file of an odd number of rows: half, rounded
+  down. (9) A run with one sampling of G (the smoke run): the primary is read on that sampling's attempts; the
+  rounds' hard rows and ADDS have no fresh attempts and are NOT READ. (10) An INCONCLUSIVE or NOT READ outcome keeps
+  what was measured apart (`measured_and_not_read`) and prints none of it.
+- **A fact of the section's "Why" that the code does not bear out.** The second explanation says a model "ended its
+  one pass at a decayed learning rate". THE RECIPE HAS NO DECAY: every training here and `pre_r64`'s own pass warm up
+  over 5 optimizer steps and then hold 1e-4 to the end (`ladder_dose._train_with_readings`: `min(1, (step + 1) /
+  warmup_steps)`). What a further training from the stored adapter has that the pass going on would not: a fresh
+  optimizer (its running averages start at zero), five warm-up steps, another order of the rows, and rows seen a
+  second time. The two explanations and what tells them apart (the gain grows with the rows, or is flat in them) stand
+  as written; only that mechanism for the second is not the recipe's.
+- **What this size can see, said before the run.** THE DOSE: on the stored rows `rehearse_only` minus `pre_r64` on all
+  of G is +0.00680 [−0.00233, +0.01569] (86.82 against 80.01 per 1,000; 252 goal problems solved against 245, gained
+  35, lost 28): half the width of that interval is 0.0090, and L4t2's `reward_rehearse` minus `rehearse_only` on all
+  of G had 0.0088. THE PRIMARY RESOLVES ABOUT 0.009 PER ATTEMPT, which is more than the whole gain being dosed
+  (0.0068, itself not clear of zero on all of G; it is on G′). So `second_full` would have to add about 0.009 per
+  attempt ON TOP of `rehearse_only` (more than twice its gain over `pre_r64`) to read MORE OF THE SECOND PASS HELPS; a
+  second pass that merely doubled the gain would most likely read THE FIRST SEVENTH. The read is not changed (it is
+  fixed above); a holds-zero outcome is to be read with the size its own line gives, and the shape beside it (the
+  steps, G′ in the three reads). THE ROUNDS' HARD ROWS: on the stored rows `reward_rehearse` minus `pre_r64` on G′
+  over the 61 fresh attempts is +0.01076 [+0.00470, +0.01819] (19.13 against 8.37 per 1,000), half a width of
+  0.0068: the section's "about 0.006". `rehearse_only` (2.7 times the published rows) reads +0.00786 there, so a
+  `matched_1262` near it leaves about +0.003, well inside what the read resolves: NOT SEPARATED AT THIS SIZE is the
+  likely outcome unless 1,262 published rows give much less than 3,422 do.
+- **The smoke stage** (`ladder_l4_dose_r64_smoke`) runs the WHOLE stage's eight steps, reads `ladder_l4_rows2_r64_smoke`
+  and `ladder_l4_rank_smoke` and nothing else, and writes `ladder_l4_dose_r64_smoke`. ITS SIZES ARE THE RULE'S OWN, no
+  variable names them: on the fixture's 12 rows `matched_1262` is the first 2 (the 2 published rows of L4t2's smoke
+  `reward_rehearse` set), `second_half` the first 6 and `second_full` all 12, with `rehearse_only`'s 4 between: four
+  doses that differ, so every nesting and every row once are held on rows that differ. The smoke `pre_r64`'s own
+  report reads INCONCLUSIVE, which a real run is refused for: this stage sets no variable for it and goes on ONLY
+  because L4t2's smoke run, which it reads, recorded that IT went on, and records that. The first job's stage has no
+  smoke job: its steps are the whole stage's first three and a report with two models not given, which the stage's
+  tests run.
+- **Measured before any run, on the pulled copies** (seed 0; copies in a scratch store; no GPU, no Lean). The prepare
+  step runs to its end: `matched_1262` 1,262 rows, 158 optimizer steps; `second_half` 12,433 rows, 1,555;
+  `second_full` 24,866 rows, 3,109 (`rehearse_only` 3,422 and 428; `reward_rehearse` 2,611 rows, 1,349 of the rounds
+  and 1,262 published). `matched_1262`'s rows ARE the 1,262 published rows of the stored `reward_rehearse` set, by id
+  and place, in that set's order with its rounds' rows left out; they are the first 1,262 of `rehearse_only`'s 3,422
+  in the draw's order, by id and place, which are the first 3,422 of `second_half`'s, which are the first 12,433 of
+  `second_full`'s; `second_full` holds every row of the file once (24,866 places, ids and problems); no row carries
+  text, and the text of every row of the three sets is read from the snapshot's file at the recorded SHA-256; no
+  barred row; G′ 192; rank 64; the two runs it reads not written to. The report built with `pre_r64`'s own rows
+  standing in for the three models gives the two stored lines above, and with `matched_1262` alone given it reads the
+  dose's primary NOT READ and the rounds' hard rows. The smoke stage's prepare step runs to its end on the pulled
+  copies of the two smoke runs (2, 6 and 12 rows, `rehearse_only`'s 4 between; the waiver read from L4t2's smoke
+  run; L4t2's smoke `reward_rehearse` is INCONCLUSIVE in its own report, so the rounds' hard rows are NOT READ
+  there). THE PULLED COPY OF L4t2's REAL RUN is the copy of the task that resumed it and lacks the markers the first
+  task wrote (its prepare step's, and `rehearse_only`'s training, measure step and three sets): for the pre-flight
+  they were made again from that copy's own step summaries, which hold them key for key; the box has the originals,
+  which the resumed task read.
+- **L4t and L4t2 write what they wrote.** No function of theirs is changed (the stage is three new modules, three
+  stages in `runner/entry.py`, its steps in `gpu/__main__.py`'s table, one block of the config). In the scripted world,
+  with the code before the build and after it: L4t from `pre` the same 237 files (79 its own), from `pre_r64` the same
+  300 (100), L4t2 the same 199 (61), every step's summary the same (paths and wall-clock figures aside); and after
+  this stage ran beside them their own tasks queued again return what is stored and move no file (asserted). Two
+  assertions that state where things live were brought up to date (one more smoke stage reads the rank check's smoke
+  run; three more job files begin `ladder_l4_`).
+- **Not shown without the box:** a training of more than 856 optimizer steps from a stored adapter (L4t's `rehearse`,
+  the longest so far; `pre_r64`'s own pass, from the base, was these 3,109 steps in 7,062 s at 12.32 GB allocated and
+  12.82 GB reserved, at the cap; since f0faa6624 the cache is released between rows); that the minutes hold with fewer
+  than 28 pool workers (a measurement takes about twice as long with 15: 90 for the first job leaves about 30 over
+  one measurement of 50); the whole stage finding the first job's three steps done in the box's store (asserted in
+  the scripted world, where a step that is done returns what is stored). The smoke run is the first run of the stage.
+- **Mutated.** Two hundred and six one-change mutations of what this build added (the three sets and their order;
+  every nesting and what holds it, by id and by place; every row of the file once; `matched_1262`'s count, its rows
+  and its order; the rounds' hard rows' three outcomes, their edge at zero, their two sides, their set and attempts,
+  and what stands beside; the primary's three branches, its edge at zero, its two sides, its set and attempts; whose
+  checks decide which read; NARROWER, the naming of a rung and the distinct shares; the dose's table and its steps; a
+  model that is not measured yet, and the two report steps; what the prepare step holds L4t2's run and the start
+  model's to; the stage's names handed to L4t's two bodies; the three stages; and sixteen changes to L4t's and L4t2's
+  OWN code, which this stage's tests must notice because it stands on it). The first build's tests (two models)
+  noticed 129 of its 132 as written, and the amended build's 204 of its 206; five assertions were added for the five
+  missed (`second_full` held to every row once by PLACE as well as by id; NARROWER counted against the start model and
+  not against `rehearse_only`; the share of distinct attempts beside a model's being the start model's; no figure of
+  the rounds' hard rows given when `reward_rehearse` is INCONCLUSIVE where it was measured; a model counted as
+  measured only when BOTH its steps are done), and all 206 are noticed.
+
+**Outcome of the first job (seed 0, 2026-10-10 UTC; `ladder-l4p-RESULT.md`, part 1): THE ROUNDS' HARD ROWS ARE NOT
+SEPARATED FROM THE SAME PUBLISHED ROWS, AND THE SMALLEST DOSE IS THE BEST MODEL MEASURED.** `matched_1262`'s four
+checks pass. The dose's primary is not read yet (`second_half` and `second_full` are not measured).
+- **The owner's question at one pass: NOT SEPARATED AT THIS SIZE.** On G′ over the 61 fresh attempts
+  `reward_rehearse` minus `matched_1262` is −0.00111 [−0.00709, +0.00487] (19.1 against 20.2 per 1,000). Beside it,
+  deciding nothing: on all of G −0.00875 [−0.01778, +0.00027] (90.4 against 99.2); goal problems solved 247 against
+  264, gained 22, lost 39 (p = 0.04); solved reliably 118 against 134. On the stored rounds, one pass, the model's
+  own proofs of hard problems add nothing that the same published rows do not, and cost breadth.
+- **`matched_1262` against `pre_r64`:** all of G +0.01915 [+0.01037, +0.02790] (99.2 against 80.0 per 1,000); goal
+  problems solved 264 against 245 (gained 44, lost 25, p = 0.03); 134 solved reliably against 107; 4 lines or more
+  +0.02272 [+0.01164, +0.03427]; its three reads all pass; no rung below zero. 158 optimizer steps.
+- **The dose is not monotone:** `rehearse_only` (3,422 rows) minus `matched_1262` (1,262) on all of G is −0.01234
+  [−0.02057, −0.00398]. "More training helps" does not describe it. NOT UNDERSTOOD, and one thing is NOT MEASURED:
+  how far two trainings of one recipe differ. Every interval of L4t, L4t2 and L4p is over problems only; a
+  difference between two single trained models is not yet shown to be more than that spread.
+- **A measurement check made on this result, and cleared.** `pre_r64`'s stored attempts hold more Lean timeouts
+  (4.3% of its goal attempts) than any model measured since (2.3% to 3.5%), and one pool server answers many times
+  slower when other jobs load its machine: a proof that times out is a failed attempt, so the stored baseline
+  could have been low. Every timed-out goal attempt of both models was checked again, Lean only: 6.9% of
+  `pre_r64`'s 1,583 and 5.6% of `matched_1262`'s 1,278 verify on the second check (26% and 19% get an answer). With
+  those counted on both sides: 83.0 and 101.1 per 1,000, and the difference +0.01810 where the stored rows give
+  +0.01915. THE STORED BASELINE IS LOW BY ABOUT 0.001 AGAINST A LATER MODEL, and no more.
+- **What follows.** By the owner's word of 2026-10-09 the arm of L4c (`reward_rehearse`, six fresh rounds from
+  `pre_r64`, with its own `rehearsal_alone` control) is run next, and the dose's two long trainings after it.
+
+**Outcome of the whole stage (seed 0, 2026-10-10 UTC; `ladder-l4p-RESULT.md`, part 2): INCONCLUSIVE BY ITS OWN
+CHECK, and the figures say a whole second pass is the best model measured.** `second_half`'s checks pass.
+`second_full` fails "its training ran": the mean loss over the last tenth of its rows (0.1385) is above the first
+tenth's (0.1271) by more than two standard errors. So the primary is not read as a branch.
+- **The check was the wrong one for a second pass, said plainly.** It was written for trainings on rows a model
+  has not seen, where a loss that rises means the training did not take. On a second pass the first rows are
+  ones `pre_r64` saw last and fits best, and the loss on already-seen rows RISES across the pass while proof
+  success rises with it (the third time here that the loss on proof text and proof success part ways). The
+  verdict stands as written; the figures below are read outside it and name no branch.
+- **All of G, per 1,000 attempts, goal problems solved in 93, solved reliably, of the 81 never solved:**
+  `pre_r64` 80.0, 245, 107, 7; `matched_1262` (5% of a pass) 99.2, 264, 134, 11; `rehearse_only` (14%) 86.8, 252,
+  124, 11; `second_half` (50%) 99.3, 255, 124, 10; `second_full` (100%) 108.9, 267, 139, 13. (Of the 81, 37 are
+  now solved by something and 44 by nothing.) On G′ over the 61
+  fresh attempts: 8.4, 20.2, 16.2, 17.6, 26.9. `second_full` minus `rehearse_only` on all of G, outside the
+  rule: +0.0221.
+- **The spread between two trainings is now measured, roughly, and it is large.** Five models trained from
+  `pre_r64` on published rows alone (the four doses and L4c's `rehearsal_alone`: 95.4, 258, 135) are not in the
+  order of their doses: 99.2, 95.4, 86.8, 99.3, 108.9. Leaving the whole pass out, four trainings that differ
+  only in which rows and how many have a standard deviation of about 6 per 1,000 on all of G, 2 on G′ and 5
+  problems solved. NO DIFFERENCE BETWEEN TWO SINGLE TRAINED MODELS OF L4t, L4t2 OR L4p SMALLER THAN ABOUT TWICE
+  THAT IS AN EFFECT. What stays outside it: the published-only models against those that hold rows of the
+  rounds (problems solved 252 to 267 against 217 to 247), and the whole second pass on G′.
+- **What it says for the loop.** The pretraining-only bar is not 80.0 and 245: with one more pass over the same
+  published proofs it is 108.9 and 267, and it has not been shown to stop there.
+
+**Outcome of L4c (seed 0, 2026-10-10 UTC; `ladder-l4c-RESULT.md`): THE LOOP ADDS ON TOP OF PRETRAINING; APART FROM
+THE REHEARSAL, THE GAIN IS NOT SHOWN TO BE THE ROUNDS'.** It was run although L4t2's rule read "no arm with
+rehearsal rows": that rule stood on such an arm being unreadable, this arm carries its own control, and the owner
+asked for the test. All five checks pass, and `rehearsal_alone`'s three; the three models were measured one after
+another on one pool.
+- **Primary:** `with` minus `pre_r64` on G′ over the 61 fresh attempts +0.00478 [+0.00060, +0.00973] (13.2 against
+  8.4 per 1,000).
+- **The separation:** `with` minus `rehearsal_alone` on the same attempts −0.00615 [−0.01101, −0.00162] (13.2
+  against 19.3), and `rehearsal_alone` itself adds (+0.01093 [+0.00555, +0.01699]). The primary is reported with
+  this line and is not called the loop's gain.
+- **Breadth and the long proofs:** against `pre_r64` not NARROWER by the test (229 to 245, gained 29, lost 45, p =
+  0.08) and not SHORTER (+0.0111 [−0.0002, +0.0228] on 4 lines or more). Against its own control: 229 goal problems
+  solved to 258, gained 19, lost 48 (p = 0.001); solved reliably 120 to 135; 8 lines or more solved 20 to 32.
+- **The assembled proofs do not teach** (`with` minus `without` on G′ −0.0013 [−0.0032, +0.0008]; 106 proofs).
+- **What the read does not hold fixed:** the control took 189 optimizer steps and `with` 391, and among the
+  published-only models more steps have meant less. Against the published-only model nearest in steps
+  (`rehearse_only`, 428) `with` still solves fewer goal problems (229 to 252) and is lower on G′ (13.2 to 16.2),
+  and is higher per attempt on all of G (92.2 to 86.8).
+- **Not a KILL of the idea.** A positive control cleared the same reads through the same harness; the budget
+  (about 48,000 attempts, 8 a problem) is a small fraction of the loops known to move a model of this size, and
+  8 attempts a problem decide what a round can find: a proof the model could already write. AT THIS SIZE AND WITH
+  THESE ROWS the rounds' own proofs sharpen the model and narrow it, twice (the stored rounds in L4p, six fresh
+  rounds here).
+
+### L5: do DEEP solves teach what ordinary solves do not? One step-matched check (fixed 2026-10-10, before any run)
+
+**Under the owner's word of 2026-10-09:** "Perhaps as results come out of that model and it is able to solve a
+problem that we didn't previously see a solution to, we could pre-train on that? I just want to make sure that
+this is actually creating a feedback cycle that is able to push the model beyond capabilities that we're able to
+get through pre-training alone." Labelled **pretrained on published proofs** (it starts from `pre_r64`). A scout:
+one seed, no round.
+
+**Why.** L4p and L4c read the same thing twice: the model's own proofs, found within 8 attempts, sharpen it and
+narrow it, and the published rows beside them do the adding. A proof found within 8 attempts is one the model
+could already write. The owner's idea is about the other kind: a problem the model had NOT solved. This asks
+whether such solves teach, with the two things L4c's read did not hold fixed held fixed: the optimizer steps and
+the published rows.
+
+**What runs.**
+1. **The deep search.** The problems of `pre_r64`'s own map that it failed in all 8 attempts (1,985 of the 4,000;
+   base-map problems, so no model here has seen their published proofs and no round draws them). A seeded draw
+   of 1,000 of them; `pre_r64` makes 56 more attempts at each (64 with the map's 8), the round's episode in every
+   other respect (the same prompt, limits, one side by the audit rule, Lean's verdict). A problem solved here is
+   a DEEP solve: its training row is one of its verified attempts, drawn by the seed, as a round draws one. No
+   assembly, no round, no challenger. Budget: 56,000 attempts.
+2. **Three models, each FROM `pre_r64` at its rank, one pass, the same number of rows (2D) and so of optimizer
+   steps,** where D is the number of deep solves (capped at 400; a run with fewer than 150 is refused: below):
+   - `deep`: the D deep rows and the first D rows of the rehearsal's hash order (published proofs);
+   - `shallow`: D rows of ORDINARY solves and the same D published rows. An ordinary solve is a map problem
+     `pre_r64` solved in 1 to 3 of its 8 map attempts (1,114 problems): a seeded draw of D of them, one verified
+     attempt each, drawn by the seed;
+   - `published`: the first 2D rows of the hash order and nothing else.
+   Each set in the content-hash order; no published row stored with text. Each model measured as L4t's models
+   are (the rungs; G twice with `pre_r64`'s recorded sampling seeds), one after another in one task.
+
+**The read, fixed before the run.** Every difference paired by problem, 95% bootstrap over problems.
+- **Checks first** (any FAIL: INCONCLUSIVE, nothing else said). The deep search found at least 150 deep solves
+  (fewer: the three sets would be too small to read; the search is then the finding, and it is said). Each
+  training ran; each model still writes proofs; Lean answered (at most 2% of a set without an answer); no barred
+  row (no held-out problem; the published rows of the `pretrain` half).
+- **Primary: `deep` minus `published` on G′ (the 192 goal problems `pre_r64` does not solve in its first 32
+  attempts) over the 61 fresh attempts.** Interval above zero: DEEP SOLVES ADD WHAT THE SAME NUMBER OF PUBLISHED
+  PROOFS DO NOT. Interval holds zero: NOT SEPARATED AT THIS SIZE (it resolves about 0.006). Interval below zero:
+  THEY COST.
+- **Breadth, on every branch:** the goal problems solved in the 93 attempts, `deep` against `published` (gained,
+  lost, the two-sided sign test); lost more than gained under 0.05 is written NARROWER beside the branch.
+- **The mechanism: `deep` minus `shallow`,** the same two reads. It is the claim under test: that a solve the
+  model could not sample extends it where one it could does not. Above zero on G′, or more gained than lost
+  under 0.05: DEPTH MATTERS. Otherwise NOT SHOWN.
+- **The replication L4c owes: `shallow` minus `published`,** the same two reads, at equal steps and equal
+  published rows.
+- **Secondary:** all of G per attempt and by the length of the shortest published proof; solved reliably; the
+  three rungs; the never-solved when given; each against `pre_r64` (stored); the deep search itself (problems
+  solved by the attempt of the first success: 9 to 16, 17 to 32, 33 to 64; the lines of the deep rows beside the
+  ordinary ones').
+- **What it cannot say.** One pass and no round: whether deep solves COMPOUND (a model trained on them reaching
+  deeper ones) is the loop this would license, not this check. One seed: between two trainings of one recipe
+  the goal set has moved by about 0.004 per attempt and 6 problems (L4p's and L4c's published-only models).
+  A depth of 64 is shallow against a search of thousands.
+- **Branches for what follows.** DEEP SOLVES ADD, or DEPTH MATTERS with the primary not below zero: two more
+  seeds, then a loop whose rounds ARE deep searches. THEY COST and NARROWER: the model's own proofs, deep or not,
+  are not rows to train on at this size, and that goes to the owner with the three results together. Otherwise:
+  not separated, and the depth is the thing to raise before the seeds.
+- **Budget.** The search about two and a half hours with 15 pool workers (about 380 attempts a minute, the
+  arm's own rate); three trainings of a few minutes; three measurements of about 90 minutes: about seven and a
+  half hours.
+
+**Amended the same day, after L4p's whole stage was read and before any run of L5: THE PRIMARY MOVES TO A LARGER
+SET, the held-aside hard problems.** Why: L4p measured the spread between two trainings of one kind (about 0.002
+per attempt on G′ and 5 goal problems, one standard deviation), and G′ is 192 problems, where a difference
+resolves 0.006. Three models of D rows or 2D would most likely all read NOT SEPARATED there whatever is true.
+- **The held-aside set, HA:** the candidates of the deep search that the draw did NOT take (985 of the 1,985;
+  a seeded draw of `deep.held_aside` 600 of them). They are problems `pre_r64` failed 8 of 8, of the same pool
+  and kind as the ones searched, and no model here trains on them or has seen their published proofs. They are
+  the cycle's own test: after training on deep solves of some hard problems, does a model solve OTHER hard
+  problems it could not?
+- **One more measurement for each of FOUR models** (`pre_r64` itself, `published`, `shallow`, `deep`): 16 fresh
+  attempts at each problem of HA, one sampling seed of its own shared by the four, the round's episode. `pre_r64`
+  is measured again there because its 8 stored map attempts CHOSE the set (all failures by construction).
+- **PRIMARY (this replaces the primary above; G′ is read beside it as the held-out goal set's word):** on HA,
+  successes per attempt, `deep` minus `published`, paired by problem, 95% bootstrap over problems, the same three
+  names (DEEP SOLVES ADD WHAT THE SAME NUMBER OF PUBLISHED PROOFS DO NOT / NOT SEPARATED AT THIS SIZE / THEY
+  COST); and beside it the problems of HA solved at least once, gained and lost, the sign test (NARROWER as
+  above).
+- **The mechanism and the replication are read on HA too** (`deep` minus `shallow`; `shallow` minus `published`),
+  by the same two reads, and on G′ and the goal problems as written above, beside.
+- **Each trained model against `pre_r64` on HA** (successes per attempt and problems solved) is secondary: it is
+  what "more hard problems solved after the training" is, for each kind of row.
+- The selection is the same for the three trained models (each is `pre_r64` moved by a training of equal steps),
+  so the three differences among them are fair; a trained model against `pre_r64` on HA is favoured by the
+  selection, as on G′, and is said so.
+- **Budget:** 38,400 more attempts (about an hour and three quarters with 15 pool workers): about nine and a
+  quarter hours in all.
+
+**Made exact by the build (2026-10-10; nothing queued, nothing run on a GPU, nothing sent to Lean; the read above and
+its amendment are not changed; the readings taken where the section left something open, two figures of the section
+that the stored runs put otherwise, and what is fragile, are below).**
+- **The stages.** `ladder_l5_deep` (`gpu/ladder_l5.py`; rules `domain/ladder_round/l5.py`; report
+  `reporting/ladder_l5.py`), settings `ladder_loop.l5` (`start: pre_r64`, which must be `l4.rows2`'s own start;
+  `models: [published, shallow, deep]`; `deep`: `problems` 1,000, `attempts` 56, `sampling_place` 50, `held_aside` 600,
+  `held_aside_attempts` 16, `held_aside_sampling_place` 51, `cap` 400, `minimum` 150; `shallow`: `solved_at_least` 1,
+  `solved_at_most` 3; one reader). It names NO variable. Run directory `ladder_l5_deep_pre_r64_seed<N>`. FOURTEEN steps,
+  each resumable: `ladder_l5_search_prepare`; `ladder_l5_search`; `ladder_l5_prepare` (the three sets);
+  `ladder_l5_held_aside_start`; then for `published`, `shallow`, `deep` in turn `ladder_l5_train_<m>`,
+  `ladder_l5_measure_<m>`, `ladder_l5_held_aside_<m>`; `ladder_l5_report`. Jobs `ladder_l5_deep_seed0.json`
+  (est_minutes 660) and `ladder_l5_deep_smoke.json` (30): job configs, not shipped in this copy.
+- **What is read, and refused before anything is written.** THREE runs, only read. `pre_r64`'s own map
+  (`ladder_l4_map_pre_r64_seed<pretraining seed>`, by `ladder_l4_start.the_start`): its step's marker (the model it
+  recorded; its attempts and sampling seed held to the stored map's by `l4.check_start_map`, as an arm holds them), its
+  file, its per-problem rows (held to the file), its own `problems.jsonl` (the base map's problems with their exact
+  negations AS THE MAP SAMPLED THEM: held to the snapshot's statements; no exactness check is made again) and its
+  stored attempts. L4t2's FINISHED run and the rank check's, as L4p reads them (seed and start; the rank and alpha; how a
+  model is measured; G′ made again from `pre_r64`'s first sampling and held to L4t2's; the pretraining file's SHA-256),
+  without L4t2's two models: no read here stands on them. L4p's run and L4c's are not read.
+- **The deep search.** The candidates are the map's rows with k = 0; their number is THE MAP'S (1,985 at seed 0) and is
+  recorded, not held to a figure. The draw: the `deep.problems` of the smallest content hash of the task's seed and the
+  problem's id (label `l5_deep_search`); fewer candidates than the draw is refused. `pre_r64`, served at rank 64, makes
+  56 attempts at each by `ladder_loop.run_episodes` under the config's own `episode` settings (the round's), with the
+  sampling seed `round.sampling_seed` + 100 × the task's seed + place 50 (1050 at seed 0): the places of every stored
+  sampling are 0 to 3, 11 to 16, 20 and 30 to 33, the base's placing seed is 100, the map's 101, L4t's hot ones 1040
+  and 1041, and the prepare step refuses a seed one of the samplings it can see used. ONE THING IS THE SEARCH'S OWN: a
+  block holds 18 problems and not 128 (`block_of`: as many problems as make a round's block in ATTEMPTS, 128 × 8 / 56),
+  because a block is what a kill loses and what waits on Lean together: 56 blocks. A search on which Lean gave no
+  verdict for more than 2% of its attempts is not kept and is sampled again by the task queued again (as a map is).
+- **A deep solve's row** is drawn by `training_set.training_examples`, the function a round draws its row by (the
+  verified attempt first in a seeded order of attempt ids, on whichever side was proved), and carries its problem's k of
+  56, the lines of its proof and `first_success`: the place of the problem's FIRST verified episode, counting the map's
+  8 (9 to 64). Its origin is `deep`; an ordinary solve's row is one of the map's own stored verified attempts, by the
+  same function and seed, of origin `shallow`.
+- **The three sets** (`l5.the_sets`, held from the outside by `hold_the_sets`). D is the deep solves, or `deep.cap` of
+  them by a seeded draw of its own (label `l5_deep_rows`, by problem). The ordinary solves: a seeded draw (label
+  `l5_shallow`) of D of the map's problems with k of 1 to 3; fewer than D is refused. The published rows are
+  `l4_rows.rehearsal_rows`' (L4t's, L4t2's and L4p's draw, with another count): `published` the draw of 2D, `deep` and
+  `shallow` the draw of D, HELD to be the first D of the 2D by id and place (so they are the rows L4p's `matched` logic
+  would take for a set with D published rows: asserted against `l4_dose.dose_sets`). Each set in
+  `assembly.training_order`. Refused: sizes that are not 2D; a row of another origin; an id twice; published rows that are
+  not the first of the order by id and place; a problem in both `deep` and `shallow`; an own row whose problem the
+  pretraining file holds; a published row with text; a held-out problem; a published row not of the `pretrain` half;
+  an own row that is no base-map problem; a row of a held-aside problem.
+- **The held-aside set** (the amendment). A draw OF ITS OWN (label `l5_held_aside`) of `deep.held_aside` of the
+  candidates the search's draw did not take (985 at seed 0), made by the search's prepare step; fewer left than the draw
+  is refused. Four measurements, each a step of its own: 16 attempts at each problem, ONE sampling seed (place 51: 1051),
+  blocks of 64 problems, by `run_episodes` as the search runs; a set Lean did not answer is measured again, and no other,
+  when the task is queued again. THE START MODEL'S STEP STANDS AFTER THE THREE SETS ARE BUILT, not right after the
+  search, so that a run with too few deep solves does not spend it.
+- **The report**, in order: the checks; the primary on HA and its branch; G′ beside it; the mechanism on HA, G′ beside;
+  the replication on HA, G′ beside; one line for what follows; each trained model against `pre_r64` on HA, with the line
+  that the selection favours it, and against the stored `pre_r64` on all of G (per attempt, and the goal problems
+  solved); each pair on all of G and by length; L4t's secondary reads of each model against the stored `pre_r64`; the
+  deep search's table; the lines of the rows. The never-solved ids are read from `l5_never_solved.jsonl` when given.
+- **Readings the section left open, and the ones taken.** (1) **Fewer than 150 deep solves: the stage does not fail.**
+  Its prepare step builds no set and says why; the ten steps after it train and measure nothing (each returns that, and
+  marks nothing); the report reads INCONCLUSIVE with the check named and the search's table as THE FINDING. (2) **"Any
+  FAIL: INCONCLUSIVE, nothing else said" is ONE verdict for the run** (in L4p a model was INCONCLUSIVE by itself): a
+  failed check of the search, of ANY of the three models, or of Lean's answers on a held-aside set; what was measured
+  is kept apart (`measured_and_not_read`) and none of it is printed. (3) **"No barred row" is this stage's own fourth
+  check** (`l5.no_barred_row`): L4t's bars a round's row whose id hashes to the `pretrain` half, and a base-map problem
+  is in neither half's files while about half of them hash there. Here: no held-out problem; the published rows of the
+  `pretrain` half; the own rows base-map problems; and, held when the sets are built, no own row's problem in the
+  pretraining file. (4) **"Lean answered" for the search** is not a check of the report: such a search is not kept (above).
+  For a HELD-ASIDE set it is a check, and a set that fails it also makes the report not to be read (the step fails, and
+  the task queued again measures that set again). (5) **The first success counts EPISODES** (an audited problem's
+  episode is an attempt at each side). (6) **The table's bands double from the map's attempts** (`l5.bands`: 9 to 16, 17
+  to 32, 33 to 64 at 8 and 64). (7) **DEPTH MATTERS**: the interval on HA above zero (one that ends at zero is not), or
+  gained more than lost (gained = by `deep` and not by `shallow`) with the sign test under 0.05. (8) **The
+  replication's names** are ABOVE ZERO / HOLDS ZERO / BELOW ZERO, with NARROWER beside. (9) **What follows, in the
+  section's order:** DEEP SOLVES ADD first, whatever the breadth says; THEY COST without NARROWER is "Otherwise", and its
+  line says so (the words "not separated" there name the branch, not the primary). Nothing is named when the primary is
+  INCONCLUSIVE or was not read. (10) **G′ beside** is the same pair on G′ over the fresh attempts and on the goal
+  problems solved, printed after each read and stored under `beside_on_the_goal_set`; it names no branch; a run with one
+  sampling of G has none. (11) **A holds-zero outcome gives what ITS difference resolves** (half the width of its
+  interval), on HA.
+- **Two figures of the section, as the stored map puts them.** "Budget: 56,000 attempts" is 56,000 EPISODES: the audit
+  rule samples and checks the ruled-out side too for a seeded 2% of problems, by the search's own seed 11 of the 1,000
+  drawn (seed 0): 56,616 attempts. The held-aside set's "38,400" is likewise episodes. The figures 1,985, 1,114 and 985
+  are the stored map's.
+- **Fragile, said before the run.** (a) THE CHECK "ITS TRAINING RAN" ON `published`: its rows are 2D rows `pre_r64` has
+  seen once, and L4p's whole stage found that check wrong for a second pass (the loss on seen rows rises). `published`'s
+  rows are the first 2D of `matched_1262`'s 1,262, whose check passed; but by reading (2) ONE failed check makes the
+  whole run INCONCLUSIVE. (b) A FURTHER SEED reads L4t2's run OF ITS SEED (for the measured sets' problems, the groups
+  and G′), and that run exists at seed 0 only: "two more seeds" needs a build step first (read the one L4t2 run, as an
+  arm reads the one pretraining). (c) The task writes about 180 MB to its out directory (about 223,000 attempts).
+- **The smoke stage** (`ladder_l5_deep_smoke`) runs all fourteen steps, reads `ladder_l4b_map_smoke`,
+  `ladder_l4_rows2_r64_smoke` and `ladder_l4_rank_smoke` and nothing else, and writes `ladder_l5_deep_smoke`. THE
+  FIXTURE'S MODEL SOLVED EVERY BASE-MAP PROBLEM IN ITS MAP (k = 3, 8, 8, 8): the rule gives the search no problem.
+  `RLVR_LEAN_LADDER_L5_SMOKE_PROBLEMS=1`, set by this stage ALONE: the search attempts one problem the rule did not
+  give, the held-aside set holds one other (one and one: four problems, and the held-aside set shares none with the
+  search or a set), `shallow` takes its ordinary solve among the two left (the rule's own when it is there), one deep
+  solve is enough, and every problem and row so taken is marked `taken_by: the run's minimum` and counted in the
+  report's line A SMOKE RUN. NO REAL RUN CAN TAKE THAT PATH: the prepare step refuses the variable unless the run
+  directory is one the task names AND both the snapshot's data and the map's own record say fixture; without the
+  variable a map with no candidate, and fewer ordinary solves than deep rows, are refusals. Its models will most
+  likely read INCONCLUSIVE (a training of two rows has no loss to compare), as L4p's smoke models did.
+- **Measured before any run, on the pulled copies** (seed 0; copies in a scratch store; no GPU, no Lean; the map's own
+  `problems.jsonl` is not in the pulled copy and was made again from the snapshot's base map and the stored rows'
+  one-side reasons). 1,985 candidates; 1,000 drawn; 600 of the 985 left held aside, disjoint from the searched; 1,114
+  ordinary solves. With a STAND-IN deep result (330 of the drawn problems marked solved by a made-up text): three sets of
+  660 rows and 83 optimizer steps each; `deep` and `shallow` hold the same 330 published rows by id and place, the first
+  330 of the order and of `published`'s 660; no published row with text; no barred row; the held-aside set disjoint from
+  the 1,320 problems of the three sets; the 330 ordinary solves' proofs have a median of 7 lines (75% of 4 or more, 46%
+  of 8 or more) against 7 (73%, 48%) for the published rows beside them; the three runs not written to. The smoke
+  stage's prepare steps run to their end on the pulled smoke copies (1 searched, 1 held aside, D = 1, sets of 2 rows).
+- **L4t, L4t2 and L4p write what they wrote.** No function of theirs is changed (three new modules, two stages in
+  `runner/entry.py`, the steps in `gpu/__main__.py`'s table, one block of the config). In the scripted world, with the
+  code before the build and after it: L4t from `pre` the same 237 files (79 its own), from `pre_r64` 300 (100), L4t2 199
+  (61), L4p 178 (79), every step's summary the same; and after this stage ran beside them their own tasks queued again
+  return what is stored and move no file (asserted). Three assertions that state where things live were brought up to
+  date (one more smoke stage reads the rank check's smoke run and the map's).
+- **Not shown without the box:** an episode step that serves a stored rank-64 adapter for 56 samples a prompt outside a
+  measurement (a measurement samples 61); the search's rate (the budget's 380 attempts a minute is the arm's own, at 8
+  samples a prompt); a training on rows of two kinds; four engines started in turn for one set; the map's own
+  `problems.jsonl` on the box (read for the first time by a stage other than the map's). The smoke run is the first run
+  of the stage.
+- **Mutated.** One hundred and seventy one-change mutations of what this build added, each applied to a copy of the
+  tree and never to the working tree (the candidates' rule; the search's draw and its refusals; the held-aside set's draw,
+  that it is a draw of its own, and its two refusals; the one-verified-attempt draw and the place of the first success;
+  D, the cap and its draw; the ordinary solves; the minimum's refusal in the rule and in the stage; the three sets, each
+  hold of the same published rows by id and by place, the sizes and the order; what is barred; the table's bands; every
+  outcome of the primary, of the mechanism and of the replication with their edges at zero; the branch for what
+  follows; in the report the primary's SET (the held-aside set, not G′), each pair's two sides, DEPTH MATTERS decided on
+  the held-aside set, whose checks make the run INCONCLUSIVE, and what is kept apart; in the stage the smoke-only path's
+  guard in each of its forms, the two sampling seeds, the four models measured with one seed each from its own adapter,
+  whose rows the report reads, the block rule; the registration; and seven changes to code of OTHER stages that this one
+  stands on: the round's draw of a row, L4t's draw, its two step bodies and its checks, L4b's NARROWER). Before the
+  run two things were given to the stage's tests because the first commit's could not see them: the scripted model
+  answers the held-aside set differently for each of the four models (it answered alike, so a report that read every
+  model from the start model's rows would have passed), and a real run with fewer ordinary solves than deep rows is
+  refused. The first run (164 mutations): 154 noticed, 10 not. Two of the ten were the same program as the code (a
+  looser bound that the slice beside it already held) and were replaced by mutations that change what a real run
+  takes. Seven asked for assertions, which were added: a problem never solved and without its result is refused; a real
+  run with NO ordinary solve is refused though the map holds problems solved more often (two mutations: the stage
+  handing the rule `loosely`, and the stage reading every run as a smoke run); the deep row is drawn by the task's seed
+  (the scripted search now verifies four attempts of its problem); DEPTH MATTERS by the breadth of the HELD-ASIDE set
+  where the goal set's says nothing; a held-aside draw that names a searched problem is refused where it is made; and
+  `deep`'s and `shallow`'s published rows are held to one order even were each set's own order not held. THE TENTH WAS
+  IN L4t's OWN MEASURING BODY (every model measured from the adapter under the start model's name) and was missed a
+  second time: the scripted world serves no adapter (the stand-in engine takes none), so no test of this stage saw whose
+  adapter a step asks the model server for; the summaries' paths alone were held. A test AS ON THE GPU was added (the
+  search and the start model's held-aside step ask for `pre_r64`'s adapter in its own run; each trained model's rungs, G
+  twice and the held-aside set for the adapter THIS run trained; each under a name of its own; an adapter that is no
+  longer there is refused), with three mutations of this stage's own two serving lines. Then the section's secondary
+  read that the first commit's report had left out was added (each trained model against the stored `pre_r64` on all of
+  G, per attempt and goal problems solved), with three mutations of its own. The last run, all 170 against the tree
+  with these additions: 168 noticed, 2 not, both in that new read (read against `published` in place of the start
+  model; gained and lost exchanged): the hand-made `published` stood on the start model's own rows and no model lost a
+  goal problem. The read is now held on a `published` that is below the start model and loses three problems, and the
+  two are noticed (they and the five beside them were run again; nothing but those assertions changed after the run, so
+  the 168 were not run a third time). All 170 are noticed.
+
+**Outcome of L5 at seed 0 (2026-10-11 UTC; `ladder-l5-RESULT.md`): NOT SEPARATED AT THIS SIZE on the primary, and a
+lead on the goal set.** All checks pass. The deep search solved 520 of the 1,000 problems (D = 400; three sets of
+800 rows, 100 optimizer steps).
+- **Primary (HA, 600 problems, 16 fresh attempts):** `deep` minus `published` +0.00063 [−0.00604, +0.00729] (51.5
+  against 50.8 per 1,000; `shallow` 48.9; `pre_r64` 36.2); problems solved 217 to 214. The mechanism (`deep` minus
+  `shallow`, +0.00260 [−0.00365, +0.00885]; 217 to 204): NOT SHOWN. The replication (`shallow` minus `published`,
+  −0.00198 [−0.00792, +0.00407]): HOLDS ZERO.
+- **The goal set, beside, naming no branch:** all of G per 1,000 attempts `pre_r64` 80.0, `published` 103.1,
+  `shallow` 104.5, `deep` 112.5; goal problems solved 245, 262, 257, 275; solved reliably 107, 146, 136, 151; of 8
+  lines or more solved 25, 25, 22, 36. `deep` minus `published` on all of G +0.00941 [+0.00063, +0.01816]; `deep`
+  minus `shallow` on G′ +0.00683 [+0.00307, +0.01093] and goal problems gained 39, lost 21 (p = 0.03). `deep` has
+  the most goal problems solved and solved reliably of any model measured, and it is the first model trained on
+  its own proofs that is not behind its published-only control in breadth.
+- **Why it is a lead and not a result.** The primary was moved to HA before the run and shows nothing. Each model
+  is one training, and two trainings of one kind differ by about 0.006 per attempt on all of G and 5 goal
+  problems (L4p): the goal set's gaps are one to two and a half of those. The three models were measured one
+  after another and the pool's main server was installed anew between them; `deep`'s goal attempts timed out in
+  Lean more often (4.0% and 4.7% against `published`'s 2.5%), which counts against it if the pool was slower.
+- **What follows, by the standing seed rule** (a scout whose primary is not negative goes to three seeds): two
+  further seeds, below.
+
+### L5, further seeds (fixed 2026-10-11, after seed 0's read and before they run)
+
+**What a further seed N (1, 2) is.** The SAME search, the same held-aside set and the same stored measurement of
+`pre_r64` on it (seed 0's run, only read: nothing of them is sampled again), and the stored runs seed 0 read. By
+the task's seed: which 400 of the 520 deep solves are taken and which verified attempt of each; which 400
+ordinary solves and which attempt; the published rows (the first D and the first 2D of the hash order of THAT
+seed: another draw of the pretraining file); the order each set is trained in. The three models again, each from
+`pre_r64`, measured on the rungs and on G with the sampling seeds seed 0 used, and on HA (16 attempts, seed 0's
+sampling seed), so that a problem's attempts differ between seeds by the model alone.
+
+**The reads, fixed before they run.**
+- **The primary, over the three seeds:** on HA, successes per attempt, `deep` minus `published`: each problem's
+  mean over the three seeds of its difference, paired, 95% bootstrap over problems; each seed's own difference
+  and sign beside. Interval above zero: DEEP SOLVES ADD WHAT THE SAME NUMBER OF PUBLISHED PROOFS DO NOT. Holds
+  zero: NOT SHOWN AT THREE SEEDS. Below zero: THEY COST.
+- **The goal set's lead, CONFIRMED OR NOT ON THE TWO NEW SEEDS ALONE** (seed 0 found it, so seed 0 cannot confirm
+  it): on all of G over the 93 attempts, `deep` minus `published`, each problem's mean over seeds 1 and 2, 95%
+  bootstrap over problems. THE LEAD IS CONFIRMED when the interval is above zero AND the difference is positive
+  at both seeds; otherwise NOT CONFIRMED. Beside it: the goal problems solved (gained, lost) at each seed; the
+  same for `deep` minus `shallow` (the depth) and `shallow` minus `published`; and the three seeds pooled, with
+  seed 0 marked as the seed that found the lead.
+- **The spread, measured at last:** for each kind of model, its three seeds' figures (all of G per attempt, goal
+  problems solved, HA per attempt) and their standard deviation.
+- **Timeouts:** each set's share of attempts that timed out in Lean is printed; where two models' shares differ by
+  more than a point, their timed-out attempts are checked again (Lean only, no measurement running) and the
+  reads are given both ways.
+- **Branches.** CONFIRMED on the goal set, or ADD on HA: the next stage is a loop whose rounds are deep searches,
+  specified then. THEY COST on HA: stop, and the three seeds go to the owner. Otherwise: the lead is not
+  confirmed, deep solves are no worse than published rows at equal steps (unlike ordinary ones in L4c), and the
+  depth or the dose is the thing to raise.
+- **Budget.** A seed: three trainings of a few minutes, three measurements of about 75 minutes and three of about
+  25 on HA with 15 pool workers: about five hours and a quarter. Two seeds, one task each, one after the other.
+
+**Amended 2026-10-11, after a closer look at seed 0 and BEFORE seeds 1 and 2 run: where the lead sits, and a
+read of reach.** Seed 0's stored attempts, looked at again (no run; exploratory, and said as such):
+- **Per attempt the lead is reliability.** 84% of `deep`'s lead over `published` on all of G sits on the 200
+  goal problems `pre_r64` solves in its first 32 attempts (200.9 against 185.4 per 1,000, +0.0155 [−0.0007,
+  +0.0320]). On G′, the 192 it fails, over all 93 attempts: +0.0031 [−0.0020, +0.0083]. So HA and the goal set do
+  not disagree: on problems the start model fails, `deep` and `published` are level on both.
+- **The sign of reach is a count, on the long problems.** Goal problems of 8 lines or more solved at least once
+  in 93 attempts: `deep` 36, `published` 25 (gained 14, lost 3, p = 0.013), `shallow` 22 (gained 17, lost 3).
+  Per attempt on those 74 `deep` is not above `published` (−0.0042 [−0.0169, +0.0070]): it reaches more long
+  problems and each of them rarely. One slice of several looked at, one training each.
+
+So confirming the lead on all of G would confirm mostly reliability. Two reads are added, on seeds 1 and 2 alone
+like the lead's, and the lead's own rule stands as written:
+- **The split.** `deep` minus `published` per attempt over the 93 attempts, each problem's mean over the two new
+  seeds, 95% bootstrap over problems, (a) on the 200 and (b) on G′. A confirmed lead is named RELIABILITY when
+  (b) holds zero and REACH TOO when (b) is above zero.
+- **Reach on the long problems.** On the 74 goal problems of 8 lines or more: for each problem and model, the
+  share of the two new seeds in which the model solves it at least once in its 93 attempts; `deep` minus
+  `published`, paired, 95% bootstrap over the 74. REACH IS CONFIRMED ON THE LONG PROBLEMS when the interval is
+  above zero AND `deep` solves more of them than `published` at both new seeds; otherwise NOT CONFIRMED. Beside
+  it: each model's count at each seed with gained and lost, and the same read for `deep` minus `shallow`.
+- **Branches, replacing "CONFIRMED on the goal set" above.** REACH CONFIRMED ON THE LONG PROBLEMS, or ADD on HA:
+  the next stage is a loop whose rounds are deep searches, with ordinary solves matched in length as a control
+  (depth is not yet apart from length: 64% of the deep rows have 8 lines or more, 44% of the shallow ones). The
+  lead confirmed as RELIABILITY and reach not: deep solves are the rows of its own a model can train on without
+  narrowing, which ordinary solves are not; reach is not shown and the depth of the search is the thing to
+  raise. THEY COST on HA: stop, and the three seeds go to the owner. Otherwise as written above.
+
+**Made exact by the build (2026-10-11; nothing queued, nothing run on a GPU, nothing sent to Lean; the reads above and
+their amendment are not changed; the readings taken where the section left something open, what was found otherwise,
+what was NOT built, and what is fragile, are below).**
+- **A further seed is the SAME stage and the same fourteen steps** (`ladder_l5_deep --seeds N`; no new stage, no new
+  variable). `ladder_loop.l5.search_seed` (0; `the_settings` is its one reader) names the seed whose task makes the deep
+  search, the held-aside set and the start model's measurement on it. A task of another seed is a further seed
+  (`ladder_l5.a_further_seed`) and writes `ladder_l5_deep_pre_r64_seed<N>`; a task of THAT seed is the search's own task,
+  and every step, summary and file of it is what it was. The two sampling seeds (the search's 1050, the held-aside set's
+  1051) are derived from the search's seed at every seed of the task. Jobs `ladder_l5_deep_seed1.json`,
+  `_seed2.json` (est_minutes 360): job configs, not shipped in this copy.
+- **What it reads, and never writes.** Seed 0's FINISHED run (`read_the_search`) and the three stored runs seed 0 read:
+  `pre_r64`'s map, the run of the check of the adapter's rank, and L4t2's run OF SEED 0 (L5's own "Fragile (b)": there is
+  no L4t2 run of another seed, and none is looked for).
+- **Refused by its first step, before anything is written, naming the task to run.** MISSING OR UNFINISHED: one of the
+  markers of seed 0's search-prepare, search, prepare, start-model held-aside and report steps, its report, its
+  `problems.jsonl`, one of the two draws' files, or the rows, marker or attempts of the search or of `pre_r64`'s
+  held-aside measurement is not there. A report NOT TO BE READ or INCONCLUSIVE. A run that recorded another seed, start
+  or models. MADE OTHERWISE (`held_to_the_search`, what that run recorded against what this task reads now and would
+  do): the start adapter's rank and alpha; how a model is measured; the pretraining file's SHA-256; the size of G′; the
+  map's problems by k; the problems searched and the problems held aside (BOTH DRAWS ARE MADE AGAIN from the map with
+  the search's seed and held to the stored files: the task's own seed draws neither); the attempts a problem and the
+  sampling seed of each; the cap and the minimum of deep solves (so D is seed 0's D). The two stored samplings
+  themselves are held to their seed, their attempts and their problems, and refused when Lean did not answer one. The
+  second step holds the search it finds again in the stored rows (its table, its deep solves, D) to what seed 0's own
+  step counted.
+- **What is not made again.** `ladder_l5_search` and `ladder_l5_held_aside_start` return `run: false` with the reason,
+  mark nothing and sample nothing. `pre_r64`'s rows on the held-aside set are COPIED into the further seed's run
+  (`l5_stored_pre_r64_held_aside.jsonl`), so that its report can be built again from its pulled directory and the read
+  over the seeds can hold the seeds to one `pre_r64`. Its `problems.jsonl` holds the sets it samples and no other.
+- **By the task's seed, and by nothing else:** which deep solves the cap keeps (`l5.capped`, among all the search
+  solved); which verified attempt of each (`l5.solve_rows`); which ordinary solves and which verified map attempt; the
+  published rows (`l4_rows.rehearsal_rows` with that seed) and each set's order (`assembly.training_order`); the adapter
+  seed of the three trainings. The rungs and G are measured with the sampling seeds `pre_r64`'s run recorded, as seed
+  0's were.
+- **The further seed's own report** is `build_l5_report` on its three models and seed 0's rows of `pre_r64`: the same
+  reads and names. Its first line says A FURTHER SEED in the place of "a scout: one seed"; one line says whose search
+  and held-aside set it read; its line WHAT FOLLOWS is the scout's rule on that one seed and is not the branch of the
+  three (the line above says so). TIMEOUTS ARE PRINTED BY A FURTHER SEED'S REPORT ALONE (keys `a_further_seed`,
+  `timed_out_in_lean`): a line added to seed 0's report would change its `lines`. Seed 0's shares are in its report's
+  `attempts` already, and the read over the seeds gives them for every seed.
+- **"More than a point"** is more than 0.01 of a set's attempts, between two of the FOUR models (the stored `pre_r64`
+  among them) on one kind of set (the rungs, a sampling of G, the held-aside set): `l5.timed_out`. At seed 0 eight
+  pairs, all on G's two samplings (`deep` 0.0469 and 0.0399 against `published` 0.0249 and 0.0254; `pre_r64` 0.0443
+  and 0.0420; `shallow` 0.0313 and 0.0272).
+- **NOT BUILT: "checked again (Lean only)" and "the reads given both ways".** The pairs are named by a further seed's
+  report and by the read over the seeds; no step and no tool sends a timed-out attempt to Lean again. By the
+  section's rule seed 0 already asks for that check.
+- **The read over the seeds** is `reporting.ladder_l5.over_seeds`, run by `python -m rlvr_lean.tools.ladder_l5_seeds
+  <the pulled task directories that are there>` (no GPU, no Lean). The seed whose report says nothing of a further seed
+  made the search and FOUND the lead; the others are the new seeds. Each seed's primary is computed again from its rows
+  and HELD to its report's. "Each problem's mean over the seeds of its difference" is `per_attempt` on each problem's
+  attempts ADDED over the seeds, as L4's read is (every seed makes as many attempts at a problem: held, refused
+  otherwise). The bootstrap is over the held-aside problems in the order a seed's own report reads them (sorted) and
+  over G in the groups' order. Refused: seeds without one search (its problems and what it solved), one held-aside set,
+  one measurement of `pre_r64` or one G and G′; two seeds that each made a search; rows that do not give a report's
+  primary. A seed that is INCONCLUSIVE or not to be read is named, its other files are not read, and NOTHING is pooled
+  (the spread neither).
+- **Fewer seeds than three.** The primary is NAMED only over exactly three seeds, the one that made the search among
+  them; the lead, its split and the reach only on exactly two new seeds; a third further seed would be read by none of
+  them. Otherwise each is NOT READ, the figure over the seeds that are there is still given, and the read lists what it
+  could not make. The two new seeds without seed 0 give the lead, its split and the reach, and no primary.
+- **Readings of the amendment.** (1) A confirmed lead whose (b) is BELOW zero is named RELIABILITY too, and its line
+  says BELOW: the section names the two other cases. (2) THE BRANCH IS READ IN THE SECTION'S ORDER
+  (`l5.after_the_seeds`): reach confirmed or ADD first, even under THEY COST; then the lead confirmed as RELIABILITY
+  with reach not, also before THEY COST; then THEY COST; then "otherwise". (3) A lead confirmed as REACH TOO whose reach
+  on the long problems is not confirmed, with no ADD and no COST, has no branch of its own in the section: it is read
+  as "otherwise", and its line says so and does not say "the lead is not confirmed". (4) "The same read" of `deep`
+  minus `shallow` (beside the reach) and "the same two reads" of the two other pairs (beside the lead) give their
+  figures and conditions and NAME NOTHING. (5) The long problems are the length group "8+" of the stage's by-length
+  read (74). (6) The spread's standard deviation is the sample's (n − 1), and it is given for G′ per 1,000 fresh
+  attempts too, the figure L4p's spread was read on.
+- **A run the task names at a further seed** (the smoke stage queued with `--seeds 1`) writes `<the named
+  run>_seed<N>` and reads the named run: the search's own run is never written over. IT DOES NOT EXERCISE THE PATH ON
+  THE BOX: the smoke run of seed 0 reads INCONCLUSIVE (`shallow`: its training ran; two rows have no loss to compare),
+  which a further seed is refused for, at its first step and with nothing written. No smoke stage was added.
+- **Found otherwise than the amendment's figures.** On G′ over the 93 attempts the report's own bootstrap (10,000
+  resamples, seed 0, G′ in its stored order) gives +0.00308 [−0.00190, +0.00812], the amendment +0.0031 [−0.0020,
+  +0.0083]: the point agrees, the upper end differs in the fourth place (another draw). Every other figure of the
+  section and of the amendment that the read gives for seed 0 agrees.
+- **Measured before any run, on the pulled copies** (links in a scratch store; no GPU, no Lean; the pulled directories
+  only read; the map's own `problems.jsonl` and L4t2's prepare marker are not in the pulled copies and were made again
+  in scratch). The two prepare steps ran to their end for seeds 1 and 2: 400 of the 520 deep solves each, 307 and 309
+  of those problems among seed 0's 400 (164 and 157 with the same attempt) and 300 in both new seeds; 400 ordinary
+  solves, 139 and 146 among seed 0's (147 in both new seeds); the published rows the first 400 and the first 800 of
+  each seed's own order, 25 and 26 of the 800 also among seed 0's; no published row with text; 100 optimizer steps a
+  model. THE THREE SEEDS ARE THEREFORE NOT THREE DRAWS OF DEEP SOLVES: about three quarters of a seed's deep problems
+  are another seed's, and the spread the read gives is over the cap's draw, the attempt, the published rows, the order
+  and the adapter seed. On seed 0's pulled run alone the read gives the stored report's figures and the amendment's:
+  per 1,000 on the held-aside set 36.15, 50.83, 48.85, 51.46; the primary +0.00063 [−0.00604, +0.00729]; all of G
+  103.06, 104.51, 112.46; goal problems solved 262, 257, 275; `deep` minus `published` on all of G +0.00941 [+0.00063,
+  +0.01816]; on the 200 goal problems not in G′ 200.91 against 185.43; long problems solved 36, 25, 22 (`deep` against
+  `published` gained 14, lost 3).
+- **The search's own seed is what it was.** In the scripted world, with the code before the build and after it, seed
+  0's run is the same 108 files and 14 step summaries (timings and the copy's own path apart); two runs of the code
+  before the build differ in nothing there. Asserted in the suite: no summary and no report of seed 0 holds a
+  further seed's key or line. Three assertions that state how things are were brought up to date (the setting's block;
+  the sampling seeds of a task of another seed, 1050 and 1051 where they were 1150 and 1151; the stage's four jobs).
+- **Fragile, and not shown without the box.** (a) A further seed's report step and the read over three seeds ran at
+  the real size only on STAND-IN rows (seed 0's models' rows linked in the place of a further seed's own): the
+  plumbing, and nothing else. (b) Seed 0's run on the box must still hold the search's 56 attempt files and its
+  `problems.jsonl`; only the pulled copy was read. (c) ONE failed check of one model makes a further seed
+  INCONCLUSIVE, and the read then pools nothing: with one of the two new seeds INCONCLUSIVE the lead cannot be read.
+  `published` is again a short second pass over rows `pre_r64` has seen (the loss check L4p found wrong for one), on
+  another draw of them. (d) The three measurements of a seed are hours apart and the pool changes between them: the
+  timeout shares are printed and their check is not built.
+- **Mutated.** One hundred and eleven one-change mutations of what this build added, each applied to a copy of the
+  tree and never to the working tree: what is a further seed and whose run it reads; the seed that decides each draw (the
+  search's and the held-aside set's by seed 0, the cap's, the two attempts', the ordinary solves', the published rows'
+  and the order by the task's); that no search is run and the start model is not measured again; each refusal, each
+  thing the search's run is held to, and the two stored samplings; the report of the search's own seed and of a
+  further one; the primary over the seeds, its three names and its edges at zero, its three seeds; the lead on the new
+  seeds alone and each of its two conditions; the split's two sets and its names; the reach's set, its seeds and each
+  of its two conditions; the spread; the branch and its order; what the read refuses; the command; the setting; the
+  jobs. The first run: 108 noticed, 3 not. The three asked for assertions, which were added: the held-aside set is
+  seed 0's draw in a world where another seed would draw another (two candidates left the draw no choice); which
+  verified MAP attempt is an ordinary solve's row is by the task's seed (both ordinary solves of the scripted map now
+  have two); and the held-aside problems are read in the order a seed's report reads them whatever order the draw
+  stored them in (the hand-made ones were sorted already; on seed 0's real rows that mutation gives another interval
+  and the read refuses). All 111 are noticed.
+
+**Amended 2026-10-11, BEFORE seeds 1 and 2 run: a rise of the training loss is printed and decides nothing at a
+further seed** ("Fragile (c)" above, settled before it can happen and not after).
+- **The fault in the check, known before these seeds.** The loss half of "its training ran" reads the mean loss
+  over the last tenth of a training's rows against the first tenth's (80 rows each here) and fails above two
+  standard errors. With no trend at all that is one training in forty by chance: six trainings in the two seeds,
+  about one chance in eight that one of them fails and its seed reads INCONCLUSIVE. L4p found the same half wrong
+  where the start model has already been trained on rows of the kind (`second_full`: the loss rose over the pass
+  and the model was the best measured). At seed 0 `shallow`'s loss rose by 1.3 standard errors and passed.
+- **The rule for seeds 1 and 2.** The other checks stand and each still makes a seed INCONCLUSIVE: the adapter
+  saved is not the start adapter's, the model still writes proofs, Lean answered, no barred row, each held-aside
+  set answered. A training whose loss rose by more than two standard errors, with its adapter half passing, is
+  NAMED on a line of its own and does not stop the seed from being read or pooled.
+- **Built only if a training trips it.** The stage as queued would write INCONCLUSIVE for such a seed. The report
+  step and the read over the seeds are then made again on the pulled directory by this rule (no GPU, no Lean),
+  and the note says that the box's own report read otherwise.
+
+**What these reads can resolve, written 2026-10-11 while seed 1 runs and before any of its rows is pulled** (from
+seed 0's intervals; the pooling over seeds shares the problems, so each standard error lies between one seed's and
+one seed's over the square root of the number of seeds; approximations, said so that a NOT CONFIRMED is read for what
+it is):
+- **The primary on HA over three seeds:** one seed's standard error is 0.0034 per attempt, three seeds' 0.0020 to
+  0.0034. A difference is found four times in five only when it is 0.006 to 0.010 per attempt, an eighth to a fifth
+  of `published`'s own rate there (0.051). Smaller: UNDETECTABLE AT THREE SEEDS, and it is to be written so.
+- **The goal set's lead on the two new seeds:** one seed's standard error is 0.0045, two seeds' 0.0032 to 0.0045.
+  If the true lead is seed 0's (+0.0094) it is confirmed about three times in five to four in five; if it is half
+  of that, as a lead picked after the fact usually is, one time in five to one in three. NOT CONFIRMED is therefore
+  the likely outcome even of a real lead of that size, and by itself it is not a refutation.
+- **Reach on the long problems:** seed 0's difference is 11 problems of 74 (0.15 of them), one seed's standard
+  error 0.053. If the truth is that, it is confirmed four times in five or more; if it is half, one time in three
+  to one in two.
+- **The spread of each kind of model over its three seeds is the figure that outlasts the verdicts:** it says what
+  one trained model's difference from another is worth in every stage after this.
+- **The pool during seed 1.** The Lean pool went from 24 workers to about 12 between its first and second model
+  (two servers on boxes that other jobs were loading: one slow before it was paused, one drained), so its three models are
+  not measured on one pool. Its timed-out attempts are checked again, HA's among them, and its reads are given
+  both ways, as the Timeouts rule above already asks.
+
+### L6: a second round. Does the cycle compound? (fixed 2026-10-11, while L5's further seeds run and BEFORE their read)
+
+**Why.** The owner's bet (2026-10-09) is a feedback cycle: "this loop could be used to push it beyond the reach of
+things we even have pre-training data for". L5 asked whether ONE harvest of deep solves teaches what the same number
+of published proofs does not. The cycle is the next question whatever L5's three seeds say, short of THEY COST: the
+model trained on round 1's deep solves searches again, and what it finds is trained on. Published rows here are a
+second pass over proofs the start model has already seen, and there are no more of them in the `pretrain` half; the
+loop's rows are new at every round. If the cycle compounds, round 2 shows it.
+
+**When it runs.** After L5's read over three seeds, on every branch but THEY COST. Under THEY COST it does not run and
+the three seeds go to the owner.
+
+**Round 1 is L5's, read and not made again** (seed 0's finished run): the search (520 problems solved of 1,000), the
+held-aside set HA (600), `pre_r64`'s measurement on HA, and M(1), seed 0's `deep` model (its adapter is kept).
+
+**Search 2.** M(1), served at rank 64, makes 64 attempts at each of the 865 hard problems that are neither round 1's
+solves nor held aside:
+- **(a) the 480** that search 1 left unsolved (`pre_r64` failed 64 of 64);
+- **(b) the 385** candidates that neither draw took (`pre_r64` failed 8 of 8).
+55,360 attempts, a sampling seed of its own. A problem it solves is a ROUND-2 solve; its row is one verified attempt,
+drawn by the task's seed as a round draws. Fewer than 150 round-2 solves: nothing is trained and the search is the
+finding. HA is not searched and no row of an HA problem is trained on.
+
+**Four models, each trained from `pre_r64`** (the ladder's rule: M(r) is trained from the start on every round's
+rows), one pass, 2N rows each, N = 520 + the round-2 solves (every deep solve of both rounds, no cap), the published
+rows being the first of ONE hash order of the pretraining file (stored by id and place, never with text):
+- **`published2`**: the first 2N published rows. The bar at equal steps.
+- **`one_round`**: round 1's 520 solves and the first 2N − 520 published rows.
+- **`two_rounds`**: the N solves of both rounds and the first N published rows. This is M(2).
+- **`long_ordinary`**: N ORDINARY solves (map problems `pre_r64` solved in at least one of its 8 map attempts, one
+  verified map attempt each) and the first N published rows. The ordinary solves are drawn to have the line counts
+  of `two_rounds`' own N rows, bin by bin (1, 2 to 3, 4 to 7, 8 to 15, 16 or more lines); a bin the map cannot fill
+  is filled from the next shorter one and the shortfall is printed.
+
+**Measured,** each as L5's models are: the three rungs, G twice (32 and 61 attempts, the sampling seeds `pre_r64`'s
+run recorded) and HA (16 attempts, L5's sampling seed), so each pairs by problem with every stored model. One more
+measurement of a stored model: `second_full` (L4p: a whole second pass, 3,109 steps, the best pretraining-only model)
+on HA, when its adapter is on the box; NOT THERE otherwise, and nothing is refused for it.
+
+**The reads, fixed before the run.** Per attempt, paired by problem, 95% bootstrap over problems; an interval that
+ends at zero holds zero.
+- **PRIMARY, the bet at equal steps:** on HA, `two_rounds` minus `published2`. Above zero: THE CYCLE ADDS WHAT THE
+  SAME NUMBER OF PUBLISHED PROOFS DOES NOT. Holds zero: NOT SEPARATED AT THIS SIZE. Below: IT COSTS.
+- **COMPOUNDING:** on HA, `two_rounds` minus `one_round` (round 2's solves against the same number of published
+  rows, round 1's solves in both). THE SECOND ROUND ADDS / NOT SHOWN / IT COSTS.
+- **HARD TO FIND, OR LONG:** on HA, `two_rounds` minus `long_ordinary`. Above zero: HARD TO FIND MATTERS BEYOND
+  LENGTH. Holds zero: NOT SEPARATED FROM LENGTH. Below: LONG ORDINARY SOLVES DO BETTER.
+- **REACH, on the goal set:** the 74 goal problems of 8 lines or more solved at least once in 93 attempts,
+  `two_rounds` against `published2`: gained, lost, the sign test. REACH SHOWN AT THIS SEED when more are gained than
+  lost with p under 0.05; otherwise NOT SHOWN.
+- **Beside, naming nothing:** every pair on all of G and its split (the 200 `pre_r64` solves in its first 32
+  attempts; G′); goal problems solved and solved reliably; the never-solved when their ids are given; `two_rounds`
+  against M(1)'s and `second_full`'s stored rows on G, and against `second_full` on HA; for each model the rungs,
+  the share of distinct attempts and NARROWER (the overfitting reads); each set's share of timeouts.
+- **The search's table:** round-2 solves in (a) and in (b), by the attempt of the first success; the lines of their
+  proofs beside round 1's.
+
+**Checks, read first; any FAIL makes the run INCONCLUSIVE.** The search found at least 150 solves; for each trained
+model its adapter is not the start adapter's, it still writes proofs, Lean answered, no barred row (no held-out
+problem, no HA problem, published rows of the `pretrain` half, its own rows base-map problems); Lean answered on
+each HA set. A rise of a training's loss is printed and decides nothing (the rule of "L5, further seeds").
+
+**What follows, by the scout's table, fixed now.** The primary's point at or above zero, or REACH SHOWN, or THE
+SECOND ROUND ADDS: two further seeds of the four models on the same two searches. The primary below zero by more
+than twice the spread L5's three seeds measured between trainings of one kind on HA: the cycle at this size does
+not clear the bar, it is written up, and the question of a larger model goes to the owner. In between: stated as
+it is, and the owner chooses.
+
+**What it cannot say.** One seed. One M(1) made search 2. Parts (a) and (b) are trained on together. `published2`
+is a second pass over seen rows; the published proofs of the `loop` half stay unused by the owner's rule, so
+"pretraining on new published data" is not the bar here. HA resolves about 0.007 per attempt at one seed.
+
+**Budget.** Search 2 about two hours; four trainings of about seven minutes; four measurements of about 70 minutes
+and five of about 20 on HA with 24 pool workers: about nine hours. A smoke stage first.
+
+**Made exact by the build (2026-10-11; nothing queued, nothing run on a GPU, nothing sent to Lean; the reads above are
+not changed; the readings taken where the section left something open, the figures of the section that the stored runs
+put otherwise, what was NOT built, and what is fragile, are below).**
+- **The stages.** `ladder_l6_cycle` (`gpu/ladder_l6.py`; rules `domain/ladder_round/l6.py`; report
+  `reporting/ladder_l6.py`), settings `ladder_loop.l6` (`start: pre_r64`, which must be L5's; `models: [published2,
+  one_round, two_rounds, long_ordinary]`; `search_seed` 0; `search`: `attempts` 64, `sampling_place` 52, `minimum` 150;
+  `long_ordinary`: `solved_at_least` 1, `line_bins` [1, 2, 4, 8, 16]; one reader). It names NO variable. Run directory
+  `ladder_l6_cycle_pre_r64_seed<N>`. SEVENTEEN steps, each resumable: `ladder_l6_search_prepare`; `ladder_l6_search`;
+  `ladder_l6_prepare` (the four sets); then for `published2`, `one_round`, `two_rounds`, `long_ordinary` in turn
+  `ladder_l6_train_<m>`, `ladder_l6_measure_<m>`, `ladder_l6_held_aside_<m>`; `ladder_l6_held_aside_second_full`;
+  `ladder_l6_report`. Jobs `ladder_l6_cycle_seed0.json` (est_minutes 720) and `ladder_l6_cycle_smoke.json` (30):
+  job configs, not shipped in this copy.
+- **L5's functions are called, not copied.** Four things of `gpu/ladder_l5.py` became functions two stages call, every
+  default L5's: what its first step reads, holds and draws before it writes (`read_for_the_search`, with
+  `read_the_search` and `held_to_the_search` under the words an `OfTheSearch` gives); the deep search's body
+  (`search_deep`, under the names a `Search` gives); one model's measurement on the held-aside set
+  (`on_the_held_aside_set`); and `_not_run`. The trainings and the measurements on the rungs and G are L4t's own two
+  bodies, as L5's are. So search 2 is the deep search's own code (the round's episode, blocks of `block_of`, a search
+  Lean did not answer not kept), and a model here is measured on HA by the code that measured round 1's.
+- **What is read, never written, and refused by the first step before anything is written.** ROUND 1 is the run of the
+  seed that made L5's deep search (`ladder_l5.search_directory`: `ladder_l5_deep_pre_r64_seed0`). It is read as a
+  further seed of L5 reads it, by L5's own code and with its refusals in this stage's words: missing or unfinished;
+  a report not to be read or INCONCLUSIVE; another seed, start or models; MADE OTHERWISE (the rank and alpha, how a
+  model is measured, the pretraining file, G', the map's problems by k, BOTH DRAWS made again from the map and held to
+  the stored files, the attempts and the sampling seed of the search and of the held-aside set, the cap and the
+  minimum), and the two stored samplings held to their seed, attempts and problems. With it every stored run that task
+  read: `pre_r64`'s map, L4t2's run, the run of the check of the adapter's rank. BESIDE THAT, this stage's own: a
+  round 1 that trained no model; its `deep` model without its training or measuring marker, without its stored rows on
+  G, or measured there with other seeds or attempts than `pre_r64` was; its adapter not there; a stored search that
+  does not count the solves its own step counted, or holds no verified attempt for a problem it counts as solved (held
+  here, before the two hours of search 2, and not when the rows are drawn); a search 2 with no problem; a problem of
+  it that is held out or no base-map problem; a sampling seed a stored sampling used (L5's two among them).
+- **Search 2.** (a) is the problems search 1 attempted and did not solve, in its draw's order; (b) the map's rows with
+  k = 0 that neither search 1's draw nor the held-aside set took, in the map's order (`l6.second_search`). HELD, each a
+  refusal: a problem search 1 solved is one it attempted; none is both searched and held aside or stands twice; a
+  problem a draw took by the rule is a candidate; and round 1's solves, (a), (b) and HA partition the candidates. The
+  counts are the stored files' and are recorded (`the_search.partition`), never numbers of the code. Sampling seed
+  `round.sampling_seed` + 100 × `l6.search_seed` + place 52 (1052), of the seed the SETTING names, as L5's two are.
+  Blocks of 16 problems (55 of them at seed 0). A round-2 row carries its part and `first_success`, the place of the
+  problem's first verified episode among M(1)'s OWN attempts, from 1: M(1) made none at these problems before. The
+  table's bands are 1 to 8 (a map's attempts), then doubling: 9 to 16, 17 to 32, 33 to 64, for each part by itself.
+- **The rows, by the task's seed.** One verified attempt of every problem a search solved, by `l5.solve_rows` (the
+  function a round draws by): round 1's from round 1's stored attempts, round 2's from this run's. Origins `round_1`,
+  `round_2`, `ordinary`. At seed 0 the 520 round-1 rows are the very attempts L5's own step drew (the same function and
+  seed: measured on the pulled run), of which its sets held 400.
+- **The four sets** (`l6.the_sets`, held from the outside by `hold_the_sets`), each in `assembly.training_order`. Held,
+  each a refusal: 2N rows and no id twice; `two_rounds` N own rows with at least one of each round and N published;
+  `one_round` round 1's solves, THE SAME ROWS as `two_rounds`', and 2N less as many published; `long_ordinary` N
+  ordinary solves and THE SAME N published rows as `two_rounds`, by id and place, in the same order; `published2` 2N
+  published rows; the published rows of each the FIRST of the one hash order, each smaller draw the first rows of each
+  larger; no problem twice among a set's own rows; no problem both a deep solve and an ordinary one; no own row of a
+  problem the pretraining file holds; no published row with text; no held-out problem; published rows of the
+  `pretrain` half; own rows base-map problems; no row of a held-aside problem, and no held-aside problem searched.
+- **The ordinary solves matched in length** (`l6.matched_in_length`). An ordinary solve is a map problem `pre_r64`
+  solved in at least `long_ordinary.solved_at_least` (1) of its 8 map attempts (2,015 at seed 0), and its row ONE stored
+  verified map attempt drawn by the task's seed with L5's own function; ITS lines are the row's (as the report's "lines
+  of the rows" counts them). The bins are the setting's lower edges. Within a bin a seeded draw of its own (label
+  `l6_long_ordinary`: the smallest content hash of the task's seed and the problem's id). From the longest bin down,
+  what a bin cannot give is asked of the next shorter one beside that bin's own; the table (`matched_in_length`) gives
+  for each bin what is wanted, what the map offers, what longer bins asked of it, what was taken and its shortfall, and
+  the report prints it.
+- **Measured.** Each model by L4t's own two bodies (the rungs; G twice with the sampling seeds `pre_r64`'s run
+  recorded), then by L5's own body on HA: 16 attempts, round 1's sampling seed for that set (1051), blocks of 64.
+  `pre_r64`'s rows there are round 1's, copied (`l6_stored_pre_r64_held_aside.jsonl`). The set's attempts, sampling
+  seed and block size are the ones round 1's run RECORDED, and L5's body refuses a config that now gives others.
+  `second_full` is the LAST step before the report, so that the reads the section names are in hand first.
+- **Readings the section left open, and the ones taken.** (1) **"No barred row ... no HA problem"**: the fourth check is
+  L5's own with one thing more, no row of a held-aside problem (`l6.no_barred_row`). (2) **"Lean answered on each HA
+  set"** reads the four models' sets, round 1's stored one of `pre_r64`, and `second_full`'s when it was measured; such
+  a set of this run's own is measured again when the task is queued again. (3) **The loss.** The adapter half of L4t's
+  "its training ran" is the check (`its_adapter_is_not_the_start_adapters`); each training's loss at both ends is
+  PRINTED on a line of its own, a rise beyond the allowance NAMED there, and it is in no list of failed checks. (4)
+  **ONE verdict for the run**, as L5: any failed check, of any model, and the four reads are INCONCLUSIVE, what was
+  measured kept apart and none of it printed. (5) **Fewer than 150 round-2 solves: the stage does not fail.** No set is
+  built, the thirteen steps after it return that and mark nothing, the report reads INCONCLUSIVE and gives the search's
+  table as THE FINDING. (6) **REACH** is on the length group "8+" of the stage's by-length read (74), over all the
+  attempts: SHOWN when more are gained than lost AND the sign test is under 0.05. (7) **What follows, in the section's
+  order:** the point at or above zero, or REACH SHOWN, or THE SECOND ROUND ADDS, first and whatever the spread; then,
+  below zero, the kill by the spread, where below by EXACTLY twice the spread is "in between". (8) **"The spread L5's
+  three seeds measured between trainings of one kind on HA"** is three figures, one a kind of model (the standard
+  deviation, n − 1, of its seeds' successes per attempt there). THE LARGEST is taken: a kill then asks the most. It is
+  read from `l6_l5_spread.json` when that file is GIVEN in the run directory (what `python -m
+  rlvr_lean.tools.ladder_l5_seeds --out` writes). NOT GIVEN: no file, a read that pooled nothing or is not over exactly
+  three seeds, a kind without a standard deviation; the line then gives the primary's point, says so and names no kill
+  (`THE SPREAD IS NOT GIVEN: NO KILL IS NAMED`). (9) **"Every pair"** is the six pairs of the four models, each on all
+  of G, on the goal problems not in G' and on G', over ALL the attempts (as L5's amendment split its lead), with the
+  goal problems solved. (10) **M(1) is read on G alone** (the section's words); its rows on HA and L5's `published` and
+  `shallow` are not read. (11) **`second_full` "when it is on the box"**: its rows on G are read when L4p's run holds
+  its prepare, training and measuring markers, is from this start, and its two stored samplings of G pair (the
+  problems, the seeds, the attempts); it is measured on HA when, beside that, its adapter's directory is there when
+  ITS step runs. Otherwise NOT THERE with the reason, in the first step's record and in the report; a task queued again
+  after the adapter is back measures it, and no other step runs again. (12) **A shortfall in the SHORTEST bin is
+  refused** in a real run: the section fills from the next shorter bin and names no fill from a longer one. (13) **Each
+  read's line gives the held-aside problems solved** (gained, lost) beside its difference, and names nothing by them.
+  (14) **A task of another seed than `l6.search_seed` is refused** by the first step: further seeds of L6 and a read
+  over seeds are not built. Search 2's sampling seed is the setting's seed's and every draw of rows is by the task's,
+  so that a further seed can later read this search.
+- **Figures of the section, as the stored runs put them.** "55,360 attempts" are EPISODES: the audit rule samples the
+  other side too for a seeded 2% of problems (search 1: 56,616 attempts for 56,000 episodes). **THE BUDGET IS NOT NINE
+  HOURS BY L5's MEASURED TIMES.** Seed 0 of L5 (15 pool workers) took 134 minutes for its search (422 attempts a
+  minute), 73 to 87 minutes for a model's rungs and G (81 on average), 22 to 25 for a held-aside set, 4 for a training
+  of 800 rows; its generator waited on Lean 87 seconds of the search and not at all on a held-aside set, so the steps
+  are bound by generation and 24 pool workers shorten them little. By those times: search 2 about 134 minutes, four
+  trainings of 8 to 14 (1,640 rows at 300 round-2 solves, 2,770 at most), four measurements, five held-aside sets: 611
+  minutes at the averages, 664 at the worst of each (ten and a quarter to eleven hours). est_minutes is 720.
+- **The smoke stage** (`ladder_l6_cycle_smoke`) runs all seventeen steps and reads `ladder_l5_deep_smoke`, the three
+  smoke runs that task read, and `ladder_l4_dose_r64_smoke` for `second_full`; it writes `ladder_l6_cycle_smoke`. HOW
+  IT GOES ON FROM ROUND 1's SMOKE RUN: that run's report is INCONCLUSIVE (`shallow`: its training ran; two rows have no
+  loss to compare), and the rule gives search 2 no problem (the fixture's model solved every base-map problem in its
+  map, and search 1 solved its one). `RLVR_LEAN_LADDER_L6_SMOKE_PROBLEMS=2`, set by this stage ALONE: the INCONCLUSIVE
+  round 1 is read all the same and the first step RECORDS it (`smoke.round_one_read_though_inconclusive`, with the
+  failed checks; a report not to be read is refused here too); round 1's two looser draws are made again as that run
+  recorded them, WITHOUT L5's own smoke-only variable, which stays its smoke stage's alone; search 2 attempts the two
+  map problems no search took and that are not held aside; one round-2 solve is enough; `long_ordinary` takes its
+  ordinary solves among the map problems the searches attempted, and a shortfall in the shortest bin is filled from
+  what is left. Every problem and row so taken is marked `taken_by: the run's minimum` and counted in the report's line
+  A SMOKE RUN. NO REAL RUN CAN TAKE THAT PATH: the first step refuses the variable unless the run directory is one the
+  task names AND the map is the fixtures'.
+- **Measured before any run, on the pulled copies** (links in a scratch store; no GPU, no Lean; the pulled directories
+  only read; the map's own `problems.jsonl`, L4t2's and L4p's prepare markers are not in the pulled copies and were
+  made again in scratch). The first step ran to its end for seed 0: 1,985 candidates = 520 round-1 solves + 480 left
+  unsolved (a) + 385 in neither draw (b) + 600 held aside; search 2 is the 865, none held aside, each with k = 0 in the
+  map; sampling seed 1052; 55 blocks of 16; `second_full`'s rows on G pair. With a STAND-IN search 2 (a seeded 300 of
+  the 865 marked solved, each by one stand-in verified attempt whose text is one of round 1's own deep proofs): N =
+  820; four sets of 1,640 rows, 205 optimizer steps each; `one_round` 520 and 1,120, `two_rounds` 520, 300 and 820,
+  `long_ordinary` 820 and 820, `published2` 1,640; the published rows nested and the same 820 in `two_rounds` and
+  `long_ordinary`; no published row with text, no barred row, no row of a held-aside problem. THE LENGTH MATCHING AT
+  THAT SIZE FILLS EVERY BIN, BARELY: by bin (1, 2-3, 4-7, 8-15, 16+) 20, 76, 192, 341 and 191 rows are wanted and the
+  map offers 411, 616, 445, 347 and 196. With round 1's lines (64% of its rows have 8 lines or more) the two long bins
+  run short from about N = 835 and are then filled from the shorter ones (8-15 first, then 4-7, which has room). The
+  cascade cannot reach the shortest bin at any N this run can have (at most 1,385 rows are wanted, and the bins above
+  the shortest offer 1,604 ordinary solves); the refusal of reading (12) would take more than 411 one-line deep proofs
+  (round 1 has 12). The smoke stage's first step and its set-building step ran to their end on the pulled smoke copies
+  (round 1's smoke run read though INCONCLUSIVE, and recorded; search 2 takes the two map problems left, both by the
+  run's minimum; `second_full`'s rows pair; N = 3 with both marked solved, four sets of 6 rows).
+- **L5 writes what it wrote.** In the scripted world, with the code before the build and after it: L5's run at the
+  search's own seed is the same 108 files and 14 step summaries, and a further seed's the same 97 and 14 (timings and
+  the copy's own path apart). Asserted in the suite: with this stage run beside it, L5's own task queued again returns
+  what is stored and moves no file, a further seed of L5 run AFTER this stage leaves the files a further seed leaves,
+  and round 1's run, L4p's and every run round 1 read are file for file what they were after this stage ran. Three
+  assertions that state where things live were brought up to date (one more smoke stage names the rank check's smoke
+  run, the map's, L5's smoke run and L4t2's). THE SCRIPTED WORLD of this stage's tests is the fixtures' with a base map
+  of twelve problems (the fixtures' four and eight more, in a data directory of the test's own): four problems cannot
+  hold a round-1 solve, an (a), a (b), a held-aside problem and the ordinary solves at once.
+- **Fragile, and not shown without the box.** (a) M(1)'s adapter is served for a search from a run it was not trained
+  for a search in, and `second_full` from L4p's run for an episode step: the smoke stage is the first run of both. (b)
+  M(1)'s rate in a search is not known (its proofs are longer than `pre_r64`'s, and its goal attempts timed out in Lean
+  more often). (c) Round 1's run on the box must still hold all 56 attempt files of its search: only the pulled copy
+  was read. (d) The report step ran at the real size on nothing: the four models do not exist; its plumbing is the
+  scripted world's. (e) One failed check of one model makes the run INCONCLUSIVE. (f) The five held-aside sets are
+  measured hours apart; the timeout shares are printed and their check is not built, as in L5.
+- **Mutated.** One hundred and fifty-seven one-change mutations of what this build added, each applied to a copy of the
+  tree and never to the working tree: search 2's two parts, each refusal of the partition and a smoke run's joiners; the
+  minimum; the table; the bins, the direction of the fill, the shortfall, the seeded draw within a bin and a smoke
+  run's looser fill; each set's composition and size, N, and each thing the sets are held to (the sizes, the origins,
+  the ids, the order, round 1's same rows, the nesting, the first of the order, the same published rows, deep against
+  ordinary, the pretraining's problems); the held-aside bar of the fourth check; each read's three names and its two
+  edges at zero, and a failed check; reach's two conditions; the spread (the largest, three seeds, per 1,000, the
+  held-aside set's figure); what follows (the point at zero, reach, compounding, once and exactly twice the spread, the
+  spread not given, an INCONCLUSIVE run); in the report the reads' set (the held-aside set, not G), their two sides,
+  each read's own figure, reach's other side, its set and its samplings, the loss rise deciding and the adapter half
+  not deciding, each kind of failed check, the point what follows reads, the split of G, the stored models' other
+  side; in the stage whose adapter makes search 2 and under whose names, which model M(1) is, the seed of the sampling
+  seed, a further seed, an INCONCLUSIVE round 1 in a real run, each guard of the smoke-only variable, each refusal of
+  round 1 and of M(1), the stored samplings' seeds, a search 2 without a problem, a smoke run's draws, the minimum, the
+  seed of each of the three draws of a row, the ordinary rule, the held-aside set held out of the sets, a barred row,
+  the held-aside set's sampling seed, where the stored model is served from and when it is NOT THERE; sixteen changes
+  to L5's own module (the reader's allowance and its default, its smoke guard, the caller's least number, the search's
+  marker, set and served name, the held-aside set's files and directory, `_not_run`, the further seed's hook); the
+  registration, the smoke stage's environment, the setting. The first run: 143 noticed, 14 not. One of the fourteen
+  was the same program in every real run (`long_ordinary`'s looser candidates are empty there: no problem a search
+  attempted was solved in the map) and was replaced by one that changes what a smoke run takes. Thirteen asked for
+  assertions, which were added: a smoke run's search 2 passes over a held-aside problem that is first in the hash
+  order; a whole family of sets without a solve of round 2 is refused; as many long problems gained as lost is not
+  more; what follows reads the PRIMARY's point (below `published2` and level with `one_round` is a kill, not further
+  seeds); overfitting is each model against the start model; the minimum of round-2 solves is the setting's in a real
+  run; a real run refuses a shortfall in the shortest bin; a held-out problem among a set's rows is refused where the
+  sets are built; a stored model whose rows would not pair is not measured though its adapter is there; round 1's row,
+  round 2's and an ordinary solve's are each drawn by the task's seed in a world where seed 1 draws another (three
+  mutations: in the first world seed 1 drew the same attempts); and the smoke world keeps L5's real minimum of deep
+  solves, so that the minimum round 1 recorded is held. One thing of the code moved with them: the file of the deep
+  solves is written with the sets, and no longer before a refusal that says nothing was written. The last run, all 157
+  against the tree with these additions: 157 noticed.
+
 ## Fixtures (these become the tests)
 
 1. An episode that proves the statement resolves the problem; so does one that proves the exact negation; one

@@ -43,6 +43,7 @@ from rlvr_lean.domain.training.target_format import NATIVE
 from rlvr_lean.domain.verification.pin import lean_pin_from_config
 from rlvr_lean.gpu import ladder_loop, ladder_round, pipeline
 from rlvr_lean.gpu.ladder_round import BASE, Engines, _attempts, _stand_in, _write_json, distinct_attempts, training_seed
+from rlvr_lean.gpu.memory_budget import cache_to_release
 from rlvr_lean.infrastructure.adapter_files import ADAPTER_FILE, compared
 from rlvr_lean.infrastructure.artifact_store import ArtifactStore
 
@@ -265,6 +266,9 @@ def _train_with_readings(config: dict, examples: list[dict], sample: list[int], 
     def train_step(batch: list[int]) -> list[list[float]]:
         per_pair, step_loss = [], 0.0
         for index in batch:
+            if cache_to_release(torch.cuda.memory_reserved(), torch.cuda.memory_allocated()):
+                torch.cuda.empty_cache()        # what the last row freed is the wrong shape for this one: at the cap that is an out-of-memory failure
+                counters["cache_releases"] = counters.get("cache_releases", 0) + 1
             ids, mask = encoded[index]
             input_ids = torch.tensor([ids], device="cuda")
             labels = torch.tensor([[token if keep else -100 for token, keep in zip(ids, mask)]], device="cuda")
@@ -325,7 +329,7 @@ def _train_with_readings(config: dict, examples: list[dict], sample: list[int], 
             "seconds": round(seconds, 1), "seconds_in_readings": round(sum(reading_seconds), 1),
             "seconds_per_reading": round(sum(reading_seconds) / len(reading_seconds), 2) if reading_seconds else None,
             "seconds_training": round(seconds - sum(reading_seconds), 1),
-            "peak_allocated_gb": round(torch.cuda.max_memory_allocated() / 1e9, 2),
+            "peak_allocated_gb": round(torch.cuda.max_memory_allocated() / 1e9, 2), "cache_releases": counters.get("cache_releases", 0),
             "gradient_checkpointing_active": bool(peft_model.training and getattr(peft_model.base_model.model, "is_gradient_checkpointing", False))}
 
 

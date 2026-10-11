@@ -17,7 +17,24 @@ from test_ladder_l4_report import ARM_PREPARE, BASE_ARM, OWN, PREPARE, _report  
 from rlvr_lean.domain.ladder_round.assembly import attempts_alone, training_order, training_set  # noqa: E402
 from rlvr_lean.domain.ladder_round.l4 import ADDS, COSTS, INCONCLUSIVE, NOT_READ, NOT_SHOWN, PRETRAIN, arm_checks, half_of, l4_branch, pretraining_checks  # noqa: E402
 from rlvr_lean.domain.ladder_round.l4_rows import THE_MINIMUM, THE_RULE, rehearsal_rows, rehearse_set, smallest_decisive_split, uniform  # noqa: E402
-from rlvr_lean.domain.ladder_round.l4b import NARROWER, OLD, ON_FEWER, REHEARSE, REWARD_ROWS, RULES, breadth_beside, by_origin, kept_share, record, rule_set, twin_of, with_breadth  # noqa: E402
+from rlvr_lean.domain.ladder_round.l4b import (  # noqa: E402
+    NARROWER,
+    OLD,
+    ON_FEWER,
+    REHEARSE,
+    REWARD_REHEARSE,
+    REWARD_ROWS,
+    RULES,
+    WITH_REHEARSAL,
+    breadth_beside,
+    by_origin,
+    kept_share,
+    record,
+    rehearsal_of,
+    rule_set,
+    twin_of,
+    with_breadth,
+)
 from rlvr_lean.domain.ladder_round.rounds import sign_test  # noqa: E402
 from rlvr_lean.domain.problem_pool.episodes import reward  # noqa: E402
 from rlvr_lean.reporting.ladder_l4 import LABEL, SAY, build_l4_report  # noqa: E402
@@ -62,7 +79,7 @@ def _k(row):
 
 # ------------------------------------------------------------------------------------------- the three rules
 def test_the_old_rule_is_what_every_arm_does_and_an_unknown_rule_is_refused():
-    assert RULES == (OLD, REWARD_ROWS, REHEARSE) == ("old", "reward_rows", "rehearse")
+    assert RULES[:3] == (OLD, REWARD_ROWS, REHEARSE) == ("old", "reward_rows", "rehearse")            # L4b's three; the fourth is L4c's (`test_ladder_l4c.py`)
     for number in (1, 2, 3):
         assert _set(OLD, number) == training_order(training_set(BY_ROUND, number), SEED)            # the same rows, the same order, nothing added to a row
     assert all("k" not in row and "lines" not in row for row in _set(OLD, 3)) and len(_set(OLD, 3)) == sum(len(rows) for rows in BY_ROUND.values()) == 3 * 36
@@ -150,7 +167,7 @@ def test_the_rules_kept_share_by_round_is_read_from_the_rounds_own_rows_and_the_
         of_the_rounds = [row for row in last if row["origin"] != "pretraining"]
         assert (share["rows"], share["kept"], share["set_by_origin"]) == (108, len(of_the_rounds), by_origin(last)) and list(share["by_round"]) == ["1", "2", "3"]
         assert all(entry["rows"] == 36 and entry["kept"] == sum(row["round"] == int(number) for row in of_the_rounds) for number, entry in share["by_round"].items())
-        assert (share["share"] == 1.0) == (rule != REWARD_ROWS)
+        assert (share["share"] == 1.0) == (rule not in (REWARD_ROWS, REWARD_REHEARSE))
 
 
 # --------------------------------------------------------------------------------------------- the fifth check
@@ -235,8 +252,25 @@ def _own(rule=OLD, **changed):
             "start_adapter": "runs/ladder_l4_pretrain_r64_seed0/adapters/pre_r64", "start_recipe": RECIPE, "rule": rule, **changed}
 
 
-def _l4b(rule=OLD, again=("g4c", "g8a", "g8b", "g8c"), rank_16=RANK_16, never=None, own=None, losses=None, trained_rows=None, **models):
+def _alone(last_set, on_g=None, losses=None, rungs=None, **changed):
+    """`rehearsal_alone` as a report takes it (L4c): the start model trained one more pass on the rehearsal rows of the last
+    model's set, in its order (the training loop's own record), and measured as a model is. By default it has the START
+    model's own successes: the second pass added nothing."""
+    rows = [{"id": row["id"], "problem_id": row["problem_id"], "origin": row["origin"]} for row in rehearsal_of(last_set)]
+    made = _made("pre", on_g=on_g, rungs=rungs)
+    falling = [1.5] * (len(rows) // 2) + [0.9] * (len(rows) - len(rows) // 2)
+    return {"train": {"model": "rehearsal_alone", "rows": len(rows), "steps": -(-len(rows) // 8), "trained_from": "the stored adapter pre_r64", "stand_in_engine": False,
+                      "against_the_start_adapter": {"rehearsal_alone": CHANGED}},
+            "row_losses": falling if losses is None else losses, "rows": rows, "stand_in_engine": False,
+            **{key: made[key] for key in ("rungs", "goal", "verified_proof_lines", "distinct_attempts", "opens_with_a_have", "episodes_of_8")}, **changed}
+
+
+def _l4b(rule=OLD, again=("g4c", "g8a", "g8b", "g8c"), rank_16=RANK_16, never=None, own=None, losses=None, trained_rows=None, alone="made", **models):
+    """`alone`: the arm's one more model (L4c), for a rule with rehearsal rows: hand-made by default (`_alone`), None for a
+    rule without them; what is given otherwise."""
     sets = {2: rule_set(BY_ROUND, _picks(2), 2, rule, TARGET, SEED, PRETRAINING), 1: rule_set(BY_ROUND, _picks(1), 1, rule, TARGET, SEED, PRETRAINING)}
+    if isinstance(alone, str):
+        alone = _alone(sets[2]) if rule in WITH_REHEARSAL else None
     trained = trained_rows or {"M(1)": sets[1], "M(2)": sets[2], "`without`": twin_of(sets[2])}
     trains = {name: {"rows": len(rows), "trained_from": "the stored adapter pre_r64", "stand_in_engine": False, "against_the_start_adapter": {name: CHANGED},
                      "rows_by_origin": {"attempt": sum(row["origin"] == "attempt" for row in rows), "assembled": sum(row["origin"] == "assembled" for row in rows), "h0": 0},
@@ -246,7 +280,7 @@ def _l4b(rule=OLD, again=("g4c", "g8a", "g8b", "g8c"), rank_16=RANK_16, never=No
     read = ({**PREPARE, "arm": "t010_assembly_pre_r64"}, None, {**ARM_PREPARE, "arm": "t010_assembly_pre_r64", "start": START}, list(again), trains,
             losses or {name: falling(len(rows)) for name, rows in trained.items()}, None, [3, 3, 5, 9, 4, 2], ROUNDS, GROUPS, LENGTHS, _model("base"), made, BASE_ARM, SETTINGS,
             TARGET, EVALUATION)
-    return build_l4b_report(read, own or _own(rule), trained, sets[2], rank_16, never)
+    return build_l4b_report(read, own or _own(rule), trained, sets[2], rank_16, never, alone)
 
 
 def test_the_report_is_l4s_with_the_start_model_in_pres_place_and_what_l4b_adds():

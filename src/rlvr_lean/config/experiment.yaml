@@ -393,6 +393,12 @@ ladder_loop:                       # docs/spec/ladder-loop.spec.md, L0: the pool
     # pretraining file as the model has one-shot rows). L4t names it: the stage that is queued says which
     # (RLVR_LEAN_LADDER_L2_RULE: ladder_l4b_old, ladder_l4b_reward_rows, ladder_l4b_rehearse), and a run with another rule
     # than `old` has the rule in its run directory's name. An arm that states no rule is trained as it always was.
+    # A FOURTH RULE (spec "L4c: the arm from `pre_r64` with a rule L4t2 names"; stage ladder_l4b_reward_rehearse):
+    # `reward_rehearse`, the rows `reward_rows` keeps and as many rows of the pretraining file as that kept set has one-shot
+    # rows. With it or with `rehearse` (the two rules whose sets hold rehearsal rows) the arm trains and measures ONE more
+    # model after its last round, `rehearsal_alone` (from the start model on the last model's rehearsal rows alone), and its
+    # report reads `with` against it beside the primary (domain/ladder_round/l4c.py). Which of the two jobs is queued, or
+    # none, is L4t2's line "the arm's rule"; the setting below stays `old`.
     t010_assembly_pre_r64:
       target_rate: 0.10
       rounds: 6
@@ -592,6 +598,29 @@ ladder_loop:                       # docs/spec/ladder-loop.spec.md, L0: the pool
       temperature_hot: 1.2         # `hot`: the sampling temperature of its two measurements ALONE; sampling.temperature (1.0) is every other step's
       sampling_seeds_hot: [1040, 1041]  # `hot`: the sampling seeds of G's two samplings (32 and 61 attempts), no other measurement's: every
                                    # other one is round.sampling_seed + 100 x a seed + a place up to 33, goal's 100 or base_map's 101
+    # ---- L4t2: two more one-change checks, on what L4t left open (spec "L4t2: two more one-change checks, on what L4t left
+    # open"; stage ladder_l4_rows2_r64: gpu/ladder_l4_rows2.py; rules in domain/ladder_round/l4_rows2.py; report in
+    # reporting/ladder_l4_rows2.py). NO NEW ROUND and no new draw of the rounds' rows: it READS the finished run of L4t from the
+    # start below (ladder_l4_rows_<start>_seed<N>: its two stored training sets, its three measured models' rows) and that start
+    # model's own run, and trains two more models from the start adapter at ITS rank, by L4t's own two step bodies, each
+    # measured as L4t's were. Its checks read loss_share_of_rows, standard_errors_allowed and maximum_share_without_an_answer
+    # above. THE one reader is gpu/ladder_l4_rows2.py, the_settings.
+    rows2:
+      start: pre_r64               # the ONE start it is specified from: a model of rank_check above (`pre` is refused: L4t from it
+                                   # trains no `old_rule`, and the three reads are against this model)
+      models: [rehearse_only, reward_rehearse]      # the two trained models, in the order they are trained and measured (the stage's steps are theirs)
+    # ---- L4p: how much more pretraining? The dose of a second pass (spec "L4p: how much more pretraining? The dose of a second
+    # pass"; stage ladder_l4_dose_r64: gpu/ladder_l4_dose.py; rules in domain/ladder_round/l4_dose.py; report in
+    # reporting/ladder_l4_dose.py). A labelled check of the PRETRAINING: no round and no row of a round. It READS the finished run
+    # of L4t2 from the start below (ladder_l4_rows2_<start>_seed<N>: the stored sets of `rehearse_only` and `reward_rehearse`,
+    # their measured rows) and that start model's own run, and trains three more models from the start adapter at ITS rank, by
+    # L4t's own two step bodies, each on rows of the file the start model was pretrained on, along the hash order L4t's rehearsal
+    # draw uses: FIRST as many rows as `reward_rehearse` has published rows (they are those rows: its control), then the first
+    # half of the order, then every row. Its checks read loss_share_of_rows, standard_errors_allowed and
+    # maximum_share_without_an_answer above. THE one reader is gpu/ladder_l4_dose.py, the_settings.
+    dose:
+      start: pre_r64               # the ONE start it is specified from: the start of rows2 above, whose two models' stored sets and rows are read
+      models: [matched_1262, second_half, second_full]      # the three trained models, in the order they are trained and measured (the stage's steps are theirs)
     # ---- L4b: the arm again, from the larger pretrained model (spec "L4b: the arm again, from the larger pretrained model";
     # stages ladder_l4b_old, ladder_l4b_reward_rows, ladder_l4b_rehearse: gpu/ladder_l4b.py on the L2 stage's arm below; rules in
     # domain/ladder_round/l4b.py; report in reporting/ladder_l4b.py). L4's read with the start model in `pre`'s place, and beside
@@ -601,6 +630,67 @@ ladder_loop:                       # docs/spec/ladder-loop.spec.md, L0: the pool
     again:
       arm: t010_assembly_pre_r64   # the arm of ladder_loop.l2_assembly_arms the stages run (their tasks set RLVR_LEAN_LADDER_L2_ARM to it)
       rank_16_arm: t010_assembly_pre    # the rank-16 arm, whose stored report's figures stand beside when its run of the seed is on the box
+  # ---- L5: do DEEP solves teach what ordinary solves do not? One step-matched check (spec "L5: do DEEP solves teach what ordinary
+  # solves do not?"; stage ladder_l5_deep: gpu/ladder_l5.py; rules in domain/ladder_round/l5.py; report in reporting/ladder_l5.py).
+  # Labelled pretrained on published proofs. A scout: one seed, NO ROUND. It READS the start model's own map
+  # (ladder_l4_map_<start>_seed<l4.pretraining_seed>), L4t2's finished run from the start (as L4p reads it) and the start model's own
+  # run. THE DEEP SEARCH: the start model makes `deep.attempts` more attempts at a seeded draw of the map problems it failed in EVERY
+  # map attempt, the round's episode in every other respect (the settings of `episode` above). Then three models from the start
+  # adapter at ITS rank, by L4t's own two step bodies, each on 2D rows (D: the deep solves, at most `deep.cap`): `published` (the
+  # first 2D rows of the hash order L4t's rehearsal draw uses), `shallow` (D rows of ordinary solves and the first D of that order),
+  # `deep` (the D deep rows and the same D). Its checks read l4's loss_share_of_rows, standard_errors_allowed and
+  # maximum_share_without_an_answer. THE one reader is gpu/ladder_l5.py, the_settings.
+  l5:
+    start: pre_r64                 # the ONE start it is specified from: a model of l4.rank_check, and the start of l4.rows2, whose run is read
+    models: [published, shallow, deep]      # the three trained models, in the order they are trained and measured (the stage's steps are theirs)
+    # ONE SEARCH for every seed (spec "L5, further seeds"): the deep search, the held-aside set and the start model's measurement on it
+    # are made once, by the task of THIS seed (ladder_l5_deep_<start>_seed<search_seed>). A task of another seed is a FURTHER SEED: it
+    # reads that finished run and every stored run it read (L4t2's of this seed among them), runs no search, does not measure the start
+    # model on the held-aside set again, and draws by ITS seed which deep solves and ordinary solves it trains on, which verified
+    # attempt of each, the published rows and each set's order. The two sampling seeds below are this seed's at every seed of the task.
+    search_seed: 0
+    deep:
+      problems: 1000               # the deep search's seeded draw among the map problems the start model failed in all of base_map.episodes attempts
+      attempts: 56                 # more attempts at each (64 with the map's 8): 56,000 in all
+      sampling_place: 50           # its sampling seed: round.sampling_seed + 100 x search_seed + this place (1050). No other sampling
+                                   # has it: the places are 0 to 3, 11 to 16, 20 and 30 to 33; goal's is 100, base_map's 101, l4.rows' hot ones 1040, 1041
+                                   # (A block of the search's episodes holds 18 problems, about as many ATTEMPTS as a round's block: episode.block_problems
+                                   # x round.solvers / attempts, gpu/ladder_l5.py block_of; 64 for the held-aside set's 16 attempts.)
+      # THE HELD-ASIDE SET (the section's amendment: the primary is read on it): the candidates the search's draw did NOT take, a seeded
+      # draw of its own. The start model and the three trained models each make the same fresh attempts at every one.
+      held_aside: 600              # problems (of the 985 candidates the draw leaves at seed 0)
+      held_aside_attempts: 16      # fresh attempts at each, by each of the four models: 38,400 in all
+      held_aside_sampling_place: 51     # ONE sampling seed for the four: round.sampling_seed + 100 x search_seed + this place (1051); no other sampling's
+      cap: 400                     # D is the number of deep solves, at most this many (more: a seeded draw of them)
+      minimum: 150                 # with fewer deep solves no set is built and nothing is trained: the search is then the finding
+    shallow:
+      solved_at_least: 1           # an ORDINARY solve: a map problem the start model solved in this many ...
+      solved_at_most: 3            # ... to this many of its base_map.episodes map attempts
+  # ---- L6: a second round. Does the cycle compound? (spec "L6: a second round. Does the cycle compound?"; stage ladder_l6_cycle:
+  # gpu/ladder_l6.py; rules in domain/ladder_round/l6.py; report in reporting/ladder_l6.py.) Labelled pretrained on published proofs.
+  # One seed. ROUND 1 IS L5's, only read: the finished run of l5.search_seed (its deep search, its held-aside set, the start model's
+  # measurement on it, and M(1), its `deep` model), with every stored run that task read and, when it is on the box, L4p's run for
+  # `second_full`. SEARCH 2: M(1) makes `search.attempts` attempts at every hard problem that is neither one of round 1's solves nor
+  # held aside (what search 1 left unsolved, and the candidates neither draw took). Then four models from the start adapter at ITS
+  # rank, by L4t's own two step bodies, each on 2N rows (N: every deep solve of both rounds, no cap): `published2` (the first 2N rows
+  # of the hash order L4t's rehearsal draw uses), `one_round` (round 1's solves and as many of the first rows as make 2N),
+  # `two_rounds` (the N solves and the first N), `long_ordinary` (N ordinary solves matched to them in length, and the same N). Each
+  # is measured as L5's models are, the held-aside set with l5's attempts and sampling seed. THE one reader is gpu/ladder_l6.py,
+  # the_settings.
+  l6:
+    start: pre_r64                 # the ONE start: l5's (round 1 is L5's run from it), and every model here is trained from it
+    models: [published2, one_round, two_rounds, long_ordinary]      # the four trained models, in the order they are trained and measured (the stage's steps are theirs)
+    # ONE SEARCH 2: it is made by the task of THIS seed (ladder_l6_cycle_<start>_seed<search_seed>), and its sampling seed below is this
+    # seed's, so that a further seed could later read it and sample nothing of it again. A further seed of L6 is NOT BUILT: a task of
+    # another seed is refused by the first step.
+    search_seed: 0
+    search:
+      attempts: 64                 # M(1)'s attempts at each problem of search 2 (55,360 episodes on the 865 problems at seed 0)
+      sampling_place: 52           # its sampling seed: round.sampling_seed + 100 x search_seed + this place (1052); beside l5's 50 and 51, and no other sampling's
+      minimum: 150                 # with fewer round-2 solves no set is built and nothing is trained: the search is then the finding
+    long_ordinary:
+      solved_at_least: 1           # an ORDINARY solve here: a map problem the start model solved in at least this many of its base_map.episodes map attempts
+      line_bins: [1, 2, 4, 8, 16]  # the lower edges of the bins of a proof's lines the ordinary solves are matched to `two_rounds`' own rows by: 1, 2-3, 4-7, 8-15, 16+
 
 evaluation:
   conjecture_holdout_samples: 12

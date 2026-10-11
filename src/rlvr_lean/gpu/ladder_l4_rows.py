@@ -51,6 +51,12 @@ start the run directory carries its name (`ladder_l4_rows_pre_r64_seed<N>`) and:
   hot            `old_rule` and the start model (`ladder_l4_rows_measure_hot_old_rule`, `..._hot_start`)
   beside         the stored `without` and `pre` (rank 16), read when their rows are on the box and pair with this run's
                  problems and seeds; said to be not there otherwise, and nothing is refused for them
+
+TWO STAGES CALL ITS TWO STEP BODIES (spec, "L4t2: two more one-change checks, on what L4t left open"). How a model is
+trained from the start adapter and how it is measured are `train_a_model` and `measure_a_model`, and what a report reads
+of the trained models is `read_the_trained`, each under the names a `Stage` gives: this stage's own (every default), and
+L4t2's (`gpu/ladder_l4_rows2.py`), whose two models are trained and measured by them. Change a body and both stages
+change; this stage writes what it wrote.
 """
 
 from __future__ import annotations
@@ -59,6 +65,7 @@ import json
 import os
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Sequence
 
 from rlvr_lean.domain.ladder_round.assembly import ATTEMPT, training_set
 from rlvr_lean.domain.ladder_round.ceiling import the_training_took
@@ -121,14 +128,15 @@ class Rows:
     models: tuple[str, ...]             # the trained models, in the order they are trained and measured: two from `pre`, three from another start
 
 
-def the_settings(config: dict) -> Rows:
+def the_settings(config: dict, start: str | None = None) -> Rows:
     """THE one place that reads `ladder_loop.l4.rows`. The start is the setting's, or the one the stage names
     (`RLVR_LEAN_LADDER_L4_ROWS_START`); the models are `models` from `pre` and `models_from_another_start` from any
     other. Refused (ValueError): models that are not the stage's for that start (its steps are registered for them:
     change both together); hot sampling seeds that are not two distinct whole numbers; a hot temperature that is not a
-    positive number other than the config's own."""
+    positive number other than the config's own. `start` (L4t2, which reads a finished run of this stage and names
+    whose): the settings as this stage's own task from that start reads them, whatever the variable says."""
     settings = config["ladder_loop"]["l4"]["rows"]
-    start = os.environ.get(START_VARIABLE) or settings["start"]
+    start = start or os.environ.get(START_VARIABLE) or settings["start"]
     named = "models" if start == PRE else "models_from_another_start"
     models, seeds, temperature = tuple(settings[named]), tuple(settings["sampling_seeds_hot"]), settings["temperature_hot"]
     if models != models_of(start):
@@ -169,10 +177,41 @@ def pre_directory(config: dict) -> Path:
     return _runs(config) / ladder_l2.pretraining_run(config)
 
 
+@dataclass(frozen=True)
+class Stage:
+    """A stage whose models are trained FROM a stored start adapter and measured as L4t's are, as the two step bodies
+    (`train_a_model`, `measure_a_model`) and the report's reading of them (`read_the_trained`) name what is its own.
+    Every default is L4t's; L4t2 gives its own (`gpu/ladder_l4_rows2.py`). Change a body and both stages change."""
+    name: str = STAGE                                                   # the stage, as `runner.entry` names it: in a refusal, and in the name a model server gives an adapter
+    steps: str = STAGE                                                  # what its steps' markers begin with
+    files: str = L4T                                                    # what its own files are called
+    reader: str = "L4t"                                                 # who speaks, in a printed line and a refusal
+    start_said_by: str = f"{SETTING}.start (or {START_VARIABLE})"       # the setting that names its start model, for a refusal
+
+    @property
+    def prepare(self) -> str:
+        return f"{self.steps}_prepare"
+
+    def train_marker(self, model: str) -> str:
+        return f"{self.steps}_train_{model}"
+
+    def measure_marker(self, model: str) -> str:
+        return f"{self.steps}_measure_{model}"
+
+    def training_file(self, model: str) -> str:
+        return f"{self.files}_training_{model}.jsonl"
+
+    def loss_file(self, model: str) -> str:
+        return f"{self.files}_loss_{model}.json"
+
+
+THE_STAGE = Stage()
+
+
 def the_start(config: dict, rows: Rows) -> Start:
     """The start model the settings name, and where it lives (`ladder_l4_start.the_start`: `pre` in the ONE pretraining's run,
     a model of the check of the adapter's rank in that check's run). A name that is neither is refused (RuntimeError)."""
-    return ladder_l4_start.the_start(config, rows.start, f"{SETTING}.start (or {START_VARIABLE})")
+    return ladder_l4_start.the_start(config, rows.start, THE_STAGE.start_said_by)
 
 
 def start_adapter(config: dict, rows: Rows) -> Path:
@@ -206,19 +245,19 @@ def minimum_rows() -> int:
 
 
 def training_file(model: str) -> str:
-    return f"{L4T}_training_{model}.jsonl"
+    return THE_STAGE.training_file(model)
 
 
 def loss_file(model: str) -> str:
-    return f"{L4T}_loss_{model}.json"
+    return THE_STAGE.loss_file(model)
 
 
 def train_marker(model: str) -> str:
-    return f"{STAGE}_train_{model}"
+    return THE_STAGE.train_marker(model)
 
 
 def measure_marker(model: str) -> str:
-    return f"{STAGE}_measure_{model}"
+    return THE_STAGE.measure_marker(model)
 
 
 def hot_name(who: str) -> str:
@@ -515,30 +554,30 @@ def ladder_l4_rows_prepare(config: dict) -> dict:
 
 
 # --------------------------------------------------------------------------------------------------- train
-def ladder_l4_rows_train(config: dict, model: str) -> dict:
+def train_a_model(config: dict, store: ArtifactStore, model: str, start_model: str, run: str, one: Stage = THE_STAGE) -> dict:
     """One trained model: from the start adapter, one pass over its stored training set in its order, the arm's recipe
     (`one_pass(start=...)`, as the arm's twin is trained). The adapter is kept under `adapters/<model>`. From another
     start than `pre` the adapter attached has the START ADAPTER's rank and alpha (`config_from`), and the one saved is
-    read back and held to them before the step is marked done (`the_adapter_saved`)."""
-    rows = the_settings(config)
-    store, marker = _store(config, rows), train_marker(model)
-    _of_this_start(rows, marker)
+    read back and held to them before the step is marked done (`the_adapter_saved`). `store`: the stage's run.
+    `start_model`: the model it is trained from, by its name. `run`: the run's name, for the training's own
+    TensorBoard run. `one`: the stage, as it names its steps and files."""
+    marker = one.train_marker(model)
     if store.is_done(marker):
         return store.done_summary(marker)
-    _need(store, PREPARE, f"the training of `{model}`", STAGE)
-    prepared, seed, batch = store.done_summary(PREPARE), training_seed(config), config["training"]["effective_batch"]
-    of_the_start = the_start(config, rows)
+    _need(store, one.prepare, f"the training of `{model}`", one.name)
+    prepared, seed, batch = store.done_summary(one.prepare), training_seed(config), config["training"]["effective_batch"]
+    of_the_start = ladder_l4_start.the_start(config, start_model, one.start_said_by)
     start = of_the_start.adapter
     if not ladder_ceiling._stand_in() and not start.is_dir():
-        raise RuntimeError(f"{start} is not there: the adapter `{rows.start}` is what `{model}` is trained from. Nothing was trained")
-    set_rows = store.read_rows(training_file(model))
+        raise RuntimeError(f"{start} is not there: the adapter `{start_model}` is what `{model}` is trained from. Nothing was trained")
+    set_rows = store.read_rows(one.training_file(model))
     examples, steps = ladder_l4_start.examples_of(set_rows, prepared["pretraining_file_sha256"]), -(-len(set_rows) // batch)
-    _say(f"L4t: training `{model}` from the stored adapter `{rows.start}` on {len(set_rows):,} rows in "
+    _say(f"{one.reader}: training `{model}` from the stored adapter `{start_model}` on {len(set_rows):,} rows in "
          + ("the twin's order" if model == OLD_RULE else "the content-hash order") + f", {steps:,} optimizer steps")
     result, step_rows, row_losses, positions = one_pass(config_from(config, prepared, of_the_start), examples, {model: steps}, seed, batch, store.root / ladder_assembly.ADAPTERS,
-                                                        f"{run_name(rows, seed)}_{model}", positions=True, start=start)
+                                                        f"{run}_{model}", positions=True, start=start)
     result.pop("checkpoints")
-    _write_json(store, loss_file(model), {
+    _write_json(store, one.loss_file(model), {
         "stage": L4, "label": LABEL, "model": model, "seed": seed, "stand_in_engine": _stand_in(), "rows": len(row_losses), "steps": result["steps"], "effective_batch": batch,
         "what": "row_losses: each training row's mean loss per target token, in the order trained, read BEFORE the update of the optimizer step it was in. "
                 "rows_trained: the id of the row each of those losses is of, from the positions the training loop recorded step by step",
@@ -558,22 +597,36 @@ def ladder_l4_rows_train(config: dict, model: str) -> dict:
     return summary
 
 
-# ------------------------------------------------------------------------------------------------- measure
-def ladder_l4_rows_measure(config: dict, model: str) -> dict:
-    """One trained model as `with` was measured (`measure_model`): the rungs and G's samplings, with the sampling
-    seeds `pre`'s run recorded, at the config's own temperature. From another start than `pre` the model server is
-    started with the start adapter's rank as its largest (`config_from`: this stage's measure steps alone)."""
+def ladder_l4_rows_train(config: dict, model: str) -> dict:
+    """One of this stage's trained models (`train_a_model`), from the start the settings name."""
     rows = the_settings(config)
     store = _store(config, rows)
-    _of_this_start(rows, measure_marker(model))
-    _need(store, PREPARE, f"the measurement of L4t's model `{model}`", STAGE)
-    prepared = store.done_summary(PREPARE)
-    return measure_model(config_from(config, prepared, the_start(config, rows), serving=True), store, prepared, Model(
-        name=model, called=f"L4t's model `{model}`", whose=f"L4t's model `{model}`", marker=measure_marker(model), trained_by=train_marker(model),
+    _of_this_start(rows, train_marker(model))
+    return train_a_model(config, store, model, rows.start, run_name(rows, training_seed(config)))
+
+
+# ------------------------------------------------------------------------------------------------- measure
+def measure_a_model(config: dict, store: ArtifactStore, model: str, start_model: str, one: Stage = THE_STAGE) -> dict:
+    """One trained model as `with` was measured (`measure_model`): the rungs and G's samplings, with the sampling
+    seeds `pre`'s run recorded, at the config's own temperature. From another start than `pre` the model server is
+    started with the start adapter's rank as its largest (`config_from`: this stage's measure steps alone). `store`,
+    `start_model`, `one`: as `train_a_model`'s."""
+    _need(store, one.prepare, f"the measurement of {one.reader}'s model `{model}`", one.name)
+    prepared = store.done_summary(one.prepare)
+    return measure_model(config_from(config, prepared, ladder_l4_start.the_start(config, start_model, one.start_said_by), serving=True), store, prepared, Model(
+        name=model, called=f"{one.reader}'s model `{model}`", whose=f"{one.reader}'s model `{model}`", marker=one.measure_marker(model), trained_by=one.train_marker(model),
         adapter=store.root / ladder_assembly.ADAPTERS / model,
         no_adapter=f"the adapter `{model}` is kept by this stage, and one trained again would not be the model its other measurements came from. The measurement cannot be made",
         detail=f"{prepared['training_sets'][model]['rows']:,} rows, from `{prepared['start']}`", summary={"stage": L4, "label": LABEL, "model": model},
-        stage=STAGE, label=L4, also=what_else_a_model_wrote))
+        stage=one.name, label=L4, also=what_else_a_model_wrote))
+
+
+def ladder_l4_rows_measure(config: dict, model: str) -> dict:
+    """One of this stage's trained models (`measure_a_model`), from the start the settings name."""
+    rows = the_settings(config)
+    store = _store(config, rows)
+    _of_this_start(rows, measure_marker(model))
+    return measure_a_model(config, store, model, rows.start)
 
 
 def ladder_l4_rows_measure_hot(config: dict, who: str) -> dict:
@@ -602,6 +655,23 @@ def ladder_l4_rows_measure_hot(config: dict, who: str) -> dict:
 
 
 # -------------------------------------------------------------------------------------------------- report
+def read_the_trained(store: ArtifactStore, prepared: dict, models: Sequence[str], one: Stage = THE_STAGE) -> tuple[dict, dict, dict, dict]:
+    """The trained models of a run as its report reads them, each by its name: (its rows on the rungs and on G with
+    what it wrote, its training step's summary, its rows' losses in the order trained, the rows it was trained on).
+    What a model WAS trained on is the training loop's own record of row ids, read back to the stored set's rows
+    (never their text)."""
+    read, trains, losses, trained = {}, {}, {}, {}
+    for model in models:
+        measured = store.done_summary(one.measure_marker(model))
+        read[model] = {**ladder_l4._read(store, prepared, L4, model, measured), "stand_in_engine": measured["stand_in_engine"]}
+        trains[model] = store.done_summary(one.train_marker(model))
+        stored_loss = json.loads(store.path(one.loss_file(model)).read_text())
+        losses[model] = stored_loss["row_losses"]
+        by_id = {row["id"]: row for row in store.read_rows(one.training_file(model))}
+        trained[model] = [{key: by_id[row_id].get(key) for key in ("id", "problem_id", "origin", "k", "lines")} for row_id in stored_loss["rows_trained"]]
+    return read, trains, losses, trained
+
+
 def ladder_l4_rows_report(config: dict) -> dict:
     from rlvr_lean.gpu.ladder_l3c import proof_lengths
     from rlvr_lean.reporting.ladder_l4_rows import build_rows_report
@@ -621,16 +691,7 @@ def ladder_l4_rows_report(config: dict) -> dict:
     if not from_pre and (prepared.get("rank_16") or {}).get("read"):
         rank_16 = {who: {GOAL: [store.read_rows(stored_file(who, sampling["name"], L4)) for sampling in samplings], **{key: of_the_stored[who][key] for key in WROTE}}
                    for who in (PRE, WITHOUT)}
-    models, trains, losses, trained = {}, {}, {}, {}
-    for model in rows.models:
-        measured = store.done_summary(measure_marker(model))
-        models[model] = {**ladder_l4._read(store, prepared, L4, model, measured), "stand_in_engine": measured["stand_in_engine"]}
-        trains[model] = store.done_summary(train_marker(model))
-        stored_loss = json.loads(store.path(loss_file(model)).read_text())
-        losses[model] = stored_loss["row_losses"]
-        # What a model WAS trained on is the training loop's own record of row ids, read back to the stored set's rows (never their text).
-        by_id = {row["id"]: row for row in store.read_rows(training_file(model))}
-        trained[model] = [{key: by_id[row_id].get(key) for key in ("id", "problem_id", "origin", "k", "lines")} for row_id in stored_loss["rows_trained"]]
+    models, trains, losses, trained = read_the_trained(store, prepared, rows.models)
     hot = {}
     for step, who in sampled_again:
         measured = store.done_summary(measure_marker(hot_name(step)))
