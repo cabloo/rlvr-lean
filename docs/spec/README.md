@@ -27,7 +27,9 @@ or a question came from the owner, and they keep the corrections that later runs
 | [`ladder-l4t2-RESULT.md`](ladder-l4t2-RESULT.md) | Two more one-change checks on the stored rounds, from the larger pretrained model, one seed; corrected 2026-10-11: one training against one, "the gain is a second pass over the published proofs" is not established |
 | [`ladder-l4p-RESULT.md`](ladder-l4p-RESULT.md) | How much more pretraining? Part 1, the matched control: the model's own proofs of hard problems are not separated from the same published proofs alone. Part 2, the dose of a second pass: inconclusive by its own check; one seed; corrected 2026-10-11: one training against one, "a whole second pass is the best model" is not established, and the note's estimate of the spread between two trainings (about 6 per 1,000 and 5 goal problems) was several times too small |
 | [`ladder-l4c-RESULT.md`](ladder-l4c-RESULT.md) | Six fresh rounds from the larger pretrained model with a control trained on the same published rows alone: the gain is not shown to be the rounds'; not a verdict on the idea, one seed; corrected 2026-10-11: one training against one, that the model's own proofs narrow it is not established, and neither is the contrary |
-| [`ladder-l5-RESULT.md`](ladder-l5-RESULT.md) | Do deep solves teach what ordinary solves do not? Seed 0: not separated at this size on the held-aside problems; corrected 2026-10-11: seed 0's lead on the goal set did not repeat at seed 1, and two trainings of one kind differ by up to 24 per 1,000 and 45 goal problems; the read over three seeds follows when the third is in |
+| [`ladder-l5-RESULT.md`](ladder-l5-RESULT.md) | Do deep solves teach what ordinary solves do not? Three seeds: not shown on the held-aside problems, and depth not shown to matter; on the goal set the models trained on the model's own proofs beside published ones were above the model trained on published proofs alone at three seeds of three, found on those seeds and not yet confirmed; corrected 2026-10-11: what did not repeat from seed 0 is the deep-solves model ahead of the ordinary-solves one |
+| [`ladder-l5n-RESULT.md`](ladder-l5n-RESULT.md) | What is one training worth? One fixed set of 800 published proofs in four orders: a standard deviation of 5.0 successes per 1,000 attempts from the order alone, 15.2 between three draws of 800 proofs; a falling learning rate not shown to lower it; the average of four adapters gives at least their mean |
+| [`ladder-cycle.spec.md`](ladder-cycle.spec.md) | The deep-search cycle at full size (L7 in the loop's numbering): a spec that is PROPOSED, not approved and not built |
 | [`phase-a-RESULT.md`](phase-a-RESULT.md) | The first experiment: one round on self-written conjectures |
 | [`phase-b-selection-RESULT.md`](phase-b-selection-RESULT.md) | Selection by a learning-progress score against a random draw, and its correction |
 | [`native-format-RESULT.md`](native-format-RESULT.md) | The missing-token defect: does the gain survive the fix |
@@ -36,6 +38,7 @@ or a question came from the owner, and they keep the corrections that later runs
 
 Not included: the first experiment's spec and the notes on installing the Lean servers, which mostly describe
 the machines the project ran on. Where a note cites "the first experiment's spec", that is the document meant.
+Nor is the note of the challenger test that `ladder-cycle.spec.md` cites.
 Nor is any training text made of other people's published proofs (the ceiling's file and the pretraining
 file): the notes name those files, and the tool that builds them from the pool is in `src/rlvr_lean/tools/`.
 Run names such as `ladder_l2_seed0_r1`, short task ids and commit hashes refer to the private working

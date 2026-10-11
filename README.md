@@ -23,23 +23,33 @@ Started from a model pretrained on such proofs, nothing is established yet, in e
 earlier version of this page said more than that. The stages run there each compared single trained models,
 and their intervals were over problems, with one training a model: they say nothing of what another training
 of the same kind would give. That was a mistake in the reads, not in the runs. It showed when the test of
-hard-won solves was run at a second seed, which reversed the first seed's order. On all goal problems, a
-model trained on published proofs alone has 103.1 successes per 1,000 attempts at seed 0 and 79.5 at seed 1
-(262 and 217 goal problems solved; the pretrained model it starts from has 80.0, and 245 solved). Trained on
-ordinary solves beside published proofs it has 104.5 and 110.0 (257 and 261), and on solves that took a
-deeper search 112.5 and 97.2 (275 and 250). The test fixed before the run (on 600 held-aside problems, the
-model trained on deep solves minus the one trained on published proofs alone) shows no difference at either
-seed: +0.0006 and +0.0007 successes per attempt. Two trainings of one kind differ by up to 24 per 1,000 and
-45 goal problems, where an earlier note had estimated 6 and 5.
+hard-won solves was run at further seeds, and the same kind of model did not give the same figure twice. On
+all goal problems, a model trained on published proofs alone has 103.1, 79.5 and 78.5 successes per 1,000
+attempts at seeds 0, 1 and 2 (262, 217 and 229 goal problems solved; the pretrained model it starts from has
+80.0, and 245 solved). Trained on ordinary solves beside published proofs it has 104.5, 110.0 and 95.0 (257,
+261 and 249), and on solves that took a deeper search 112.5, 97.2 and 101.5 (275, 250 and 262). Between the
+first two seeds alone, two trainings of one kind differ by up to 24 per 1,000 and 45 goal problems, where an
+earlier note had estimated 6 and 5.
 
 So these are not established, in either direction: that the adapter's size capped the pretrained model, that
 the old training rule narrows it, that a gain was a second pass over published proofs, that the model's own
 proofs narrow it while the published proofs do the adding, that a whole second pass is the best
-pretraining-only model, and seed 0's lead of the model trained on deep solves. Their figures stand as
-measured. What still stands: the three-seed results from the base model, and the ceiling (59 to 245 goal
-problems), which is far outside this spread. A third seed is running. A stage that measures the spread on
-fixed rows, and tests whether a learning rate that decays to zero or an average of adapters lowers it, is
-specified and built and has not been run; the second round is built and smoke-tested, and waits for it.
+pretraining-only model, and seed 0's lead of the model trained on deep solves over the one trained on
+ordinary solves. Their figures stand as measured. What still stands: the three-seed results from the base
+model, and the ceiling (59 to 245 goal problems), which is far outside this spread.
+
+At three seeds, the test fixed before the run shows nothing (+0.0015 successes per attempt [−0.0029,
++0.0057] on 600 held-aside problems, the model trained on deep solves minus the one trained on published
+proofs alone), and solves from a deeper search are not shown to teach more than ordinary ones. On the goal
+set the models trained on the model's own proofs beside published ones were above the model trained on
+published proofs alone at three seeds of three (for the deep solves about +16.7 per 1,000 attempts on
+average, p = 0.05 over trainings). That was found on those seeds, so it is not yet confirmed. A stage that
+measures what one training is worth has run since: the order of the rows alone moves a trained model by a
+standard deviation of 5.0 per 1,000, and the average of four adapters gives at least the mean of the four,
+so later stages train each model four times and measure the averaged adapter. The comparison on fresh
+seeds, trained that way, is specified and built and has not been run. Until it reads, nothing from the
+pretrained model is established in either direction. The second round is built and smoke-tested, and waits
+for it.
 
 The repository contains the loop and the full record of results, including the ones that came out negative.
 The distributed Lean checking pool built to feed it is a project of its own, [lean-pool](https://github.com/cabloo/lean-pool).
@@ -65,16 +75,17 @@ The distributed Lean checking pool built to feed it is a project of its own, [le
 | Assembly in the round (one seed) | Does training on the proofs the episode assembles reach the problems that need longer proofs? | **Not shown**, with the power to have seen it: −0.00019 successes per attempt [−0.00122, +0.00061] against a twin trained without them. Once minimised, the assembled proofs are as short as the model's own (`ladder-l3d2-RESULT.md`) |
 | The loop from a pretrained model† (one seed; labelled **pretrained on published proofs**) | Does the loop add anything on top of a model pretrained on published proofs? | **Not shown on top of pretraining**, and that read stays. On the 210 goal problems the pretrained model could not solve: +0.0012 successes per attempt [−0.0022, +0.0058]. As measured, the six-round model has +17% successes per attempt on the goal set and 227 distinct goal problems solved against 238. That was read as "more reliable and narrower", which is one training against one and not established (`ladder-l4-RESULT.md`) |
 | The adapter's size†, a labelled check of the pretraining (one seed) | Is the pretrained model capped by the size of its adapter? | **Not established.** As measured, the same pretraining at rank 64 in the place of 16: +0.0133 successes per attempt on the goal set [+0.0077, +0.0192] (80.0 against 66.7 per 1,000), 107 goal problems solved reliably against 94; 3.9 points worse on the easy rung. That was read as "the adapter's size capped the pretrained model"; it is one pretraining against one, and the spread of a pretraining pass is not measured (`ladder-l4r-RESULT.md`) |
-| Training rules on the stored rounds†, from the rank-64 pretrained model (one seed) | What should a round train on? | **Not established.** As measured, with the old rule: 217 goal problems solved against 245 (gained 25, lost 53), nothing gained per attempt; with reward-weighted rows 241 and with rows mixed with published proofs 234, without a clear gain per attempt on all goal problems. That was read as "the old rule narrows at rank 64 too" and as the other two rules giving the breadth back; a model trained on published proofs alone, with no proof of the model's own, also solves 217 at seed 1 of the last row's test (`ladder-l4t-RESULT.md`) |
+| Training rules on the stored rounds†, from the rank-64 pretrained model (one seed) | What should a round train on? | **Not established.** As measured, with the old rule: 217 goal problems solved against 245 (gained 25, lost 53), nothing gained per attempt; with reward-weighted rows 241 and with rows mixed with published proofs 234, without a clear gain per attempt on all goal problems. That was read as "the old rule narrows at rank 64 too" and as the other two rules giving the breadth back; a model trained on published proofs alone, with no proof of the model's own, also solves 217 at seed 1 of the test of hard-won solves (`ladder-l4t-RESULT.md`) |
 | Two more one-change checks on the stored rounds†, from the rank-64 pretrained model (one seed) | Was the gain of training on own proofs mixed with published ones the loop's? | **Not established.** As measured, the published rows alone have 16.2 successes per 1,000 on the pretrained model's failures against the mix's 15.7 (8.4 for the pretrained model) and 252 goal problems solved against 234, 124 reliably; reward-weighted rows with published rows beside them are +0.0104 [+0.0014, +0.0194] per attempt above the pretrained model on all goal problems. That was read as "the gain is a second pass over the published proofs"; each of these is one training against one (`ladder-l4t2-RESULT.md`) |
 | Six fresh rounds† from the rank-64 pretrained model, with a control trained on the same published rows alone (one seed) | Is the six-round model's gain the rounds'? | **The gain is not shown to be the rounds'. That the model's own proofs narrow it is not established, and neither is the contrary.** As measured, against the pretrained model the six-round model has 13.2 successes per 1,000 on its failures against 8.4 (+0.0048 [+0.0006, +0.0097]); against the control, 13.2 against 19.3 (−0.0062 [−0.0110, −0.0017]), 229 goal problems solved against 258 (gained 19, lost 48, p = 0.001 over problems), 120 solved reliably against 135. These are two single trainings, 29 goal problems apart, where two trainings on published proofs alone are 45 apart. Nor is it a verdict on the idea: the run's budget is a small fraction of the reference's (`ladder-l4c-RESULT.md`) |
 | The dose of a second pass†, a labelled check of the pretraining (one seed) | Do the model's own proofs of hard problems add to the same published proofs alone? How much does more pretraining give? | Part 1: **not separated**: 19.1 successes per 1,000 on the pretrained model's failures against 20.2 for the published rows alone (−0.0011 [−0.0071, +0.0049]); 247 goal problems solved against 264, one training against one. Part 2: **inconclusive by its own check**; as measured outside it, a whole second pass over the published proofs has 108.9 successes per 1,000 against 80.0, 267 goal problems solved against 245, 139 reliably against 107. Which dose is best is one training a dose and not established. The note's own estimate of the spread between two trainings (about 6 per 1,000 and 5 goal problems, from four models of four different doses) was several times too small (`ladder-l4p-RESULT.md`) |
-| Hard-won solves† (two seeds; **a third seed is running, no verdict yet**) | Do solves that took a deeper search teach what the same number of published proofs does not? | **No difference shown at either seed** on the test fixed before the run (600 held-aside hard problems, the model trained on deep solves minus the one trained on published proofs alone): +0.0006 and +0.0007 successes per attempt. On all goal problems **the second seed reversed the first seed's order.** Successes per 1,000 attempts at seed 0 and seed 1 (goal problems solved): published proofs alone 103.1 and 79.5 (262 and 217; the pretrained model they start from has 80.0, and 245), ordinary solves 104.5 and 110.0 (257 and 261), deep solves 112.5 and 97.2 (275 and 250). Seed 0's lead of the deep-solves model did not repeat (`ladder-l5-RESULT.md`) |
+| Hard-won solves (three seeds, from the pretrained model) | Do solves that took a deeper search teach what the same number of published proofs does not? | **Not shown at three seeds** on the test fixed before the run (600 held-aside hard problems, the model trained on deep solves minus the one trained on published proofs alone): +0.0015 successes per attempt [−0.0029, +0.0057]. **Depth is not shown to matter:** the models trained on deep solves and on ordinary solves are level on every set. On the goal set the models trained on the model's own proofs beside published ones were above the model trained on published proofs alone at three seeds of three (for the deep solves +16.7 successes per 1,000 attempts on average over trainings, p = 0.05). That was found on those seeds, so it is not yet confirmed. Successes per 1,000 attempts at seeds 0, 1 and 2 (goal problems solved): published proofs alone 103.1, 79.5 and 78.5 (262, 217 and 229; the pretrained model they start from has 80.0, and 245), ordinary solves 104.5, 110.0 and 95.0 (257, 261 and 249), deep solves 112.5, 97.2 and 101.5 (275, 250 and 262). What did not repeat from seed 0 is the deep-solves model ahead of the ordinary-solves one (`ladder-l5-RESULT.md`) |
+| What one training is worth, a check of the training and not of the loop (one fixed set of rows, from the pretrained model) | How far does a trained model move when only the order of its rows changes, and does a falling learning rate or an average of adapters lower that? | One fixed set of 800 published proofs trained in four orders: a standard deviation of 5.0 successes per 1,000 attempts, where the sampling noise of one figure is 2.3. Three draws of 800 proofs had a standard deviation of 15.2; two of them were trained in one order only, so for those two the draw and the order are not told apart. A learning rate that falls to zero is **not shown** to lower the spread (5.6). The average of four adapters gives at least the mean of its four (110.0 against 106.0). By the rule fixed before the run, later stages train each model four times and measure the averaged adapter (`ladder-l5n-RESULT.md`) |
 
 † A row marked so compares single trained models: its figures are kept as measured, its intervals are over
 problems with one training a model, and beside the spread between two trainings of one kind (up to 24
-successes per 1,000 attempts and 45 goal problems, measured in the last row) its differences do not stand as
-effects, in either direction
+successes per 1,000 attempts and 45 goal problems between the first two seeds of the test of hard-won
+solves) its differences do not stand as effects, in either direction
 ([the correction](#a-correction-the-checks-from-the-pretrained-model-compared-single-trainings)).
 
 Every stage was run from a written spec whose pass, fail and void conditions were committed before the run.
@@ -367,22 +378,24 @@ established, in either direction. Each check compared single trained models, and
 over problems, with one training a model: it says nothing of what another training of the same kind would
 give. The mistake was in the reads, not in the runs, and the figures stand as measured.
 
-It showed when the last test here was run at a second seed (another draw of the training rows and of their
-order; nothing else changes), and the second seed reversed the first seed's order:
+It showed when the test of hard-won solves, below, was run at a second seed (another draw of the training
+rows and of their order; nothing else changes), and the same kind of model did not give the same figure
+twice. The three seeds run since:
 
-| On all goal problems: successes per 1,000 attempts (goal problems solved) | Seed 0 | Seed 1 |
-|---|---|---|
-| Trained on 800 published proofs | 103.1 (262) | 79.5 (217) |
-| Trained on 400 ordinary solves and 400 published proofs | 104.5 (257) | 110.0 (261) |
-| Trained on 400 deep solves and the same 400 published proofs | 112.5 (275) | 97.2 (250) |
+| On all goal problems: successes per 1,000 attempts (goal problems solved) | Seed 0 | Seed 1 | Seed 2 |
+|---|---|---|---|
+| Trained on 800 published proofs | 103.1 (262) | 79.5 (217) | 78.5 (229) |
+| Trained on 400 ordinary solves and 400 published proofs | 104.5 (257) | 110.0 (261) | 95.0 (249) |
+| Trained on 400 deep solves and the same 400 published proofs | 112.5 (275) | 97.2 (250) | 101.5 (262) |
 
-The pretrained model they all start from has 80.0 (245): at seed 1 the model trained on published proofs
-alone solves fewer goal problems than the model it starts from. Two trainings of one kind differ by up to
-24 per 1,000 and 45 goal problems, where an earlier note had put the spread at about 6 and 5, from four
-models of four different doses. So none of these is established, in either direction: "the adapter's
-size capped the pretrained model", "the old training rule narrows", "the gain was a second pass over
-published proofs", "the model's own proofs narrow it and the published proofs do the adding", "a whole
-second pass is the best pretraining-only model", and seed 0's lead of the model trained on deep solves.
+The pretrained model they all start from has 80.0 (245): at seeds 1 and 2 the model trained on published
+proofs alone solves fewer goal problems than the model it starts from. Between the first two seeds alone,
+two trainings of one kind differ by up to 24 per 1,000 and 45 goal problems, where an earlier note had put
+the spread at about 6 and 5, from four models of four different doses. So none of these is established, in
+either direction: "the adapter's size capped the pretrained model", "the old training rule narrows", "the
+gain was a second pass over published proofs", "the model's own proofs narrow it and the published proofs do
+the adding", "a whole second pass is the best pretraining-only model", and seed 0's lead of the model
+trained on deep solves over the one trained on ordinary solves.
 Each of the seven notes now opens with this correction. What still stands: the three-seed results from the
 base model, and the ceiling (59 to 245 goal problems), which is far outside this spread.
 
@@ -415,30 +428,48 @@ base model, and the ceiling (59 to 245 goal problems), which is far outside this
   not established. The note had put the spread between two trainings of one kind at about 6 per 1,000 and
   5 goal problems; measured since on two trainings of one kind, it is up to 24 and 45
   ([`ladder-l4p-RESULT.md`](docs/spec/ladder-l4p-RESULT.md)).
-- **Hard-won solves, at two seeds: no difference shown on the test fixed before the run, and no order on
-  the goal set that repeats.** The pretrained model made 56 more attempts at 1,000 pool problems it had
-  failed 8 of 8 and solved 520. Three models were trained at equal steps: on 800 published proofs (the
-  bar), on 400 ordinary solves and 400 published proofs, and on 400 of the deep solves and the same 400
-  published proofs. On 600 held-aside hard problems, the test fixed before the run, the model trained on
-  deep solves minus the bar is +0.0006 successes per attempt at seed 0 ([−0.0060, +0.0073]; 51.5 per 1,000
-  against 50.8) and +0.0007 at seed 1: no difference shown at either. On the goal set the figures are the
-  table's above. Seed 0's lead of the model trained on deep solves, and its one sign of reach (the long
-  problems solved at least once, 36 against 25), did not repeat: at seed 1 the model trained on ordinary
-  solves is the best model on every read. A third seed is running, its reads fixed before it ran, and
-  there is no verdict yet ([`ladder-l5-RESULT.md`](docs/spec/ladder-l5-RESULT.md)).
-- **What one training is worth** (L5n in the spec) is specified and built, and has not been run. One fixed
-  set of rows, the 800 published proofs that seed 0's model of the table's first row was trained on, is
-  trained from the pretrained model in four orders, each order twice: with the recipe as it is (a constant
-  learning rate after the warm-up) and with one change (after the warm-up the learning rate falls linearly
-  to zero). Each recipe's four adapters are also averaged into one more model. Ten models, each measured
-  on the goal set at 32 attempts a problem. The reads, fixed before any run: how large the spread is with
-  the rows fixed and whether the order alone makes it, whether the decay lowers it and at what level, and
-  whether an averaged adapter gives at least the mean of its models
-  ([`ladder-loop.spec.md`](docs/spec/ladder-loop.spec.md), L5n).
+- **Hard-won solves, at three seeds: not shown on the test fixed before the run, and depth not shown to
+  matter.** The pretrained model made 56 more attempts at 1,000 pool problems it had failed 8 of 8 and
+  solved 520. Three models were trained at equal steps: on 800 published proofs (the bar), on 400 ordinary
+  solves and 400 published proofs, and on 400 of the deep solves and the same 400 published proofs. On 600
+  held-aside hard problems, the test fixed before the run, the model trained on deep solves minus the bar
+  is +0.0015 successes per attempt over the three seeds [−0.0029, +0.0057] (+0.0006, +0.0007 and +0.0030
+  at the seeds): not shown. The models trained on deep solves and on ordinary solves are level on every
+  set (103.7 and 103.2 per 1,000 on the goal set), so depth is not shown to matter. What did not repeat
+  from seed 0 is the deep-solves model ahead of the ordinary-solves one. On the goal set, both models
+  trained on the model's own proofs beside published ones were above the bar at three seeds of three: read
+  over trainings, +16.7 successes per 1,000 attempts for the deep solves (p = 0.05) and +16.1 for the
+  ordinary ones (p = 0.19). The rule fixed for the two further seeds reads the deep-solves model's lead as
+  confirmed on them (+0.0203 per attempt [+0.0144, +0.0266]), but its interval is over problems. The lead
+  was found on these seeds, and the bar is the noisy arm (at two seeds of three it gains nothing over the
+  pretrained model), so it is not yet confirmed. The bar is also a second pass over proofs the pretrained
+  model has trained on, where the model's own proofs are of problems it has not
+  ([`ladder-l5-RESULT.md`](docs/spec/ladder-l5-RESULT.md)).
+- **What one training is worth** (L5n in the spec). One fixed set of rows, the 800 published proofs that
+  seed 0's model of the table's first row was trained on, was trained from the pretrained model in four
+  orders, each order twice: with the recipe as it is (a constant learning rate after the warm-up) and with
+  one change (after the warm-up the learning rate falls linearly to zero). Each recipe's four adapters were
+  also averaged into one more model. Ten models, each measured on the goal set at 32 attempts a problem.
+  With the recipe as it is, the four orders give 112.3, 107.9, 102.2 and 101.7 successes per 1,000
+  attempts: a standard deviation of 5.0, where the sampling noise of one figure is 2.3. So the order of the
+  rows alone moves a trained model by about 5 per 1,000. Three draws of 800 published proofs (103.8, 78.6
+  and 76.5 on the same 32 attempts) had a standard deviation of 15.2. The two weak draws were each trained
+  in one order only, so whether they are weak by their proofs or by that order is not told apart. The
+  falling learning rate is not shown to lower the spread (5.6 against 5.0; four orders against four could
+  only have seen a spread cut to a third). The average of four adapters gives at least the mean of its
+  four: 110.0 against 106.0, and 107.4 against 104.2 with the falling rate. By the rule fixed before the
+  run, later stages train each model four times and measure the averaged adapter
+  ([`ladder-l5n-RESULT.md`](docs/spec/ladder-l5n-RESULT.md)).
+- **The three kinds again, on fresh seeds** (L5d in the spec) is specified and built, and has not been run.
+  Three new seeds of the comparison above, each model trained in four orders and its averaged adapter
+  measured on the goal set at 32 attempts a problem. The read is fixed before any of them runs: the mean of
+  the two models trained on the model's own proofs, minus the model trained on published proofs alone, with
+  its interval over seeds. Until it reads, nothing from the pretrained model is established in either
+  direction ([`ladder-loop.spec.md`](docs/spec/ladder-loop.spec.md), L5d).
 - **A second round** (L6 in the spec: the model trained on the first round's deep solves searches again, and
   two rounds are read against published proofs at equal steps) is built and smoke-tested. Its real run
-  waits for the stage above: with one training a model, as it is specified, it cannot resolve a difference
-  under about 25 per 1,000 beside this spread.
+  waits for the comparison on fresh seeds, which gives the spread of each kind over fresh draws: with one
+  training a model, as it is specified, it cannot resolve a difference under about 25 per 1,000.
 
 ### A defect worth describing
 
@@ -473,7 +504,7 @@ certificates, recovered with a 29-entry rename table taken from Mathlib's own de
   an FP8 export and LoRA adapters for sampling at about 2,500 tokens per second.
 - **Statistics.** Paired by problem, bootstrap over problems, sign tests for solved/unsolved flips, one seed
   as a scout and three to conclude, and a distinction kept between a run that failed and an idea that failed.
-- **Tests.** About 1,100 tests for the loop (the pool's 1,100 are in its own repository). The model and Lean are
+- **Tests.** About 1,200 tests for the loop (the pool's 1,100 are in its own repository). The model and Lean are
   replaced by stand-ins, so the suite runs with no GPU and no network. The tests that read the published-proof
   fixtures or the pool's derived data skip here, because neither is distributed.
 
@@ -527,23 +558,27 @@ barely moved the problems whose proof needs 4 lines or more (+0.00064 successes 
 seeds); the one thing measured that moves them is training on proofs written by stronger provers, which is a
 ceiling and not the loop's doing. Run from a model pretrained on such proofs, nothing is established yet,
 in either direction. Six rounds of the loop are not shown to add on the problems the pretrained model could
-not solve, and that is one training against one. Every other comparison made there is between single
-trained models too, and two trainings of one kind differ by up to 24 successes per 1,000 attempts and 45
-goal problems, so the differences those comparisons reported do not stand as effects. Whether the loop adds
+not solve, and that is one training against one. Every other comparison made there but one is between
+single trained models too, and two trainings of one kind differ by up to 24 successes per 1,000 attempts and
+45 goal problems, so the differences those comparisons reported do not stand as effects. The one run at
+three seeds, the test of hard-won solves, shows nothing on the test fixed before it; its lead on the goal
+set was found on those seeds and waits for fresh ones. Whether the loop adds
 to what more pretraining gives is open at this noise level. None of this is yet the aim, which is to do
 reliably what could not be done before. Five things are open.
 
-- **What one training is worth.** From the pretrained model, two trainings of one kind differ by up to 24
-  successes per 1,000 attempts and 45 goal problems, and no comparison of single trained models can be read
-  beside that. A stage that measures the spread on one fixed set of rows, and tests whether a learning rate
-  that decays to zero or an average of adapters lowers it, is specified and built and has not been run
-  ([`ladder-loop.spec.md`](docs/spec/ladder-loop.spec.md), L5n).
-- **Whether hard-won solves teach what published proofs do not.** At two seeds, training on solves that
-  took a deeper search shows no difference from the same number of published proofs on the test fixed
-  before the run, and on the goal set the second seed reversed the first seed's order. A third seed is
-  running and there is no verdict yet. A second round, in which the model trained on those solves searches
-  again, is built and smoke-tested and waits for the stage above
-  ([`ladder-loop.spec.md`](docs/spec/ladder-loop.spec.md), L5 and L6).
+- **What one training is worth.** Measured on one fixed set of 800 published proofs: the order of the rows
+  alone moves a trained model by a standard deviation of 5.0 successes per 1,000 attempts, and three draws
+  of 800 proofs had a standard deviation of 15.2. Whether a weak draw is weak by its proofs or by the one
+  order it was trained in is not told apart yet; the comparison below trains each draw in four orders
+  ([`ladder-l5n-RESULT.md`](docs/spec/ladder-l5n-RESULT.md)).
+- **Whether the model's own solves teach what published proofs do not.** At three seeds, training on solves
+  that took a deeper search shows no difference from the same number of published proofs on the test fixed
+  before the run, and depth is not shown to matter. On the goal set the models trained on the model's own
+  proofs beside published ones were above the model trained on published proofs alone at three seeds of
+  three, which was found on those seeds and is not yet confirmed. The comparison on fresh seeds, each model
+  trained in four orders and averaged, is specified and built and has not been run. A second round, in
+  which the model trained on those solves searches again, is built and smoke-tested and waits for it
+  ([`ladder-loop.spec.md`](docs/spec/ladder-loop.spec.md), L5, L5d and L6).
 - **Where pretraining stops.** A third pass was not run, nor the other half of the pool's published proofs,
   and what a second pass gives was measured with one training a dose
   ([`ladder-l4p-RESULT.md`](docs/spec/ladder-l4p-RESULT.md)).

@@ -360,10 +360,20 @@ def ladder_l5_noise_average(config: dict, recipe: str) -> dict:
         return store.done_summary(marker)
     prepared = _of_this_run(store, recipe, f"the averaged adapter `{model}`")
     of = list(prepared["the_averaged"][model]["of"])
+    summary = {"stage": L4, "label": LABEL, "check": "L5n", "model": model, "recipe": recipe, "of": of, "adapter": str(store.root / ladder_assembly.ADAPTERS / model),
+               "stand_in_engine": _stand_in()}
+    return the_mean_adapter(store, the_start(config, noise), model, of, marker, summary, bool(prepared.get("smoke")))
+
+
+def the_mean_adapter(store: ArtifactStore, start: Start, model: str, of: list[str], marker: str, summary: dict, smoke: bool, one: ladder_l4_rows.Stage = THE_STAGE) -> dict:
+    """THE BODY OF AN AVERAGING STEP, which two stages call (this one's; L5d's, `gpu/ladder_l5_draws.py`, whose averaged
+    recipe measures such an adapter: change it and both change): the adapter `model`, kept under `adapters/<model>`, is
+    the mean of the adapters of the trained models `of`, and is refused as `ladder_l5_noise_average` says. `marker`: the
+    step. `summary`: what the step's summary begins with. `smoke`: a SMOKE run, in which an averaged adapter that is one
+    of its models is kept. `one`: the stage whose step it is."""
     for name in of:
-        _need(store, THE_STAGE.train_marker(name), f"the averaged adapter `{model}`", ENTRY_STAGE)
-    target, start = store.root / ladder_assembly.ADAPTERS / model, the_start(config, noise)
-    summary = {"stage": L4, "label": LABEL, "check": "L5n", "model": model, "recipe": recipe, "of": of, "adapter": str(target), "stand_in_engine": _stand_in()}
+        _need(store, one.train_marker(name), f"the averaged adapter `{model}`", one.name)
+    target = store.root / ladder_assembly.ADAPTERS / model
     if ladder_ceiling._stand_in():
         summary.update({"averaged": False, "note": "no adapter was trained, and none was averaged: a pre-flight without a GPU"})
         store.mark_done(marker, summary)
@@ -376,7 +386,7 @@ def ladder_l5_noise_average(config: dict, recipe: str) -> dict:
     if any(own != configs[0] for own in configs[1:]):
         raise RuntimeError(f"the adapters of {of} were not saved with one adapter config: `{model}` is saved with the config they share. Nothing was averaged")
     files = [directory / ADAPTER_FILE for directory in directories]
-    _say(f"L5n: averaging the adapters of {', '.join(f'`{name}`' for name in of)} into `{model}`: no training")
+    _say(f"{one.reader}: averaging the adapters of {', '.join(f'`{name}`' for name in of)} into `{model}`: no training")
     target.mkdir(parents=True, exist_ok=True)
     try:
         made = mean_of_adapters(files, target / ADAPTER_FILE)
@@ -386,7 +396,7 @@ def ladder_l5_noise_average(config: dict, recipe: str) -> dict:
         raise RuntimeError(f"`{model}`: {error}. Nothing of this model is measured, and the step is not marked done") from error
     saved = ladder_l4_rank.adapter_read_back(target)
     # A SMOKE RUN ALONE: its trainings are one optimizer step on one batch of the same rows, whatever their order, so its models may be ONE adapter, and their mean then is each of them.
-    one_of_them = bool(prepared.get("smoke")) and held["is_the_mean"] and not held["is_none_of_them"]
+    one_of_them = smoke and held["is_the_mean"] and not held["is_none_of_them"]
     if not (held["passes"] or one_of_them) or not ladder_l4_rank.is_the_checks(saved, start.check):
         raise RuntimeError(f"the adapter `{model}` saved at {target}, read back, has {held['elements_not_the_mean']:,} of {held['elements']:,} numbers that are not the mean of "
                            f"its models', differs from each of them in {held['elements_not_those_of_each_adapter']} numbers, and has rank {saved['rank']} and alpha "
@@ -395,7 +405,7 @@ def ladder_l5_noise_average(config: dict, recipe: str) -> dict:
     summary.update({"averaged": True, "made": made, "read_back": held, "one_of_its_models_in_a_smoke_run": one_of_them, "adapter_saved": saved,
                     "against_the_start_adapter": compared(target / ADAPTER_FILE, start.adapter / ADAPTER_FILE)})
     store.mark_done(marker, summary)        # the adapter is saved, and kept
-    _say(f"L5n: `{model}` is saved: {made['elements']:,} numbers in {made['tensors']} tensors, each the mean of {made['adapters']} adapters'; read back, "
+    _say(f"{one.reader}: `{model}` is saved: {made['elements']:,} numbers in {made['tensors']} tensors, each the mean of {made['adapters']} adapters'; read back, "
          f"{held['elements_not_the_mean']} are not that mean")
     return summary
 

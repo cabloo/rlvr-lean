@@ -67,7 +67,9 @@ round 1 is this stage's finished run): what the first step reads, holds and draw
 with `read_the_search` and `held_to_the_search` under the words an `OfTheSearch` gives), the deep search's body
 (`search_deep`, under the names a `Search` gives), one model's measurement on the held-aside set
 (`on_the_held_aside_set`) and what a step returns when nothing was trained (`_not_run`). Every default is this stage's:
-change a body and both stages change; this stage writes what it wrote.
+change a body and both stages change; this stage writes what it wrote. L5n (`gpu/ladder_l5_noise.py`) and L5d
+(`gpu/ladder_l5_draws.py`) call the first of them too, and L5d the two functions the three sets step draws by
+(`deep_solves_by_the_seed`, `sets_by_the_seed`): a seed of L5d builds its sets as a further seed of this stage does.
 
 A PUBLISHED ROW is named by its id, its problem and its place in the file, never with its text: the training step reads
 the text from the pretraining file (`data/ladder_l4/pretraining.jsonl`, not distributed), held to the SHA-256 the start
@@ -82,7 +84,7 @@ import os
 from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, Mapping
+from typing import Callable, Mapping, Sequence
 
 from rlvr_lean.domain.ladder_round.l4 import check_start_map, goal_set_again
 from rlvr_lean.domain.ladder_round.l4_rows import PRETRAINING, THE_RULE
@@ -416,6 +418,22 @@ def held_to_the_search(found: dict, now: Mapping, reader: OfTheSearch = OfTheSea
                            + "; ".join(differs) + f". {reader.models}. Nothing was written.")
 
 
+def counted_by_the_search(found: Mapping) -> dict:
+    """What the search's own task counted on ITS search, as a task that draws from that search by another seed holds its
+    own count to it: the deep solves, the rows of each kind (D), and the search's table without its words. `found`:
+    `read_the_search`'s."""
+    theirs = found["prepared"]
+    return {"deep_solves": theirs["deep_solves"], "rows_of_each_kind": theirs["rows_of_each_kind"],
+            "the_search_found": {key: value for key, value in theirs["the_search_found"].items() if key in SEARCH_TABLE}}
+
+
+def the_stored_search(searched: Path) -> tuple[list[dict], list[dict], list[dict]]:
+    """The deep search of a FINISHED run, only read: (its problems as it sampled them, its per-problem rows, its
+    attempts with their texts)."""
+    return ([row for row in _rows(searched / "problems.jsonl") if row["set"] == SEARCH_SET], _rows(searched / f"episodes_{SEARCH_SET}_problems.jsonl"),
+            ladder_ceiling._stored_attempts(searched, SEARCH_SET))
+
+
 def _read_not_made(further: Mapping, step: str) -> dict:
     """What the deep search's step and the start model's held-aside step return AT A FURTHER SEED, with nothing marked
     done and nothing sampled: what each would make is the search's own run's, only read. `further`: what the first
@@ -632,7 +650,7 @@ def ladder_l5_search_prepare(config: dict) -> dict:
                            "pretraining_file_sha256": of_start["pretraining_file_sha256"], "rows": of_start["rows"],
                            "checks_failed": of_the_start_run["checks_failed"], "checks_waived_as_l4t2s_run_recorded": of_the_start_run["checks_waived"]}}
     if found is not None:       # a further seed says so, and what it read of the search's own run; at the search's own seed the summary is what it always was
-        theirs, of_theirs = found["prepared"], found["prepared"]["the_search_found"]
+        theirs = found["prepared"]
         read_once = f"it is that of the run of seed {deep.seed_of_the_search} ({found['directory'].name}), only read, and is not made a second time"
         summary[FURTHER] = {
             "what": f"A FURTHER SEED (spec, L5, further seeds). The deep search, the held-aside set and the measurement of `{deep.start}` on it are those of the run of seed "
@@ -646,8 +664,7 @@ def ladder_l5_search_prepare(config: dict) -> dict:
             "the_start_on_the_held_aside_set": {"file": stored_file(deep.start, HELD_ASIDE_PART, L5), "set": held_aside_set(deep.start), "problems": len(start_on_the_set),
                                                 "episodes_each": deep.held_aside_attempts, "sampling_seed": aside_sampling,
                                                 "successes": sum(row["resolved"] for row in start_on_the_set)},
-            "of_the_search_run": {"headline": found["report"].get("headline"), "branches": found["report"].get("branches"), "deep_solves": theirs["deep_solves"],
-                                  "rows_of_each_kind": theirs["rows_of_each_kind"], "the_search_found": {key: value for key, value in of_theirs.items() if key in SEARCH_TABLE}},
+            "of_the_search_run": {"headline": found["report"].get("headline"), "branches": found["report"].get("branches"), **counted_by_the_search(found)},
             "not_made_again": {SEARCH: f"the deep search: {read_once}", held_aside_marker(THE_START): f"the measurement of `{deep.start}` on the held-aside set: {read_once}"}}
     store.mark_done(SEARCH_PREPARE, summary)
     if found is not None:
@@ -741,30 +758,18 @@ def build_the_sets(solves: list[dict], ordinary: list[dict], pretraining: list[d
     return sets
 
 
-def ladder_l5_prepare(config: dict) -> dict:
-    deep = the_settings(config)
-    store = _store(config, deep)
-    if store.is_done(PREPARE):
-        return store.done_summary(PREPARE)
-    _need(store, SEARCH_PREPARE, "L5's three training sets", ENTRY_STAGE)
-    read, seed, start = store.done_summary(SEARCH_PREPARE), training_seed(config), the_start(config, deep)
-    further = read.get(FURTHER)                 # A FURTHER SEED: the search is the run's it read; its own step made none
-    if not further:
-        _need(store, SEARCH, "L5's three training sets", ENTRY_STAGE)
-    of_the_map, of_the_search = read["the_map"], read["the_search"]
-    smoke, batch = bool(read.get("smoke")), config["training"]["effective_batch"]
-
-    # ---- the deep solves: one verified attempt of every problem the search solved, drawn by the seed as a round draws one
-    drawn, aside = store.read_rows(SEARCH_PROBLEMS_FILE), [row["problem_id"] for row in store.read_rows(HELD_ASIDE_FILE)]
+def deep_solves_by_the_seed(deep: Deep, seed: int, drawn: Sequence[Mapping], searched: Path, problems: list[dict], results: list[dict], attempts: list[dict],
+                            of_the_map: Mapping, of_the_search: Mapping, theirs: Mapping | None = None) -> dict:
+    """THE DEEP SOLVES BY A SEED, with NOTHING WRITTEN: one verified attempt of every problem the search solved, drawn by
+    `seed` as a round draws one; the search's table; whether there are enough; and which of them the cap keeps, a draw
+    by `seed`. `drawn`: the search's problems, in the draw's order. `searched`: the run the search is of; `problems`,
+    `results`, `attempts`: its problems as it sampled them, its per-problem rows and its attempts. `of_the_map`,
+    `of_the_search`: what the first step recorded of the map (`episodes_each`) and of the search (`episodes_each`,
+    `minimum_deep_solves`). `theirs` (a task that draws from ANOTHER task's search: a further seed of this stage, and a
+    seed of L5d; `counted_by_the_search`): what the search's own task counted, which the count made here is HELD to.
+    Refused (RuntimeError) as the three sets step refuses. TWO STAGES CALL IT (this one's three sets step; L5d's first
+    step, `gpu/ladder_l5_draws.py`): change it and both change."""
     taken = {row["problem_id"]: row for row in drawn}
-    if further:     # the search's problems as it sampled them, its per-problem rows and its attempts: the search's own run's, only read. THE DRAWS BELOW ARE BY THIS TASK'S SEED
-        searched = Path(further["search_run"])
-        problems = [row for row in _rows(searched / "problems.jsonl") if row["set"] == SEARCH_SET]
-        results, attempts = _rows(searched / f"episodes_{SEARCH_SET}_problems.jsonl"), ladder_ceiling._stored_attempts(searched, SEARCH_SET)
-    else:
-        searched = store.root
-        problems = [row for row in store.read_rows("problems.jsonl") if row["set"] == SEARCH_SET]
-        results, attempts = _results(store, SEARCH_SET), _attempts(store, SEARCH_SET)
     try:
         solves = [{**row, "map_k": taken[row["problem_id"]]["map_k"], "taken_by": taken[row["problem_id"]]["taken_by"]}
                   for row in solve_rows(problems, attempts, results, seed, DEEP, of_the_map["episodes_each"])]
@@ -773,27 +778,25 @@ def ladder_l5_prepare(config: dict) -> dict:
     table = search_table(drawn, results, solves, of_the_map["episodes_each"], of_the_search["episodes_each"])
     enough = enough_deep_solves(len(solves), of_the_search["minimum_deep_solves"])
     in_the_set = {row["problem_id"] for row in capped(solves, deep.cap, seed)}
-    if further:     # the search found again in the stored rows is the one its own task counted, and D is its D: the three models of each seed are trained on as many rows
-        theirs = further["of_the_search_run"]
+    if theirs is not None:      # the search found again in the stored rows is the one its own task counted, and D is its D: the three models of each seed are trained on as many rows
         if {key: table[key] for key in SEARCH_TABLE} != theirs["the_search_found"] or (len(solves), len(in_the_set) if enough["passes"] else 0) != (theirs["deep_solves"], theirs["rows_of_each_kind"]):
             raise RuntimeError(f"the deep search read from {searched.name} is not the one its own task built its sets on: this task counts {len(solves)} deep solves and D = "
                                f"{len(in_the_set) if enough['passes'] else 0}, that run {theirs['deep_solves']} and {theirs['rows_of_each_kind']}, or the search's table differs. "
                                "Nothing was written.")
-    store.write_rows(SOLVES_FILE, [{**row, "in_the_set": enough["passes"] and row["problem_id"] in in_the_set} for row in solves])
-    carried = {**{key: read[key] for key in CARRIED}, **({FURTHER: further} if further else {})}
-    of_the_deep_rows = verified_lines(lines_counted(solves))
-    if not enough["passes"]:        # the three sets would be too small to read: none is built, nothing is trained, and the search is the finding
-        summary = {**carried, "stand_in_engine": _stand_in(), "enough_deep_solves": enough, "deep_solves": len(solves), "rows_of_each_kind": 0, "training_sets": {},
-                   "the_search_found": {**table, "lines_of_the_deep_rows": of_the_deep_rows},
-                   "trainings": {"run": False, "why": f"the deep search found {len(solves)} deep solves and {enough['minimum']} are asked: the three sets would be too small "
-                                                      "to read. No set is built and no model is trained or measured: the search is the finding"}}
-        store.mark_done(PREPARE, summary)
-        _say(f"L5: the deep search found {len(solves)} deep solves of {len(drawn):,} problems, FEWER THAN THE {enough['minimum']} asked: no set is built and the three "
-             "trainings are not run. The search is the finding")
-        return summary
+    return {"solves": solves, "table": table, "enough": enough, "in_the_set": in_the_set}
 
-    # ---- the ordinary solves: as many map problems the start model solved in a few of its map attempts, one verified map attempt each
-    kept = [row for row in solves if row["problem_id"] in in_the_set]
+
+def sets_by_the_seed(config: dict, deep: Deep, start: Start, seed: int, kept: list[dict], drawn: Sequence[Mapping], aside: Sequence[str], read: Mapping,
+                     groups: Sequence[Mapping]) -> dict:
+    """THE THREE SETS BY A SEED, with NOTHING WRITTEN: as many ordinary solves as there are deep rows (`kept`: the deep
+    solves the cap keeps) and one verified map attempt of each, both drawn by `seed`; the published rows of that seed's
+    hash order; each set in its order (`build_the_sets`); no set holding a held-aside problem, a searched one or a
+    barred row. `drawn`: the search's problems; `aside`: the held-aside problems' ids. `read`: what the first step
+    recorded (`map_run`; `the_map`: its `set`, `episodes_each` and `problems_by_k`; `pretraining_file_sha256`; `smoke`).
+    `groups`: the held-out groups. Returns the ordinary solves as drawn, their rows, the three sets, what was counted
+    of barred rows in each, and the pretraining file's SHA-256. Refused (RuntimeError) as the three sets step refuses.
+    TWO STAGES CALL IT, as `deep_solves_by_the_seed`."""
+    of_the_map, smoke, taken = read["the_map"], bool(read.get("smoke")), {row["problem_id"]: row for row in drawn}
     directory = Path(read["map_run"])
     map_rows = _rows(directory / f"episodes_{of_the_map['set']}_problems.jsonl")
     if {str(k): count for k, count in sorted(Counter(row["resolved"] for row in map_rows).items())} != of_the_map["problems_by_k"]:
@@ -809,11 +812,54 @@ def ladder_l5_prepare(config: dict) -> dict:
         pretraining, sha256 = ladder_l4_start.pretrained_on(start.directory, read["pretraining_file_sha256"], start.name)
         sets = build_the_sets(kept, of_ordinary, pretraining, seed)
         refuse_overlap(aside, list(taken), sets)                # THE HELD-ASIDE SET IS THE TEST: none of its problems was searched, and no set holds a row of one
-        heldout = {row["problem_id"] for row in ladder_loop.load_problems(ladder_loop.data_directory())[0]} | {row["problem_id"] for row in store.read_rows(ladder_l4.GROUPS_FILE)}
+        heldout = {row["problem_id"] for row in ladder_loop.load_problems(ladder_loop.data_directory())[0]} | {row["problem_id"] for row in groups}
         base_map, half_seed = {row["problem_id"] for row in map_rows}, config["ladder_loop"]["l4"]["half_seed"]
         counted = {model: refuse_barred(sets[model], heldout, half_seed, base_map, f"the training set of `{model}`") for model in deep.models}
     except ValueError as error:
         raise RuntimeError(f"{error} (the map {directory.name}; `{start.name}`'s {start.directory.name}). Nothing was written.") from error
+    return {"ordinary": ordinary, "of_ordinary": of_ordinary, "sets": sets, "counted": counted, "sha256": sha256, "pretraining": pretraining}
+
+
+def ladder_l5_prepare(config: dict) -> dict:
+    deep = the_settings(config)
+    store = _store(config, deep)
+    if store.is_done(PREPARE):
+        return store.done_summary(PREPARE)
+    _need(store, SEARCH_PREPARE, "L5's three training sets", ENTRY_STAGE)
+    read, seed, start = store.done_summary(SEARCH_PREPARE), training_seed(config), the_start(config, deep)
+    further = read.get(FURTHER)                 # A FURTHER SEED: the search is the run's it read; its own step made none
+    if not further:
+        _need(store, SEARCH, "L5's three training sets", ENTRY_STAGE)
+    of_the_map, of_the_search = read["the_map"], read["the_search"]
+    smoke, batch = bool(read.get("smoke")), config["training"]["effective_batch"]
+
+    # ---- the deep solves: one verified attempt of every problem the search solved, drawn by the seed as a round draws one
+    drawn, aside = store.read_rows(SEARCH_PROBLEMS_FILE), [row["problem_id"] for row in store.read_rows(HELD_ASIDE_FILE)]
+    if further:     # the search's problems as it sampled them, its per-problem rows and its attempts: the search's own run's, only read. THE DRAWS BELOW ARE BY THIS TASK'S SEED
+        searched = Path(further["search_run"])
+        problems, results, attempts = the_stored_search(searched)
+    else:
+        searched = store.root
+        problems = [row for row in store.read_rows("problems.jsonl") if row["set"] == SEARCH_SET]
+        results, attempts = _results(store, SEARCH_SET), _attempts(store, SEARCH_SET)
+    solves, table, enough, in_the_set = deep_solves_by_the_seed(deep, seed, drawn, searched, problems, results, attempts, of_the_map, of_the_search,
+                                                                further["of_the_search_run"] if further else None).values()
+    store.write_rows(SOLVES_FILE, [{**row, "in_the_set": enough["passes"] and row["problem_id"] in in_the_set} for row in solves])
+    carried = {**{key: read[key] for key in CARRIED}, **({FURTHER: further} if further else {})}
+    of_the_deep_rows = verified_lines(lines_counted(solves))
+    if not enough["passes"]:        # the three sets would be too small to read: none is built, nothing is trained, and the search is the finding
+        summary = {**carried, "stand_in_engine": _stand_in(), "enough_deep_solves": enough, "deep_solves": len(solves), "rows_of_each_kind": 0, "training_sets": {},
+                   "the_search_found": {**table, "lines_of_the_deep_rows": of_the_deep_rows},
+                   "trainings": {"run": False, "why": f"the deep search found {len(solves)} deep solves and {enough['minimum']} are asked: the three sets would be too small "
+                                                      "to read. No set is built and no model is trained or measured: the search is the finding"}}
+        store.mark_done(PREPARE, summary)
+        _say(f"L5: the deep search found {len(solves)} deep solves of {len(drawn):,} problems, FEWER THAN THE {enough['minimum']} asked: no set is built and the three "
+             "trainings are not run. The search is the finding")
+        return summary
+
+    # ---- the ordinary solves: as many map problems the start model solved in a few of its map attempts, one verified map attempt each
+    kept = [row for row in solves if row["problem_id"] in in_the_set]
+    ordinary, of_ordinary, sets, counted, sha256, _ = sets_by_the_seed(config, deep, start, seed, kept, drawn, aside, read, store.read_rows(ladder_l4.GROUPS_FILE)).values()
 
     # ---- from here on files are written
     store.write_rows(ORDINARY_FILE, ordinary)

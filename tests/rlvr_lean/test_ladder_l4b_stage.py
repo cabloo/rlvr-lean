@@ -634,13 +634,13 @@ def test_the_stages_run_the_map_first_then_l4s_steps_with_a_guard_before_every_g
     assert list(ladder_l4b.STEPS) == ["ladder_l4b_map", "ladder_l4b_prepare", *ALONE, "ladder_l4b_report"]
     others = set(ladder_l2.STEPS) | set(ladder_l3d2.STEPS) | set(ladder_l4.STEPS) | set(ladder_l4_rank.STEPS) | set(ladder_l4_rows.STEPS)
     assert not set(ladder_l4b.STEPS) & others
-    # No other stage's task names the rule or L4b's arm: the stages that existed are what they were. The map's SMOKE run is named by three more stages, which READ it
-    # and run no step of the arm: L5's smoke stage, whose deep search draws its problems from that map, and L6's and L5n's, which read L5's smoke run as L5 reads it.
+    # No other stage's task names the rule or L4b's arm: the stages that existed are what they were. The map's SMOKE run is named by four more stages, which READ it
+    # and run no step of the arm: L5's smoke stage, whose deep search draws its problems from that map, and L6's, L5n's and L5d's, which read L5's smoke run as L5 reads it.
     for name, steps in entry.STAGES.items():
         if not name.startswith("ladder_l4b"):
             named = {key for step in steps for key in entry.step_fields(step)[2].get("environment", {})}
             assert not named & {RULE, MINIMUM, START_CHECKS} and all(entry.step_fields(step)[2].get("environment", {}).get(ARM) != L4B_ARM for step in steps)
-            assert (MAP_RUN in named) is (name in ("ladder_l5_deep_smoke", "ladder_l6_cycle_smoke", "ladder_l5_noise_smoke")) and not any(entry.step_fields(step)[1] in ladder_l4b.STEPS for step in steps)
+            assert (MAP_RUN in named) is (name in ("ladder_l5_deep_smoke", "ladder_l6_cycle_smoke", "ladder_l5_noise_smoke", "ladder_l5_draws_smoke")) and not any(entry.step_fields(step)[1] in ladder_l4b.STEPS for step in steps)
 
 
 def test_the_steps_run_through_the_gpu_entry_point(l4b, monkeypatch, tmp_path):

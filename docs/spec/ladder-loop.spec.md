@@ -3439,6 +3439,23 @@ it is):
   not measured on one pool. Its timed-out attempts are checked again, HA's among them, and its reads are given
   both ways, as the Timeouts rule above already asks.
 
+**Outcome of L5 over three seeds (2026-10-11; `ladder-l5-RESULT.md`, Part 2).** Seeds 1 and 2 ran from cd8372bfc; all
+checks pass at every seed.
+- **The primary: NOT SHOWN AT THREE SEEDS.** On the held-aside set `deep` minus `published` is +0.00146 [−0.00292,
+  +0.00573]; at the seeds +0.0006, +0.0007, +0.0030.
+- **The goal set's lead, on seeds 1 and 2 alone: THE LEAD IS CONFIRMED,** +0.02034 [+0.01436, +0.02658] (+0.0177 and
+  +0.0230). **Its split: REACH TOO** (on G′ over the 93 attempts +0.00339 [+0.00036, +0.00661]). **Reach on the long
+  problems: NOT CONFIRMED** (+0.054 [−0.007, +0.122]; 24 against 19 and 24 against 21). **The branch: "otherwise".**
+- **Over trainings** (each seed's model one draw; not a read fixed in advance, added because the rule's intervals are
+  over problems): `deep` minus `published` on all of G +9.4, +17.7, +23.0 per 1,000 (mean +16.7, t on two degrees
+  4.2, p = 0.052); goal problems solved +13, +33, +33; on G′ +3.1, +3.9, +2.9. `shallow` minus `published` +1.5,
+  +30.5, +16.5. `deep` minus `shallow` +8.0, −12.8, +6.5: DEPTH IS NOT SHOWN TO MATTER, which was the stage's question.
+- **The spread, the figure that outlasts the verdicts** (standard deviation over three seeds, all of G per 1,000 and
+  goal problems solved): `published` 13.9 and 23.3; `shallow` 7.6 and 6.1; `deep` 7.9 and 12.5. On the held-aside
+  set 4.1, 4.9 and 4.3 per 1,000.
+- **Said of my own note:** after seed 1 I wrote that seed 0's lead "did not repeat"; as the lead was defined it did.
+  What did not repeat is `deep` over `shallow`. The timed-out attempts of seeds 1 and 2 are not yet checked again.
+
 ### L6: a second round. Does the cycle compound? (fixed 2026-10-11, while L5's further seeds run and BEFORE their read)
 
 **Why.** The owner's bet (2026-10-09) is a feedback cycle: "this loop could be used to push it beyond the reach of
@@ -3936,6 +3953,336 @@ put otherwise, what was NOT built, and what is fragile, are below).**
   (its environment has no torch), each put to that function's run on a CPU: the decay not handed to the scheduler, or
   counted over the rows and not the steps; the recipe as it is handed the decay; the rate read after the step's
   update, or taken from the config; the rates put in every result. Six noticed.
+
+**Outcome of L5n (2026-10-11; `docs/spec/ladder-l5n-RESULT.md`).** Run in two tasks: the first ended at 18:10 UTC
+for infrastructure with three models measured (VOID; the engine did not start, fixed at ea0a74813), the second
+(`rlvr_lean/ladder_l5_noise_seed0_r2`, 20:25 to 23:11 UTC) went on from its steps. All checks pass. Successes per 1,000
+attempts on all of G: `constant_1` to `_4` 112.3, 107.9, 102.2, 101.7 (standard deviation 5.0; sampling noise of one
+figure 2.3); `decay_1` to `_4` 103.9, 109.9, 106.5, 96.7 (5.6); `mean_constant` 110.0 against its models' mean 106.0;
+`mean_decay` 107.4 against 104.2. The reads: THE ROWS DRAWN MAKE MOST OF IT (0.00504 against L5's `published` over its
+seeds, 0.01520); DOES DECAY LOWER IT: NOT SHOWN; its level NAMED NOTHING (−0.00179 [−0.01126, +0.00768]); AVERAGING
+GIVES AT LEAST THE MEAN OF ITS MODELS, for both. **What follows, by the rule above: a later stage trains each model four
+times and measures the averaged adapter.** L5d's setting was changed to `mean_constant` at 28f015f6a. Said beside, and
+deciding nothing: the same 800 rows in five orders (these four and L5's own) give 101.7 to 112.3, where the two other
+draws of 800 rows gave 78.6 and 76.5 in the one order each was trained in, so seed 0's level was not its order's;
+whether the two weak draws are weak by their rows or by that order is not told apart (the note's "The reading that is
+left open"), and L5d's fresh draws, each in four orders, tell it.
+
+### L5d: the three kinds again, over fresh draws, measured on the goal set's first sampling (fixed 2026-10-11, before L5n's read and before any fresh seed runs)
+
+**Why.** L5's three seeds left one sign for the owner's bet that repeats: on the goal set, the two models trained on
+the model's own proofs beside published ones are above the model trained on published ones alone at 3 seeds of 3. It
+is not a result. It was found on those seeds (the read fixed in advance named `deep` minus `published` on the
+held-aside set, which shows nothing); `published` is as much low at seeds 1 and 2 as the others are high; and three
+trainings resolve little. On the goal set's FIRST sampling alone (32 attempts a problem, what this stage measures),
+successes per 1,000 attempts at seeds 0, 1, 2: `published` 103.8, 78.6, 76.5; `shallow` 105.0, 107.6, 95.1; `deep`
+110.2, 98.1, 100.8. The mean of `shallow` and `deep`, minus `published`: +3.8, +24.2, +21.5 (mean +16.5, standard
+deviation 11.1, t 2.58 on 2 degrees, two-sided p 0.12). `deep` minus `shallow`: +5.2, −9.6, +5.7 (mean +0.4): depth
+is not shown to matter, which is why the two are read together here. The first sampling's figures are within about 2
+per 1,000 of the 93 attempts', so the second sampling, the rungs and the held-aside set buy little for this question
+and cost two thirds of a seed's five hours and a half.
+
+**What runs: a further seed of L5, with the measurement cut to the one sampling.** For each fresh seed N: L5's
+finished search is READ (seed 0's run; nothing of it is sampled again), and the three sets are built BY L5's OWN RULE
+for the task's seed: which 400 of the 520 deep solves and which verified attempt of each; which 400 ordinary solves
+and which attempt; the published rows (the first 400 and the first 800 of the hash order of that seed); the order.
+Three models, each from `pre_r64` at its rank, one pass over its 800 rows. Each is measured on G's first sampling
+alone: 32 attempts a problem with the sampling seed `pre_r64`'s run recorded (1001), as L5n measures. No rungs, no
+second sampling, no held-aside set.
+
+**The recipe is the one L5n names, and it is taken as named** (L5n's "What follows", fixed before its run):
+- EVERY LATER STAGE TRAINS WITH THE DECAY: each of the three models is trained once, with the decay.
+- A LATER STAGE TRAINS EACH MODEL FOUR TIMES AND MEASURES THE AVERAGED ADAPTER: each of the three sets is trained in
+  four orders (order seeds 1 to 4 of its own rows, as L5n orders rows) with the recipe as it is; the model measured is
+  the adapter whose every number is the mean of the four, by L5n's own function and held to what L5n holds it to.
+- THE SPREAD IS THE RECIPE'S OWN AT THIS SIZE: the recipe as it is, one training a model. More seeds an arm is one of
+  the two choices that case puts to the owner, and it is what this stage is.
+- L5n INCONCLUSIVE, or not read: the recipe as it is, one training a model, and that is said beside every read.
+
+**The seeds, and the owner's word.** Fresh seeds only: 3, 4, 5; and 6, 7, 8 WITH THE OWNER'S APPROVAL, ASKED FOR ON
+2026-10-11 BEFORE ANY FRESH SEED RUNS (the repo's rule: more than three seeds needs it in advance). The number is
+fixed before the read: SIX when the approval has come before seed 5's figures are read, THREE otherwise. Seeds added
+after a read at three are a new replication, read on its own seeds alone. Why six: by the exact paired-t power, with
+the effect and the standard deviation found (16.5 and 11.1, the latter known from three figures only: 5.8 to 70 at
+95%), three seeds confirm the effect 31 times in 100 and six 83 times; the interval's half-width is 27.5 per 1,000 at
+three and 11.6 at six. For half the effect: 12 and 32 in 100.
+
+**The reads, fixed before any fresh seed runs.** A model's figure is its successes per attempt on all of G over the
+32 attempts (L5n's figure). Every interval is over SEEDS (trainings), never over problems: mean ± t × the standard
+deviation of the per-seed differences over the root of the seeds (t 4.303 at three, 2.571 at six).
+- **Primary: the mean of `shallow` and `deep`, minus `published`, at each fresh seed; the fresh seeds alone.**
+  Interval above zero: THE MODEL'S OWN PROOFS BESIDE PUBLISHED ONES BEAT PUBLISHED ONES ALONE ON THE GOAL SET.
+  Interval below zero: THEY COST. Interval holds zero: when its half-width is above 16.5 per 1,000 (the effect found),
+  UNDETECTABLE AT THIS NUMBER OF SEEDS, with the interval and no word about the effect; otherwise NOT SHOWN.
+- **Beside, each with its interval, naming nothing:** `deep` minus `published`; `shallow` minus `published`; `deep`
+  minus `shallow` (the depth); the number of fresh seeds at which the primary's difference is positive.
+- **Where it sits:** the primary's difference (a) on the goal problems `pre_r64` solves in its own first sampling
+  (200) and (b) on G′ (the 192 it does not). Named RELIABILITY when (a)'s interval is above zero and (b)'s holds zero;
+  REACH TOO when (b)'s is above zero. Read only when the primary names the first outcome.
+- **Counts, at each seed:** goal problems solved in the 32 attempts by each model (gained and lost against
+  `published`), and of the 74 long problems (8 lines or more).
+- **The spread:** each kind's figures over the fresh seeds and their standard deviation, with the sampling noise
+  beside. `published`'s figure at each seed is the fresh look at the lead L5n's first figures gave: whether the bar's
+  level goes with which published rows were drawn.
+- **Exploratory, marked as such:** when the recipe is the one L5 trained with, L5's three seeds beside the fresh ones
+  on the same first sampling, and the nine pooled, with seeds 0 to 2 marked as the ones that found the sign.
+- **Timeouts:** each set's share of attempts that timed out in Lean is printed; where two models of one seed differ
+  by more than a point, the seed's timed-out attempts are checked again (Lean only, no measurement running) and the
+  reads are given both ways.
+
+**Checks, read first; any FAIL at a seed leaves that seed out and the run INCONCLUSIVE until the seed is run again.**
+Each set is L5's rule for its seed (made again and held, as a further seed of L5 holds it): no row with text, no
+barred row (no held-out problem; the published rows of the `pretrain` half; no problem of G or of the held-aside
+set). Each trained adapter is not the start adapter's and is read back at its rank; an averaged adapter is the mean of
+its four, bit for bit, and is the one served. Lean answered (at most 0.02 of a set without an answer). The stored
+first sampling of `pre_r64` is the setting's (its problems, its seed, its 32 attempts).
+
+**What follows, fixed now.**
+- THE MODEL'S OWN PROOFS BEAT: the bet's first condition holds on the goal set at this size. L6 (a second round) runs
+  with this recipe and with as many seeds an arm as this stage's measured standard deviation asks for its own
+  difference; the cycle at full size has its evidence to put to the owner.
+- UNDETECTABLE or NOT SHOWN: the sign of L5's three seeds is not confirmed. The interval, the standard deviation and
+  the seeds a decision would cost go to the owner; L6 does not run on it.
+- THEY COST: stop. The nine seeds go to the owner.
+
+**What it cannot say.**
+- G alone and 32 attempts. Nothing of the held-aside set: reach on OTHER hard problems was not shown at three seeds
+  in L5 and is not measured here.
+- **The bar is a second pass.** `published` trains on rows `pre_r64` was already trained on; the model's own proofs
+  are of problems it never trained on. So the first outcome says: its own proofs of new problems are worth more than
+  reading published proofs again. It does not say they are worth more than PUBLISHED proofs of new problems. That
+  comparison needs a fourth kind: the same 400 problems as `deep`, with each problem's published proof (its pool
+  certificate) in place of the model's own. Those problems are outside the `pretrain` half, so it is not built without
+  the owner's word (asked 2026-10-11 with the seeds). With the word it is specified then, and trained on these same
+  seeds beside the three.
+- **One search.** The 520 deep solves and the 1,114 ordinary ones come from seed 0's search and map. Two seeds' deep
+  rows share about 308 of 400 problems; two seeds' published rows share about 25 of 800. The spread over seeds here
+  is over draws and trainings, not over searches.
+- One start model, one size of set, one pass.
+
+**Budget.** A seed, by the measured step times of L5n: three trainings of about four minutes and three measurements
+of about half an hour: an hour and three quarters. With the averaged recipe, twelve trainings and three averages:
+about two hours and a half. Three seeds: five to eight hours. Six: ten to fifteen. One task a seed, one after
+another; a smoke stage first.
+
+**Made exact by the build (2026-10-11; nothing queued, nothing run on a GPU, nothing sent to Lean; the reads, the
+checks, the seeds and "What follows" above are not changed; the readings taken where the section left something open,
+what was NOT built, what the smoke stage does not exercise, what was measured before any run and what is fragile are
+below).**
+- **The stages.** `ladder_l5_draws` and `ladder_l5_draws_smoke` (`gpu/ladder_l5_draws.py`; rules
+  `domain/ladder_round/l5_draws.py`; report `reporting/ladder_l5_draws.py`; the read over the seeds again from pulled
+  task directories, `tools/ladder_l5_draws.py`), settings `ladder_loop.l5_draws` (`seeds: [3, 4, 5]`,
+  `more_seeds: [6, 7, 8]`, `more_seeds_approved: false`, `sampling: reach`, `attempts: 32`, `recipe: constant`; one
+  reader; the start and the search's seed are L5's own settings, L5's seeds and the order seeds L5n's, and no setting
+  of this block names them). Run directory `ladder_l5_draws_pre_r64_seed<N>`. Jobs `ladder_l5_draws_seed3.json`
+  to `_seed8.json` (est_minutes 210 each: twice the section's hour and three quarters, and above the averaged
+  recipe's two hours and a half) and `ladder_l5_draws_smoke.json` (30), with the `resources` of L5n's jobs key for
+  key: job configs, not shipped in this copy. L5n's jobs hold no `setup` key, and these hold none.
+- **TWENTY-THREE steps, those of the LARGEST recipe.** The stage's list in `runner/entry.py` is fixed before the recipe
+  is known, so it holds every recipe's steps: `ladder_l5_draws_prepare`; then model by model (`published`, `shallow`,
+  `deep`) `ladder_l5_draws_train_<model>`, `ladder_l5_draws_train_<model>_1` to `_4`, `ladder_l5_draws_average_<model>`,
+  `ladder_l5_draws_measure_<model>`; `ladder_l5_draws_report`. A STEP THE RUN'S RECIPE DOES NOT USE MAKES NOTHING: it
+  returns `run: false` with the reason and marks nothing. `constant` and `decay` use eight (the first step, three
+  trainings, three measurements, the report); `mean_constant` twenty (the first step, twelve trainings, three
+  averages, three measurements, the report). Each step is resumable; a finished one returns what it stored. The
+  report step ALONE is built again each time its task is queued, so that the read over the seeds takes the seeds
+  that are there by then.
+- **Existing functions are called, not copied.** L5's finished run is read by L5's own first-step reading
+  (`ladder_l5.read_the_search`, `read_for_the_search`, under the words an `OfTheSearch` gives: a further seed's
+  refusals, as L5n and L6 read it). THE THREE SETS ARE DRAWN BY THE VERY CODE A FURTHER SEED OF L5 DRAWS THEM BY: two
+  bodies were cut out of L5's three sets step, which now calls them (`ladder_l5.deep_solves_by_the_seed`: the deep
+  solves, which of them the cap keeps and which verified attempt of each; `sets_by_the_seed`: the ordinary solves, the
+  published rows, the three sets and their barred rows; with `the_stored_search` and `counted_by_the_search`). A
+  training is L4t's own body (`ladder_l4_rows.train_a_model`); a measurement the ceiling's own
+  (`ladder_ceiling.measure_model` with `rungs=False` and ONE sampling handed to it, as L5n measures). The averaged
+  adapter is L5n's own body and check, each cut out of L5n's step and report, which now call them
+  (`ladder_l5_noise.the_mean_adapter`, under the names a `Stage` gives; `reporting/ladder_l5_noise.the_mean_check`).
+- **The recipe is a SETTING, held to L5n's report by the first step** (`l5_draws.the_recipe`). The first step reads
+  L5n's REAL run (`ladder_l5_noise_pre_r64_seed0`: its report's marker and its report), only reads it, and never
+  refuses for its absence. Its report there, to be read, not INCONCLUSIVE and naming a case of its "what follows": the
+  setting must be that case's recipe (`decay`, `mean_constant`, `constant`, in the section's order), refused otherwise
+  with both named and L5n's task. Its run not there, not finished, not to be read, INCONCLUSIVE or naming no case: the
+  setting must be `constant`, and a sentence saying which of these it was is recorded (`the_recipe`) and printed by
+  the report and by the tool beside the primary, where it sits and what follows. SO A SEED QUEUED BEFORE L5n's REPORT
+  IS WRITTEN TRAINS `constant` AND SAYS SO: the jobs say to queue after it. A RUN KEEPS ITS RECIPE: every later step
+  refuses when the setting names another than the run was prepared with (the run is moved away to run that seed with
+  another). SEEDS OF TWO RECIPES ARE NEVER READ TOGETHER: the rule refuses, and the report and the tool then give NOT
+  READ with each seed's recipe.
+- **Each recipe, exactly.** `constant`: the call L5 trains a seed's model by, with no schedule handed to it; no
+  learning rate is recorded and none held, as in L5's own runs. `decay`: L5n's `decay` (the factor of its "The decay,
+  exactly"), each step's rate recorded and held to that schedule by the training's own step, as L5n holds it; the set
+  in the seed's own order. `mean_constant`: each set in `assembly.training_order` of the order seeds L5n's setting
+  names (1 to 4), stored as `l5_draws_training_<model>_<k>.jsonl` (a published row by id and place, never with text),
+  trained with the recipe as it is and its rates recorded and held; the four are `<model>_1` to `_4`, the averaged
+  model keeps the kind's name and its adapter is `adapters/<model>`; no model is then trained in the seed's own
+  order. AN ORDER SEED THAT IS THE TASK'S SEED GIVES THE SEED'S OWN ORDER (order seed 3 at seed 3, 4 at seed 4:
+  measured below). L5n refuses such an order because the model trained in it stands beside; here none does, so it is
+  trained all the same and named (`the_orders`). Two order seeds that give one order are refused. The first step
+  holds the start adapter's types to those the mean is written in, under `mean_constant` alone. The learning-rate
+  factor the first step records is the run's own recipe's, and none under `constant`.
+- **The seeds.** A task's seed is held by the first step (`l5_draws.the_seed`): a seed of L5's own (L5n's
+  `published_seeds`), a seed of `more_seeds` while `more_seeds_approved` is false, and a seed of neither list are
+  refused with nothing written. THE READS ARE OVER `seeds` WHILE THE APPROVAL IS NOT RECORDED AND OVER BOTH LISTS ONCE
+  IT IS (`fixed_seeds`), read from the setting when the report is built. The code cannot hold WHEN the approval came:
+  `more_seeds_approved` is set to true only if it came before seed 5's figures were read. Once it is true the read
+  over three is no longer made, and the read is NOT READ until 6, 7 and 8 are there. A NEW REPLICATION after a read
+  at three is the setting `seeds: [6, 7, 8]`, `more_seeds: []`: the runs of 3, 4 and 5 are then named as not of the
+  fixed number and left out. The settings reader refuses seeds that are not distinct whole numbers, an approval that
+  is not true or false, and a number of seeds the interval is not given for (it is given for two to nine: t 12.706,
+  4.303, 3.182, 2.776, 2.571, 2.447, 2.365, 2.306).
+- **What else the first step refuses before anything is written.** L5's own refusals (its run missing or unfinished;
+  a report not to be read or INCONCLUSIVE; made otherwise, with the three stored runs that task read). A sampling that
+  is not L5n's (the settings reader) or not the FIRST sampling `pre_r64`'s run recorded, by its name and its attempts
+  (the sampling SEED is the recorded one, 1001, and no setting). A recipe (the learning rate, the warm-up steps, the
+  batch, the adapter's rank, alpha and modules) that is not the one L5's run recorded. Fewer deep solves than L5's
+  minimum. A set with a problem of G or of the held-aside set (`l5_draws.refuse_problems_of`; L5's own rule already
+  refuses the held-aside ones and the barred rows). The smoke-only variable outside a smoke run. A refused first step
+  leaves the run's directory EMPTY (the store makes it), and no file in it.
+- **What the first step writes.** The three sets (`l5_draws_training_<model>.jsonl`), and under `mean_constant` the
+  twelve ordered ones; the goal problems of each model's set (`problems.jsonl`, the sets `l4_reach_<model>`: L5's and
+  L5n's name for a model's first sampling, so that every stored first sampling pairs by problem); and COPIES of the
+  groups, G′, the held-aside problems and `pre_r64`'s stored first sampling. L5's own files of the deep solves and of
+  the ordinary solves are not written again: the sets hold their rows.
+- **Readings the section left open, and the ones taken.** (1) **The figure** is L5n's (`l5_noise.figure`: successes
+  over attempts, an audited problem's episodes counted once, its binomial noise), on all of G, on (a) and on (b).
+  (2) **The parts.** (a) is the goal problems `pre_r64` solved at least once in the stored first sampling this run
+  copied; (b) the ones it did not, HELD to be the stored G′ (L5's reading made G′ from that sampling); were they
+  not, no figure would be given on a part and where it sits would be NOT READ. (3) **The primary's outcome** is
+  named from the exact mean and half-width (what is printed is rounded to the sixth decimal, and where it sits is
+  named from the rounded); an interval that ends at zero holds zero; a half-width that is exactly 16.5 per 1,000 is
+  not above it (NOT SHOWN). (4) **Where it sits** names its two cases and, for any other pair of intervals, NAMED
+  NOTHING with both given; REACH TOO is read first; an interval on G′ that begins at zero holds zero; NOT READ when
+  a part holds no problem at a seed. (5) **The spread** is each kind's figure at each fresh seed, the standard
+  deviation over the seeds (n − 1) and, beside, the root of the mean square of its figures' sampling noises.
+  (6) **The counts** are of the goal problems solved at least once in the 32 attempts, gained and
+  lost against `published`, and the same among the long problems (the last length group, 8 lines or more, as L5's
+  reports count them). (7) **A missing seed before a failed one.** With a seed of the fixed number not there the read
+  is NOT READ, naming it, and a seed whose check failed is said beside; with all there and one failed, INCONCLUSIVE,
+  naming the seed and its checks. A seed is THERE when its report step is done and its report is of that seed. A seed
+  that is there and is not of the fixed number is named and left out. Seeds that were not measured alike (the
+  sampling, its attempts, its seed, the number of problems) are not pooled either. (8) **A seed's own verdict.** Any
+  failed check of any of its models, and the seed is INCONCLUSIVE: its figures are kept apart
+  (`measured_and_not_read`) and not printed, and it hands none to the read. A set Lean did not answer also fails the
+  report step, and the task queued again samples that set again from its adapter. Any other failed check: the run is
+  moved away and the seed run again. (9) **"The seeds a decision would cost"** are given as the interval's half-width
+  at each number of seeds from two to nine with the standard deviation measured, and the least number at which it is
+  at most the effect found; no power is computed by the code. (10) **Exploratory.** L5's seeds are read by the report
+  step from their own runs when those are on the box and finished (NOT THERE otherwise, never refused), on the same
+  sampling and the same parts, under `constant` alone; their figures are stored in the report (`the_seeds_of_l5`), so
+  that the tool needs no run of L5; the pool is read only when all three are there. The tool takes them from the
+  first report that holds them all. (11) **The check of the start's sampling** holds this run's copy: its problems are
+  the goal problems, each once, each with the setting's attempts; its name and attempts are the setting's AS IT IS
+  WHEN THE REPORT IS BUILT; a sampling seed is recorded. (12) **The rows a model was trained on** are the training
+  loop's own record, by id, held to the stored set (each row once, none else); the barred rows are L5's own check
+  (`l5.no_barred_row`). (13) **The read over the seeds is made by a seed's report step**, from the runs on the box
+  then: the last seed to finish makes it, any seed's task queued again makes it again, and the tool makes it from the
+  pulled task directories (`python -m rlvr_lean.tools.ladder_l5_draws <one directory a seed> [--out read.json]`; no
+  GPU, no Lean; it refuses, with exit code 2, a directory without its report, a report that is not L5d's and two
+  directories of one seed). A seed's OWN report is not built by the tool: its report step reads `pre_r64`'s run and
+  the snapshot's pretraining file beside the seed's run.
+- **OPEN: the timed-out attempts are NOT checked again.** The section's "Timeouts" asks that, where two models of one
+  seed differ by more than a point, the seed's timed-out attempts be checked again and the reads given both ways.
+  BUILT: each set's share is printed and stored, and the pairs more than a point apart are named (`l5.timed_out`, as
+  L5's further seeds name them), with `checked_again: false`. NOT BUILT: the check again (a Lean-only step or tool
+  that asks those attempts again and makes each read a second time on the answers), as it is not built for L5. Where
+  a pair is named, the reads stand as given once and the report says so.
+- **The smoke stage** (`ladder_l5_draws_smoke`, task seed 3) runs the same twenty-three steps and reads
+  `ladder_l5_deep_smoke` and the three smoke runs that task read; it writes `ladder_l5_draws_smoke` (with a recipe
+  that is not `constant`, `ladder_l5_draws_smoke_<recipe>`, so that one recipe's smoke run does not stand in
+  another's way). HOW IT GOES ON: `RLVR_LEAN_LADDER_L5_DRAWS_SMOKE=1`, set by this stage ALONE and refused by the
+  first step unless the run directory is one the task names AND the map is the fixtures'. Under it, each recorded:
+  L5's smoke run, whose report is INCONCLUSIVE, is read all the same (one NOT TO BE READ never is); its two looser
+  draws are made again as it recorded them (L5's own smoke-only variable is not set); one deep solve is enough (D =
+  1, three sets of two rows); orders of two rows that are alike are trained all the same; and an averaged adapter
+  that IS one of its models is kept and served. THE RECIPE IS THE SETTING'S, HELD TO L5n's REAL REPORT as a real
+  run's is. WHAT IT DOES NOT EXERCISE: the two recipes the setting does not name (as the config stands, a training
+  with the decay asked for, the four orders, an averaged adapter made and served: when L5n names one of them the
+  setting is changed and THE SMOKE IS QUEUED AGAIN under it, before the first real seed); a learning rate that FALLS
+  under any recipe (a training of two rows is one step, inside the warm-up); the read over the seeds (a run the task
+  names reads no other seed's run: NOT READ); where it sits (the fixtures' start model solves the one goal problem,
+  so G′ is empty); L5's seeds 1 and 2 beside; the refusals of a real run (an INCONCLUSIVE run of L5, a further seed
+  without the approval, two orders alike); the real sizes.
+- **Measured before any run, on the pulled copies** (links in a scratch store; no GPU, no Lean; the pulled directories
+  only read: the sizes and times of their 489, 82, 80 and 700 files are as before). The first step ran to its end
+  for each of the seeds 3 to 8 (6 to 8 with the approval set in a scratch copy of the settings); it REFUSED, with no
+  file written, the seeds 0, 1 and 2, the seeds 6, 7 and 8 without the approval, and seed 9. AT EVERY SEED: the
+  search of seed 0 (1,000 problems, 520 deep solves), D = 400; `published` 800 published rows, `shallow` 400 ordinary
+  solves and 400 published rows, `deep` 400 deep rows and 400 published rows; NO ID TWICE IN A SET, no problem twice,
+  no problem of G (392) or of the held-aside set (600), no published row with text; `shallow` and `deep` hold the
+  SAME 400 published rows, which are among `published`'s 800; 100 optimizer steps a training; the adapter seed is
+  the task's; the sampling `reach`, 32 attempts, sampling seed 1001; the recipe `constant`, said beside every read
+  (L5n's report is not among the pulled copies). The parts of G are the section's: `pre_r64` solves 200 goal
+  problems in its stored first sampling and G′ holds the 192 others; 74 goal problems are long. THE SETS ARE WHAT A
+  FURTHER SEED OF L5 BUILDS: L5's own two prepare steps, run as a further seed of L5 for each of the six seeds in the
+  same scratch store, build D = 400 and three sets equal to this stage's row for row and field for field. WHAT TWO
+  SEEDS SHARE, over the 15 pairs of the six seeds: DEEP PROBLEMS 300 to 311 of 400 (mean 306.3; seeds 3 and 4: 303,
+  3 and 5: 309, 4 and 5: 304), of which 152 to 172 with the same verified attempt (mean 164.7); ordinary problems
+  134 to 163 of 400 (mean 145.7); PUBLISHED ROWS of `published` 18 to 31 of 800 (mean 26.1; 31, 25, 29 for those
+  three pairs); published rows of `deep` and `shallow` 2 to 11 of 400 (mean 6.7). The section's "about 308" and
+  "about 25" are these. All 520 deep solves stand in some seed's set and 106 in every one of the six; of the seeds
+  3, 4 and 5, 515 in some and 231 in each. The six seeds' `published` sets hold 4,420 distinct rows of their 4,800.
+  THE FOUR ORDERS, by the rule alone (no such run is prepared while the setting is `constant`): four distinct orders
+  of each set at every seed and no two alike; at seed 3 the order seed 3, and at seed 4 the order seed 4, give the
+  seed's own order.
+- **Existing stages write what they wrote.** In the scripted world, with the code before the build and after it: L5
+  at the search's own seed is the same 108 files and 14 step summaries, a further seed's the same 97 and 14, L6's the
+  same 149 and 17, L5n's the same 112 and 22 (timings and the copy's own path apart). Asserted in the suite: with
+  this stage run beside them, L5's own task queued again returns what is stored and moves no file, a further seed of
+  L5 run AFTER this stage leaves the files a further seed leaves, L5n run after it leaves L5n's files and hands its
+  trainings what it handed them, its averaged adapters made by the body the two stages share; L6 writes its files
+  with this stage in the code. Three assertions that state where things live were brought up to date (one more smoke
+  stage names the rank check's smoke run, the map's, L5's smoke run and L4t2's).
+- **Fragile, and not shown without the box.** (a) THE RECIPE DEPENDS ON WHEN A SEED IS QUEUED: before L5n's report is
+  written a seed trains `constant`. If L5n then names another recipe, that seed's run is of another recipe than the
+  later ones, is not read with them, and is moved away and run again. (b) ONE failed check of one model makes its
+  seed INCONCLUSIVE and the read over the seeds INCONCLUSIVE until that seed is run again. (c) The read is NOT READ
+  until the last seed of the fixed number has written its report; the report that makes it is the last seed's, and
+  an earlier seed's report on the box still says NOT READ until its task is queued again. (d) Fifteen of the
+  twenty-three steps make nothing under `constant` and `decay`; each still starts its process behind the guard
+  between steps. A guard after a step that held no model passes only while the card's other users hold at most 300
+  MiB more than at the guard before it (as after L5's own steps that make nothing); one that fails stops the task,
+  and the task queued again goes on from the first step not done. What the fifteen cost in time is not measured.
+  (e) The sampling engine starts with 0.3 GiB to spare beside the desktop's reserve, three times a seed; a start
+  that fails is run again by the entry shim, twice at most. (f) Under `mean_constant` an averaged adapter is made and
+  served here for the first time outside L5n: its smoke run and its real run come first. (g) A seed's three
+  measurements are half an hour apart and the seeds hours or days apart on a pool that changes: the timeout shares
+  are printed, no check is built on them, and the check again is not built (OPEN, above). (h) The report step reads
+  `pre_r64`'s run and, for the exploratory lines, L5's three runs on the box: those not there are NOT THERE, and the
+  exploratory lines NOT READ.
+- **Mutated.** Two hundred and forty-four one-change mutations of what this build added, each applied to a copy of the
+  tree and never to the working tree: the recipe held to L5n's report (a run that is not there, a report INCONCLUSIVE or
+  not to be read, which case asks for which recipe, what is said beside the reads); each recipe's trainings and
+  orders; the seeds and the approval; each check (a published row with text, a set out of its order, the rule and its
+  seed, a goal or held-aside problem, a row twice, missing or a stranger, the stored sampling); the parts of G, the
+  counts and each difference; the interval over seeds (the deviation, the root of the seeds, each critical value), the
+  primary's four outcomes and their edges, the effect found; where it sits and its edges; what a number of seeds
+  would resolve; what follows in each case; the read over the seeds (two recipes, seeds measured otherwise, a missing
+  seed, a failed one, one that is not of the fixed number, the part and the difference each read takes, the
+  exploratory pool); in the stage the settings' refusals, L5n's report, each refusal of the first step, each guard
+  of the smoke-only variable and each thing it allows, by whose seed the sets are drawn, what is copied, a run that
+  keeps its recipe, the steps of another recipe, each recipe's schedule, the average, the measurement (the rungs, a
+  second sampling, whose adapter, the rank), the other seeds' runs and L5's, the report step; in the report each
+  check, whose checks decide, an INCONCLUSIVE seed and what it hands on, what is printed; the tool; the registration
+  and the setting; and, put to the tests of L5, its further seeds, L6 and L5n as well, the two functions cut out of
+  L5's three sets step and L5n's averaging body and check. The first run: 215 noticed, 29 not. The twenty-nine asked
+  for assertions, which were added. ON THE RULES: a training of nothing on a set of nothing does not pass; the
+  outcome is named from the interval as computed and not as it is printed (one that begins three ten-millionths
+  above zero; a half-width four hundred-millionths above the effect found); a seed at which the difference is zero
+  is not counted positive; an interval on G′ that begins at zero is RELIABILITY; a half-width that is exactly the
+  effect found resolves; the exploratory pool holds L5's own differences and the fresh seeds' primary ones on all of
+  G; the tool reads over six seeds once the approval is recorded. ON THE STAGE: the start adapter's type is held
+  under the averaged recipe alone; a real run asks the setting's minimum of deep solves (the scripted world's is two
+  now); the search's count is held to what its own task recorded; G′ is copied as L5's reading hands it on, and a
+  stored sampling it was not made from gives no figure on a part; a real run refuses an averaged adapter that is one
+  of its models, and its report fails one; the other seeds are read from their runs (the further ones too; an
+  unfinished run, a report of another seed and a run the task names are not there); the stored first sampling is
+  held to the setting as it is when the report is built; an adapter read back at another rank fails; a row of a goal
+  problem is barred and of G, a row of a held-aside problem of the held-aside set, both on the training loop's own
+  record and not on the stored set; the long problems are the last length group; and, in L5's own two functions,
+  through this stage, the map is held to the one the search was prepared on and a set with a held-out row is refused
+  (the tests of L5, its further seeds, L6 and L5n that the pass ran had seen neither). The last run, all 244 against
+  the tree with these additions: 244 noticed. The pass's own control, a copy with nothing changed, passes its tests
+  (48 of this stage's; 133 with those of L5, its further seeds, L6 and L5n).
 
 ## Fixtures (these become the tests)
 

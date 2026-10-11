@@ -75,6 +75,25 @@ def _at_its_rank(saved: Mapping | None, rank: int | None, alpha: int | None) -> 
     return bool(saved) and (saved.get("rank"), saved.get("alpha"), saved.get("ranks")) == (rank, alpha, [rank])
 
 
+def the_mean_check(own: Mapping, of_the_set: Mapping, rows: Sequence[Mapping], rank: int | None, alpha: int | None, smoke: bool) -> dict:
+    """The check of ONE averaged model, which two reports read (this one's; L5d's, `reporting/ladder_l5_draws.py`):
+    read back, every number of its adapter is the mean of its models' and it is none of them; it is at the start
+    adapter's rank; and it is the adapter its set was sampled from. `own`: its averaging step's summary. `of_the_set`:
+    its measuring step's. `rows`: its per-problem rows. `smoke`: a SMOKE run, in which an adapter that is one of its
+    models passes all the same, and is said."""
+    held, saved = own.get("read_back") or {}, own.get("adapter_saved")
+    at_rank = _at_its_rank(saved, rank, alpha)
+    served = bool(own.get("adapter")) and of_the_set.get("adapter") == own.get("adapter") and bool(rows) and all(row["episodes"] > 0 for row in rows)
+    # A SMOKE RUN ALONE: its models may be one adapter (one optimizer step on the same rows), and their mean then is each of them: kept all the same, and said.
+    one_of_them = smoke and bool(held.get("is_the_mean")) and not held.get("is_none_of_them")
+    return {"what": "read back from its file, every number is the mean of its models' numbers at that place and it is none of them; it has the start "
+                    "adapter's rank and alpha; and the model server took it: its set was sampled from it",
+            "of": own.get("of"), "elements": held.get("elements"), "elements_not_the_mean": held.get("elements_not_the_mean"),
+            "elements_not_those_of_each_model": held.get("elements_not_those_of_each_adapter"), "is_the_mean": bool(held.get("is_the_mean")),
+            "is_none_of_them": bool(held.get("is_none_of_them")), "one_of_its_models_in_a_smoke_run": one_of_them, "read_back": saved,
+            "at_its_rank": at_rank, "served": served, "passes": (bool(held.get("passes")) or one_of_them) and at_rank and served}
+
+
 def the_checks(prepare: Mapping, trains: Mapping[str, Mapping], trained: Mapping[str, Sequence[Mapping]], averaged: Mapping[str, Mapping], measured: Mapping[str, Mapping],
                rows: Mapping[str, Sequence[Mapping]], fixed: Sequence[Mapping]) -> dict[str, dict]:
     """The checks the spec reads FIRST, by model: a trained model's adapter and its rows; an averaged model's numbers,
@@ -89,18 +108,7 @@ def the_checks(prepare: Mapping, trains: Mapping[str, Mapping], trained: Mapping
                                       "passes": differs["passes"] and at_rank},
                         THE_ROWS: only_the_fixed_rows(trained[name], fixed)}
     for name in prepare["averaged"]:
-        own, of_the_set = averaged[name], measured[name]
-        held, saved = own.get("read_back") or {}, own.get("adapter_saved")
-        at_rank = _at_its_rank(saved, rank, alpha)
-        served = bool(own.get("adapter")) and of_the_set.get("adapter") == own.get("adapter") and bool(rows[name]) and all(row["episodes"] > 0 for row in rows[name])
-        # A SMOKE RUN ALONE: its models may be one adapter (one optimizer step on the same rows), and their mean then is each of them: kept all the same, and said.
-        one_of_them = bool(prepare.get("smoke")) and bool(held.get("is_the_mean")) and not held.get("is_none_of_them")
-        checks[name] = {THE_MEAN: {"what": "read back from its file, every number is the mean of its models' numbers at that place and it is none of them; it has the start "
-                                           "adapter's rank and alpha; and the model server took it: its set was sampled from it",
-                                   "of": own.get("of"), "elements": held.get("elements"), "elements_not_the_mean": held.get("elements_not_the_mean"),
-                                   "elements_not_those_of_each_model": held.get("elements_not_those_of_each_adapter"), "is_the_mean": bool(held.get("is_the_mean")),
-                                   "is_none_of_them": bool(held.get("is_none_of_them")), "one_of_its_models_in_a_smoke_run": one_of_them, "read_back": saved,
-                                   "at_its_rank": at_rank, "served": served, "passes": (bool(held.get("passes")) or one_of_them) and at_rank and served}}
+        checks[name] = {THE_MEAN: the_mean_check(averaged[name], measured[name], rows[name], rank, alpha, bool(prepare.get("smoke")))}
     for name in prepare["models"]:
         health = _health(rows[name])
         checks[name][LEAN_ANSWERED] = {"what": f"Lean gave a verdict on all but at most {MAXIMUM_SHARE_WITHOUT_AN_ANSWER} of the attempts of its set; the task queued again "

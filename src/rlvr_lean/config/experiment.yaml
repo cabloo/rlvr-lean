@@ -706,6 +706,25 @@ ladder_loop:                       # docs/spec/ladder-loop.spec.md, L0: the pool
     attempts: 32                   # ... of this many attempts a problem, with the sampling seed that run recorded for it (both held to that run's record)
     published_seeds: [0, 1, 2]     # L5's seeds whose `published` (rows AND order drawn) stands beside on the same sampling: read from the runs
                                    # ladder_l5_deep_<start>_seed<N> when they are on the box and finished; NOT THERE otherwise, and nothing is refused
+  # ---- L5d: the three kinds again, over fresh draws, measured on the goal set's first sampling (spec "L5d: the three kinds again,
+  # over fresh draws, measured on the goal set's first sampling"; stage ladder_l5_draws: gpu/ladder_l5_draws.py; rules in
+  # domain/ladder_round/l5_draws.py; report in reporting/ladder_l5_draws.py.) Labelled pretrained on published proofs. NO ROUND and no
+  # search: each seed below is A FURTHER SEED OF L5 (the three sets by L5's own rule for that seed, from the finished search of
+  # l5.search_seed, from l5.start at ITS rank), with the measurement cut to the one sampling L5n measures. One task a seed. THE one
+  # reader is gpu/ladder_l5_draws.py, the_settings.
+  l5_draws:
+    seeds: [3, 4, 5]               # the FRESH seeds; none is a seed of L5's own (l5_noise.published_seeds), which found the sign
+    more_seeds: [6, 7, 8]          # further fresh seeds, WITH EXPLICIT APPROVAL (more than three seeds needs it in advance): a task of one is refused until ...
+    more_seeds_approved: false     # ... this is true. The reads are over `seeds` alone while it is false, and over both lists once it is true
+    sampling: reach                # the sampling of the goal set every model is measured on: l5_noise's own (held to it) ...
+    attempts: 32                   # ... and its attempts a problem
+    recipe: mean_constant          # L5n's report of 2026-10-11 names A LATER STAGE TRAINS EACH MODEL FOUR TIMES AND MEASURES THE AVERAGED ADAPTER.
+                                   # How a model is trained, HELD TO L5n's REPORT by the first step (refused otherwise, naming both):
+                                   #   constant        the recipe as it is, one training a model: when L5n's report names THE SPREAD IS THE RECIPE'S OWN,
+                                   #                   and when L5n's run is not there, unfinished, not to be read or INCONCLUSIVE (said beside every read)
+                                   #   decay           one training a model with l5_noise's decay: when it names EVERY LATER STAGE TRAINS WITH THE DECAY
+                                   #   mean_constant   each set trained in four orders (order seeds 1 to 4 of its own rows) with the recipe as it is, and the
+                                   #                   AVERAGED adapter measured: when it names A LATER STAGE TRAINS EACH MODEL FOUR TIMES ...
 
 evaluation:
   conjecture_holdout_samples: 12

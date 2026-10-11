@@ -753,6 +753,44 @@ STAGES["ladder_l5_noise"] = _l5_noise_steps((1, 2, 3, 4))
 _LADDER_L5_NOISE_SMOKE = {"environment": {**{name: value for name, value in _LADDER_L5_SMOKE["environment"].items() if name != "RLVR_LEAN_LADDER_L5_SMOKE_PROBLEMS"},
                                           "RLVR_LEAN_LADDER_L5_NOISE_RUN": "ladder_l5_noise_smoke", "RLVR_LEAN_LADDER_L5_NOISE_SMOKE_ORDERS": "2"}}
 STAGES["ladder_l5_noise_smoke"] = [(environment, step, _LADDER_L5_NOISE_SMOKE) for environment, step in _l5_noise_steps((1, 2))]
+
+# L5d: the three kinds again, over fresh draws, measured on the goal set's first sampling (spec ladder-loop, "L5d: the three kinds
+# again, over fresh draws, measured on the goal set's first sampling"; `gpu/ladder_l5_draws.py`). Labelled pretrained on published
+# proofs. NO ROUND AND NO SEARCH: a seed of it (`ladder_loop.l5_draws.seeds`, and `more_seeds` with explicit approval) is A
+# FURTHER SEED OF L5 with the measurement cut to the one sampling L5n measures. L5's finished search
+# (`ladder_l5_deep_pre_r64_seed<l5.search_seed>`) and every stored run that task read are ONLY READ. It writes
+# `ladder_l5_draws_pre_r64_seed<N>` and nothing else. `ladder_l5_draws_prepare` refuses, before anything is written, a task of a
+# seed that is not one of the stage's, a recipe (`ladder_loop.l5_draws.recipe`) that is not the one L5n's report asks for, and an
+# L5 run that is missing, unfinished, not to be read, INCONCLUSIVE or made otherwise; it builds the three sets by L5's own rule for
+# the task's seed. THE STEPS ARE THOSE OF THE LARGEST RECIPE, model by model (`published`, `shallow`, `deep`): its one training
+# (`constant`, `decay`), its four trainings in the orders of order seeds 1 to 4 and its averaged adapter (`mean_constant`), its
+# measurement. A STEP THE RUN'S RECIPE DOES NOT USE MAKES NOTHING (`run: false`, nothing marked): under `constant` and `decay` the
+# four trainings and the averaging of each model, under `mean_constant` its one training. A MEASUREMENT IS THE GOAL SET'S FIRST
+# SAMPLING ALONE (32 attempts, the sampling seed `pre_r64`'s run recorded). Then the report: this seed's checks and figures, and
+# the read over the fresh seeds from the runs that are on the box and finished (NOT READ while a seed of the fixed number is not).
+def _l5_draws_steps() -> list:
+    steps = [("sync", "gpu"), ("gpu", "fix_tokenizers"), ("gpu", "ladder_l5_draws_prepare")]
+    for model in ("published", "shallow", "deep"):
+        for name in (model, *(f"{model}_{order}" for order in (1, 2, 3, 4))):
+            steps += [("guard", None), ("gpu", f"ladder_l5_draws_train_{name}")]
+        steps += [("guard", None), ("gpu", f"ladder_l5_draws_average_{model}"), ("guard", None), ("gpu", f"ladder_l5_draws_measure_{model}")]
+    return steps + [("guard", None), ("gpu", "ladder_l5_draws_report")]
+
+
+STAGES["ladder_l5_draws"] = _l5_draws_steps()
+# The same steps on what the smoke runs left in the box's store: L5's smoke run (`ladder_l5_deep_smoke`: its search of one problem)
+# and the three it read (`ladder_l4b_map_smoke`, `ladder_l4_rows2_r64_smoke`, `ladder_l4_rank_smoke`), with the 12-row fixture in
+# the pretraining file's place and the fixtures' held-out set, in a run directory of its own (`ladder_l5_draws_smoke`; with a
+# recipe that is not `constant`, `ladder_l5_draws_smoke_<recipe>`). The task's seed is 3 (the job's `--seeds`). It names the runs
+# L5's smoke stage names, by L5's own variables (L5's functions read them), and NOT L5's smoke-only variable: that run's two looser
+# draws are made again as it recorded them. L5's smoke run reads INCONCLUSIVE (a training of two rows has no loss to compare),
+# which a real run is refused for. So this stage ALONE sets `RLVR_LEAN_LADDER_L5_DRAWS_SMOKE=1`: L5's run is read all the same
+# (recorded), one deep solve is enough, orders of a set's two rows that are alike are trained all the same, and an averaged adapter
+# that is one of its models is kept. The first step REFUSES that variable in a run directory of the seed's own or on the pool's
+# base map, so no real run takes that path. THE RECIPE IS THE SETTING'S, held to L5n's REAL report as a real run's is.
+_LADDER_L5_DRAWS_SMOKE = {"environment": {**{name: value for name, value in _LADDER_L5_SMOKE["environment"].items() if name != "RLVR_LEAN_LADDER_L5_SMOKE_PROBLEMS"},
+                                          "RLVR_LEAN_LADDER_L5_DRAWS_RUN": "ladder_l5_draws_smoke", "RLVR_LEAN_LADDER_L5_DRAWS_SMOKE": "1"}}
+STAGES["ladder_l5_draws_smoke"] = [(environment, step, _LADDER_L5_DRAWS_SMOKE) for environment, step in _l5_draws_steps()]
 SOUNDNESS_ALARM_EXIT = 3      # `gpu.__main__`'s code for a proof of both sides of one statement (it cannot be imported here)
 
 
@@ -956,6 +994,30 @@ def wait_for_idle_gpu(baseline_mib: int | None, margin_mib: int, timeout_seconds
     return result
 
 
+def baseline_after(guard: dict, baseline_mib: int | None) -> int | None:
+    """The next guard's baseline. A guard that passed because the step's memory was released, with the card's
+    other users holding more than before, leaves what they hold now; any other guard leaves the baseline."""
+    if guard["ok"] and guard.get("passed_because", "").startswith("the step's memory was released"):
+        return guard["used_mib"]
+    return baseline_mib
+
+
+ENGINE_DID_NOT_START = "Engine core initialization failed"      # vLLM's own words when its engine process did not come up
+ENGINE_STARTS = 3                   # a step whose engine did not start is run again, twice at most (spec §7 item 8a)
+ENGINE_START_WAIT_SECONDS = 30
+
+
+def engine_did_not_start(returncode: int, result: dict | None) -> bool:
+    """Whether a failed GPU step failed because the sampling engine did not come up: its own result says so.
+
+    Why it exists (2026-10-11, task e034e858): while it starts, the engine takes off its cache whatever the
+    card's other users took in those 20 seconds, and with the desktop's reserve its cache is 0.3 GiB above the
+    least it starts with. The fourth start of that task had 1.87 GiB against 1.88 and the stage ended with
+    three models of ten measured. A soundness alarm, a step that left no result and every other error are not
+    this, and are never run again."""
+    return returncode not in (0, SOUNDNESS_ALARM_EXIT) and ENGINE_DID_NOT_START in str((result or {}).get("error", ""))
+
+
 def run_stage(stage: str, out: Path, kimina_api_key: str | None) -> dict:
     out.mkdir(parents=True, exist_ok=True)
     (out / "steps").mkdir(exist_ok=True)
@@ -980,8 +1042,7 @@ def run_stage(stage: str, out: Path, kimina_api_key: str | None) -> dict:
             if environment == "guard":
                 result = {"step": "gpu_guard", **wait_for_idle_gpu(baseline, 300, step_peak_mib=previous_peak)}
                 returncode = 0 if result["ok"] else 1
-                if result["ok"] and result.get("passed_because", "").startswith("the step's memory was released"):
-                    baseline = result["used_mib"]       # what the card's other users hold now: the next guard's baseline
+                baseline = baseline_after(result, baseline)     # what the card's other users hold now: the next guard's baseline
             elif environment == "sync":
                 command = [str(uv), "sync", "--project", str(PROJECT_DIR), "--group", step, "--no-dev",
                            "--frozen", "--python", "3.12"]
@@ -993,10 +1054,29 @@ def run_stage(stage: str, out: Path, kimina_api_key: str | None) -> dict:
                 env = child_environment(environment, kimina_api_key, options)
                 env["RLVR_LEAN_STEP_DIR"] = str(out / "steps")      # side files (samples) land in the output directory a job runner collects
                 env["RLVR_LEAN_TB_DIR"] = str(out / "tb")           # one TensorBoard run per arm and seed (spec §13)
-                returncode = run_child(command, env, monitor)
-                result = {"step": label}
-                if step_out.exists():
-                    result["result"] = json.loads(step_out.read_text())
+                failed_starts: list[dict] = []
+                while True:
+                    start_began = time.monotonic()
+                    returncode = run_child(command, env, monitor)
+                    result = {"step": label}
+                    if step_out.exists():
+                        result["result"] = json.loads(step_out.read_text())
+                    if len(failed_starts) + 1 >= ENGINE_STARTS or not engine_did_not_start(returncode, result.get("result")):
+                        break
+                    guard = wait_for_idle_gpu(baseline, 300, step_peak_mib=monitor.peak_gpu_mib or None)
+                    if not guard["ok"]:                 # the failed engine still holds the card: the step stays failed
+                        result["engine_start_guard"] = guard
+                        break
+                    baseline = baseline_after(guard, baseline)
+                    failed_starts.append({"returncode": returncode, "seconds": round(time.monotonic() - start_began, 1),
+                                          "error": result["result"]["error"]})
+                    log(f"{label}: the engine did not start (start {len(failed_starts)} of {ENGINE_STARTS}); "
+                        f"the step is run again in {ENGINE_START_WAIT_SECONDS} s")
+                    time.sleep(ENGINE_START_WAIT_SECONDS)
+                    step_out.unlink()                   # the next start's result is its own, or there is none
+                    monitor.reset_peaks()
+                if failed_starts:
+                    result["engine_starts"] = failed_starts
             result.update({"returncode": returncode, "seconds": round(time.monotonic() - started, 1),
                            "peak_gpu_used_mib": monitor.peak_gpu_mib, "peak_step_rss_mib": monitor.peak_tree_rss_mib})
             if environment not in ("guard", "sync"):

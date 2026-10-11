@@ -837,10 +837,11 @@ def test_the_stage_is_registered_with_a_guard_before_every_gpu_step_and_the_smok
         others |= set(module.STEPS)
     assert not set(ladder_l5.STEPS) & others and all(name.startswith("ladder_l5_") for name in ladder_l5.STEPS)
     assert sorted(name for name in entry.STAGES if any(entry.step_fields(step)[1] in ladder_l5.STEPS for step in entry.STAGES[name])) == ["ladder_l5_deep", "ladder_l5_deep_smoke"]
-    # ITS VARIABLES are named by its smoke stage, and the two that say WHERE A RUN IS by L6's smoke stage and L5n's too, which read this stage's smoke run by this stage's own
-    # functions. THE SMOKE-ONLY ONE is its smoke stage's ALONE: no other stage of the package sets it and no other module reads it.
+    # ITS VARIABLES are named by its smoke stage, and the two that say WHERE A RUN IS by L6's smoke stage, L5n's and L5d's too, which read this stage's smoke run by this
+    # stage's own functions. THE SMOKE-ONLY ONE is its smoke stage's ALONE: no other stage of the package sets it and no other module reads it.
     names = lambda variable: sorted(name for name, own_ in entry.STAGES.items() if any(variable in entry.step_fields(step)[2].get("environment", {}) for step in own_))      # noqa: E731
-    assert names(RUN) == names(L4T2_RUN) == ["ladder_l5_deep_smoke", "ladder_l5_noise_smoke", "ladder_l6_cycle_smoke"] and names(SMOKE) == ["ladder_l5_deep_smoke"] and SMOKE == "RLVR_LEAN_LADDER_L5_SMOKE_PROBLEMS"
+    assert names(RUN) == names(L4T2_RUN) == ["ladder_l5_deep_smoke", "ladder_l5_draws_smoke", "ladder_l5_noise_smoke", "ladder_l6_cycle_smoke"]
+    assert names(SMOKE) == ["ladder_l5_deep_smoke"] and SMOKE == "RLVR_LEAN_LADDER_L5_SMOKE_PROBLEMS"
     assert sorted(str(path.relative_to(PACKAGE)) for path in PACKAGE.rglob("*.py") if SMOKE in path.read_text()) == ["gpu/ladder_l5.py", "runner/entry.py"]
     assert "ladder_l5_deep_smoke" in names(MAP_RUN) and "ladder_l5_deep" not in names(MAP_RUN)
     # ONE BODY EACH: this stage's train and measure steps are L4t's own two bodies, and its report reads its models by L4t's own reader.
