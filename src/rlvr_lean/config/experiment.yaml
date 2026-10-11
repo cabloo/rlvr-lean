@@ -691,6 +691,21 @@ ladder_loop:                       # docs/spec/ladder-loop.spec.md, L0: the pool
     long_ordinary:
       solved_at_least: 1           # an ORDINARY solve here: a map problem the start model solved in at least this many of its base_map.episodes map attempts
       line_bins: [1, 2, 4, 8, 16]  # the lower edges of the bins of a proof's lines the ordinary solves are matched to `two_rounds`' own rows by: 1, 2-3, 4-7, 8-15, 16+
+  # ---- L5n: what is one training worth? The spread between trainings, and a recipe that lowers it (spec "L5n: what is one training
+  # worth? The spread between trainings, and a recipe that lowers it"; stage ladder_l5_noise: gpu/ladder_l5_noise.py; rules in
+  # domain/ladder_round/l5_noise.py; report in reporting/ladder_l5_noise.py.) Labelled pretrained on published proofs. NO ROUND and no
+  # draw of rows: ONE FIXED SET, the rows the finished run of l5.search_seed trained `published` on (read from that run, by id and
+  # place), from l5.start at ITS rank. Each order seed below gives the rows another order; each order is trained with each recipe;
+  # each recipe's adapters are then averaged, number by number, into one more model. Every model is measured on ONE sampling of the
+  # goal set. THE one reader is gpu/ladder_l5_noise.py, the_settings.
+  l5_noise:
+    orders: [1, 2, 3, 4]           # the ORDER seeds: the fixed rows in the content-hash order of each (assembly.training_order); none is l5.search_seed, whose order they were trained in
+    recipes: [constant, decay]     # constant: training above as it is (warm-up, then a constant learning rate). decay: ONE change, after the warm-up
+                                   # the learning rate falls linearly to zero at the end of the pass (domain/ladder_round/dose.py, decayed)
+    sampling: reach                # the sampling of the goal set every model is measured on, by the name the start model's run gave it: its FIRST ...
+    attempts: 32                   # ... of this many attempts a problem, with the sampling seed that run recorded for it (both held to that run's record)
+    published_seeds: [0, 1, 2]     # L5's seeds whose `published` (rows AND order drawn) stands beside on the same sampling: read from the runs
+                                   # ladder_l5_deep_<start>_seed<N> when they are on the box and finished; NOT THERE otherwise, and nothing is refused
 
 evaluation:
   conjecture_holdout_samples: 12

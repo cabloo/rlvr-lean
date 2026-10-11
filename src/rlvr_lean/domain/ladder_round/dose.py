@@ -2,7 +2,9 @@
 dose curve". Pure: no model, no Lean.
 
   the schedule     steps in a pass, the step each checkpoint is saved at, the steps at which the loss is read
-  the pairs        the fixed sample of training proofs, and the HELD-OUT proofs: verified proofs the base wrote for
+  the learning rate   each optimizer step's factor as the recipe has it (`warmed`) and with the decay of L5n
+                   (`decayed`: spec "L5n: what is one training worth?"), and what a training recorded held to it
+  the pairs       the fixed sample of training proofs, and the HELD-OUT proofs: verified proofs the base wrote for
                    held-out rung problems, one per problem, so many per rung, drawn with the seed
   the driver       the training loop as a schedule of calls (`run_dose`): the order of examples is `_train`'s own
                    (one generator, reshuffled each pass), so the first pass is L1's training step for step. The GPU
@@ -58,6 +60,72 @@ def reading_steps(total_steps: int, every_step_until: int, every: int, checkpoin
 
 def pass_of(step: int, per_pass: int) -> float:
     return round(step / per_pass, 4)
+
+
+# -------------------------------------------------------------------------------------- the learning rate
+RATE_TOLERANCE = 1e-9       # a recorded learning rate IS the schedule's when it is within this share of it (each is one product of two numbers: the allowance is for nothing else)
+
+
+def warmed(step: int, warmup_steps: int) -> float:
+    """THE RECIPE AS IT IS: the learning-rate factor of optimizer step `step`, counted from 1. It rises over the
+    warm-up (`step / warmup_steps`), is one at its last step and stays one: what the training hands its scheduler
+    (`gpu.ladder_dose._train_with_readings`), said for a step counted from 1."""
+    return min(1.0, step / warmup_steps)
+
+
+def decayed(step: int, warmup_steps: int, total_steps: int) -> float:
+    """WITH THE DECAY (spec, L5n: ONE change to the recipe): the learning-rate factor of optimizer step `step`, counted
+    from 1, of a training of `total_steps` steps. Over the warm-up it is the recipe's own (`warmed`). After it, a
+    straight line from one at the warm-up's last step to zero at the step AFTER the last one, so that the last step is
+    still a step: `(total_steps + 1 - step) / (total_steps + 1 - warmup_steps)`. A training no longer than its warm-up
+    has no step after it: every factor is then the recipe's own."""
+    if step <= warmup_steps or total_steps <= warmup_steps:
+        return warmed(step, warmup_steps)
+    return max(0.0, (total_steps + 1 - step) / (total_steps + 1 - warmup_steps))
+
+
+def scheduler_factor(warmup_steps: int, total_steps: int | None = None) -> Callable[[int], float]:
+    """What a training hands its scheduler: the learning-rate factor BY THE UPDATES MADE SO FAR, which is the optimizer
+    step less one. Without `total_steps` it is THE RECIPE AS IT IS, the very expression every training here has always
+    handed over (`warmed`, for a step counted from 1). With `total_steps` (the steps of the whole training) it is the
+    recipe with the decay (`decayed`)."""
+    if total_steps is None:
+        return lambda step: min(1.0, (step + 1) / warmup_steps)
+    return lambda step: decayed(step + 1, warmup_steps, total_steps)
+
+
+def steps_in_all(examples: int, batch: int, passes: int, orders: Sequence[Sequence[int]] | None = None) -> int:
+    """The optimizer steps of a whole training as `run_dose` makes them: `passes` passes over `examples`, or one pass
+    over each of `orders` when the order of the examples is given."""
+    return passes * steps_per_pass(examples, batch) if orders is None else sum(steps_per_pass(len(order), batch) for order in orders)
+
+
+def learning_rates(learning_rate: float, warmup_steps: int, total_steps: int, decay: bool) -> list[float]:
+    """The learning rate of every optimizer step of a training, from the first: `learning_rate` times the step's
+    factor (`decayed` with the decay, `warmed` without)."""
+    return [learning_rate * (decayed(step, warmup_steps, total_steps) if decay else warmed(step, warmup_steps)) for step in range(1, total_steps + 1)]
+
+
+def held_to_the_schedule(recorded: Sequence[float] | None, learning_rate: float, warmup_steps: int, decay: bool) -> dict:
+    """What a training RECORDED of its learning rate (one a step, read from the optimizer before that step's update),
+    HELD to the schedule it was asked for. Refused (ValueError) when it recorded none, or when a step's is not the
+    schedule's: a training with the decay whose rate did not fall is the recipe as it is under another name, and one
+    without it whose rate fell is no training of the recipe. Returns what the training's summary says of it."""
+    if not recorded:
+        raise ValueError("the training recorded no learning rate: it was asked to record each step's, and what it was trained with cannot be held to its schedule")
+    steps = len(recorded)
+    wanted = learning_rates(learning_rate, warmup_steps, steps, decay)
+    apart = [step for step, (found, own) in enumerate(zip(recorded, wanted), start=1) if abs(found - own) > RATE_TOLERANCE * learning_rate]
+    if apart:
+        raise ValueError(f"the learning rate recorded at step {apart[0]} is {recorded[apart[0] - 1]!r} and the schedule " + ("with the decay" if decay else "of the recipe as it is")
+                         + f" gives {wanted[apart[0] - 1]!r} ({len(apart)} of {steps} steps are not the schedule's): the training was not made with the schedule asked for")
+    after = min(warmup_steps + 1, steps)
+    return {"what": "each step's learning rate, read from the optimizer before that step's update and HELD to the schedule: the config's learning rate times the step's factor ("
+                    + ("the recipe's own over the warm-up, then a straight line from one at the warm-up's last step to zero at the step after the last one"
+                       if decay else "the recipe as it is: rising over the warm-up, then one") + ")",
+            "decay": decay, "steps": steps, "warmup_steps": warmup_steps, "learning_rate": learning_rate, "of_the_first_step": recorded[0],
+            "of_the_warmups_last_step": recorded[min(warmup_steps, steps) - 1], "of_the_step_after_the_warmup": recorded[after - 1], "of_the_last_step": recorded[-1],
+            "factor_of_the_last_step": recorded[-1] / learning_rate, "largest": max(recorded)}
 
 
 # --------------------------------------------------------------------------------------------------- pairs

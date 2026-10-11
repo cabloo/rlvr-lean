@@ -35,6 +35,8 @@ from rlvr_lean.domain.ladder_round.dose import (
     parts_row,
     reading_steps,
     run_dose,
+    scheduler_factor,
+    steps_in_all,
     steps_per_pass,
     training_sample,
 )
@@ -216,7 +218,7 @@ def _stand_in_calls(examples: int, sample: list[int], pairs: list[dict]):
 
 def _train_with_readings(config: dict, examples: list[dict], sample: list[int], pairs: list[dict], schedule: dict, seed: int,
                          directory: Path, tensorboard_run: str, orders: list[list[int]] | None = None, per_example: bool = False,
-                         positions: bool = False, start: Path | None = None) -> dict:
+                         positions: bool = False, start: Path | None = None, decay: bool = False, learning_rates: bool = False) -> dict:
     """The training of `ladder_round._train` (same model, adapter, optimizer, warm-up and order of examples), for
     `dose.passes` passes, with the per-step loss by part, the readings on the fixed pairs and the checkpoints.
     EVERY GPU object is a local of this function, so nothing outlives it. `orders`, `per_example` and `positions`
@@ -227,7 +229,13 @@ def _train_with_readings(config: dict, examples: list[dict], sample: list[int], 
     adapter's are zero, a pretrained one's are not: their absolute sum is compared with the file's). After the pass,
     each adapter it SAVED is compared with the start adapter's, file against file and bit for bit
     (`against_the_start_adapter`, by `infrastructure.adapter_files.compared`: how many of its numbers are not the
-    same): a trained adapter that IS the one it started from is a training that did not happen."""
+    same): a trained adapter that IS the one it started from is a training that did not happen.
+
+    `decay` and `learning_rates` are L5n's (spec "L5n: what is one training worth?"), and both are OFF for every other
+    caller, whose training and whose result are what they were. `decay`: ONE change to the recipe: after the warm-up
+    the learning-rate factor falls in a straight line to zero at the step after the last one (`dose.decayed`); the
+    warm-up is the recipe's own. `learning_rates`: the result also holds each step's learning rate, read from the
+    optimizer before that step's update."""
     import torch
 
     from rlvr_lean.runner.heartbeat import ScalarEventWriter
@@ -251,7 +259,10 @@ def _train_with_readings(config: dict, examples: list[dict], sample: list[int], 
     peft_model.train()          # gradient checkpointing is applied in training mode only (see `ladder_round._train`)
     optimizer = torch.optim.AdamW([parameter for parameter in peft_model.parameters() if parameter.requires_grad],
                                   lr=training["learning_rate"], weight_decay=0.0)
-    scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lambda step: min(1.0, (step + 1) / training["warmup_steps"]))
+    # THE RECIPE AS IT IS, for every caller but L5n's `decay`: the factor rises over the warm-up and stays at one (`dose.scheduler_factor` without a number of steps).
+    whole = steps_in_all(len(examples), training["effective_batch"], schedule["passes"], orders) if decay else None
+    scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, scheduler_factor(training["warmup_steps"], whole))
+    rates: list[float] = []
 
     def encode(theorem: str, completion: str):
         return encode_pair(tokenizer, *training_text(theorem, completion), training["max_sequence_tokens"], NATIVE)
@@ -281,6 +292,8 @@ def _train_with_readings(config: dict, examples: list[dict], sample: list[int], 
                 log_probabilities = torch.log_softmax(output.logits[0][positions - 1].float(), dim=-1)
                 per_pair.append((-log_probabilities.gather(1, input_ids[0, positions].unsqueeze(1)).squeeze(1)).tolist())
             del loss, output
+        if learning_rates:
+            rates.append(float(optimizer.param_groups[0]["lr"]))        # what THIS step's update is made with: the optimizer's own, never a number worked out beside it
         optimizer.step()
         scheduler.step()
         optimizer.zero_grad(set_to_none=True)
@@ -326,6 +339,7 @@ def _train_with_readings(config: dict, examples: list[dict], sample: list[int], 
     against = {name: compared(directory / name / ADAPTER_FILE, Path(start) / ADAPTER_FILE) for name in schedule["checkpoint_steps"]} if start is not None else {}
     return {**result, "target_format": NATIVE, "sequence_start_token_id": int(tokenizer.bos_token_id),
             **({"start_adapter_loaded": start_loaded, "against_the_start_adapter": against} if start is not None else {}),
+            **({"learning_rates": rates} if learning_rates else {}),
             "seconds": round(seconds, 1), "seconds_in_readings": round(sum(reading_seconds), 1),
             "seconds_per_reading": round(sum(reading_seconds) / len(reading_seconds), 2) if reading_seconds else None,
             "seconds_training": round(seconds - sum(reading_seconds), 1),

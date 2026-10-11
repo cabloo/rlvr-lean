@@ -3698,6 +3698,245 @@ put otherwise, what was NOT built, and what is fragile, are below).**
   solves is written with the sets, and no longer before a refusal that says nothing was written. The last run, all 157
   against the tree with these additions: 157 noticed.
 
+### L5n: what is one training worth? The spread between trainings, and a recipe that lowers it (fixed 2026-10-11, after L5's seed 1 and while its seed 2 runs)
+
+**Why, and what it overturns.** L5's seed 1 turned seed 0's order over. All of G, successes per 1,000 attempts, seed 0
+and seed 1: `published` 103.1 and 79.5 (the start model's own 80.0, and fewer goal problems solved than it, 217
+against 245); `shallow` 104.5 and 110.0; `deep` 112.5 and 97.2. Goal problems solved: 262 and 217, 257 and 261, 275
+and 250. Every check passes at both seeds and `published` was measured on a healthy pool. Two trainings of one kind
+differ by up to 24 per 1,000 and 45 goal problems, where L4p had put the spread at 6 and 5 from models of four
+different doses. **So no difference between two single trained models since L4t stands as an effect, in either
+direction:** not "the model's own proofs narrow it" (L4t, L4c, L4p part 1), not "the published rows do the adding",
+not seed 0's lead of `deep`. Every model trained from `pre_r64` so far, on published rows or on its own, for 100
+steps or 3,109, lies in one band of about 95 ± 10 per 1,000. Each stage's interval was over problems and never over
+trainings; that is my fault in the reads, not a fault of the runs. Until one training is worth more, no stage that
+compares single trained models can be read, L6 among them. This is a fault of the measurement and it is dealt with
+before another arm is bought.
+
+**What the recipe is** (`ladder_dose._train_with_readings`): AdamW at a constant learning rate of 1e-4 after five
+warm-up steps, no decay, no weight decay, no dropout; a training from `pre_r64` loads that adapter, so a task's seed
+changes WHICH ROWS are drawn and THEIR ORDER and nothing else. A step of Adam is about the size of the learning rate
+whatever the gradient, so with no decay the model saved is the last point of a walk. That is the hypothesis; nothing
+here assumes it.
+
+**The check.** ONE fixed set of rows: the 800 published rows of L5 seed 0's `published` (by id and place; the model
+that scored 103.1). From `pre_r64` at its rank, FOUR ORDERS of those rows (the content-hash order of order seeds 1 to
+4; none is the order seed 0 trained in), and each order trained twice:
+- **`constant_1` to `constant_4`:** the recipe as it is.
+- **`decay_1` to `decay_4`:** ONE change: after the warm-up the learning rate falls linearly to zero at the end of the
+  pass.
+
+Then two models that are not trained: **`mean_constant`** and **`mean_decay`**, the adapter whose every number is the
+mean of its four adapters' (the four start from one adapter and move little, so the mean is to first order the
+adapter of the mean model; it is read back and served like any other).
+
+Ten models. Each is measured on the goal set's FIRST sampling alone: 32 attempts a problem with the sampling seed
+`pre_r64`'s run recorded, so it pairs by problem with every stored model's first sampling. No rungs, no second
+sampling, no held-aside set: this stage reads a spread, not a model.
+
+**The reads, fixed before the run.** The figure of a model is its successes per attempt on all of G over the 32
+attempts. For a fixed set of problems its sampling noise is binomial (from each problem's own rate) and is printed
+beside every figure: about 0.003.
+- **THE SPREAD OF THE RECIPE AS IT IS:** the standard deviation (n − 1) of the four `constant` figures, with the
+  sampling noise beside it and, from L5, the standard deviation of `published` over its three seeds (rows and order
+  both drawn) on the same 32 attempts. ORDER ALONE MAKES THE SPREAD when the first is at least half of the second;
+  otherwise THE ROWS DRAWN MAKE MOST OF IT.
+- **DOES DECAY LOWER IT:** the standard deviation of the four `decay` figures against the `constant` one. DECAY LOWERS
+  THE SPREAD when it is at most half; NOT SHOWN otherwise. Said with it: with four against four only a ratio of about
+  three is beyond chance (F at 3 and 3 degrees, 9.28).
+- **AND ITS LEVEL:** `decay_k` minus `constant_k` for the four orders, their mean with its t interval at 3 degrees.
+  DECAY COSTS when the interval is below zero; otherwise its level is given and named nothing.
+- **AVERAGING:** each averaged model's figure against the mean of its four models' figures and against the best of
+  them. AVERAGING GIVES AT LEAST THE MEAN OF ITS MODELS when it is not below that mean by more than twice its sampling
+  noise.
+- **Beside, naming nothing:** each model's goal problems solved in the 32 attempts and their spread; its share of
+  distinct attempts; its share of timeouts; L5 seed 0's own `published` (the same rows in seed 0's order, the recipe
+  as it is) from its stored first sampling, as a fifth draw of `constant` that is not in the standard deviation.
+
+**Checks, read first; any FAIL makes the run INCONCLUSIVE.** Each trained adapter is not the start adapter's and is
+read back at its rank; each averaged adapter's numbers ARE the mean of its four (read back) and it is served; Lean
+answered (at most 0.02 of a set without an answer); no row is anything but one of the 800.
+
+**What follows, fixed now.**
+- **DECAY LOWERS THE SPREAD and does not cost:** every later stage trains with it. L5's three kinds are then trained
+  again with it before L6 runs (specified then, with this stage's cheap measurement for the spread).
+- **Not that, and AVERAGING GIVES AT LEAST THE MEAN:** a later stage trains each model four times and measures the
+  averaged adapter.
+- **Neither:** the spread is the recipe's own at this size (its learning rate, its length), and the choice (a lower
+  learning rate, or more seeds an arm) goes to the owner with these figures.
+
+**L6 waits for this read** (amending its "When it runs"): one training a model, as L6 is specified, cannot resolve
+a difference under about 25 per 1,000 beside this spread. L6's smoke run stands; its real run is queued with the
+recipe this stage names.
+
+**What it cannot say.** One set of rows, published rows only; four orders; G alone and 32 attempts; nothing of the
+held-aside set. It measures the recipe's noise from `pre_r64`, not from another start.
+
+**Budget.** Eight trainings of about four minutes and ten measurements of about 28: about five hours and a quarter.
+A smoke stage first.
+
+**Made exact by the build (2026-10-11; nothing queued, nothing run on a GPU, nothing sent to Lean; the reads above are
+not changed; the readings taken where the section left something open, the figures of the section that the stored runs
+put otherwise, what was NOT built, and what is fragile, are below).**
+- **The stages.** `ladder_l5_noise` (`gpu/ladder_l5_noise.py`; rules `domain/ladder_round/l5_noise.py`; report
+  `reporting/ladder_l5_noise.py`), settings `ladder_loop.l5_noise` (`orders: [1, 2, 3, 4]`, `recipes: [constant, decay]`,
+  `sampling: reach`, `attempts: 32`, `published_seeds: [0, 1, 2]`; one reader; the start is L5's own setting, and no
+  setting of this block names it). It names NO variable. Run directory `ladder_l5_noise_pre_r64_seed<N>`. TWENTY-TWO
+  steps, each resumable: `ladder_l5_noise_prepare`; then for each order seed k in turn `ladder_l5_noise_train_constant_k`,
+  `ladder_l5_noise_measure_constant_k`, `ladder_l5_noise_train_decay_k`, `ladder_l5_noise_measure_decay_k` (ORDER BY
+  ORDER, so that a run cut short leaves whole pairs); `ladder_l5_noise_average_constant`,
+  `ladder_l5_noise_measure_mean_constant`, `ladder_l5_noise_average_decay`, `ladder_l5_noise_measure_mean_decay`;
+  `ladder_l5_noise_report`. Jobs `ladder_l5_noise_seed0.json` (est_minutes 420) and `ladder_l5_noise_smoke.json` (30):
+  job configs, not shipped in this copy.
+- **Existing functions are called, not copied.** L5's finished run is read by L5's own first-step reading
+  (`ladder_l5.read_the_search`, `read_for_the_search`, under the words an `OfTheSearch` gives: a further seed's refusals,
+  as L6 reads round 1). A training is L4t's own body (`ladder_l4_rows.train_a_model`); a measurement the ceiling's own
+  (`ladder_ceiling.measure_model` with `rungs=False` and ONE sampling handed to it, as L4t's `hot` samples G alone).
+  THREE FUNCTIONS TAKE A NEW ARGUMENT THAT IS OFF BY DEFAULT: `ladder_dose._train_with_readings(decay=False,
+  learning_rates=False)`, `ladder_ceiling.one_pass(decay=False, learning_rates=False)` and `train_a_model(schedule=None)`
+  (a `Schedule`: whether the decay is asked, and what the summary says of the order). `ladder_l5.own_run` takes a seed
+  (default: the task's), for the runs of L5's other seeds.
+- **The rows, and what is refused by the first step before anything is written.** L5's own refusals (missing or
+  unfinished; a report not to be read or INCONCLUSIVE; another seed, start or models; MADE OTHERWISE, with the three
+  stored runs that task read). BESIDE THEM, this stage's own: a run that trained no model; `published` without its
+  training or measuring marker, its stored set (`l5_training_published.jsonl`), its training's own record
+  (`l5_loss_published.json`) or its stored first sampling; a stored set that is not as many rows as its training
+  recorded and its own step counted (2D); THE FIXED ROWS (`l5_noise.the_rows`): a row with text, a row that is no
+  published row, an id twice, a row that is not the row of the pretraining file at its place, a set that is not the
+  first as many rows of L5's own draw for seed 0 (`l4_rows.rehearsal_rows`), a set that does not stand in the order
+  that task trained in, a training whose own record of the rows is not these rows in this order; a barred row
+  (`l5.refuse_barred`); A RECIPE THAT IS NOT L5's (the learning rate, the warm-up steps, the batch, the adapter's rank,
+  alpha and modules that run recorded: `constant` is the recipe that trained the model that is read beside); a first
+  sampling of `pre_r64` that is not the setting's (its name and its 32 attempts; the sampling SEED is the recorded one
+  and no setting); a start adapter whose numbers are of a type the averaged adapters are not written in; an order that
+  is the order L5 trained in, or two orders alike (`l5_noise.the_orders`); A TASK OF ANOTHER SEED than L5's search seed
+  (nothing here is drawn by the task's seed: such a task would train the same eight models again; further seeds of this
+  stage are NOT BUILT).
+- **The decay, exactly** (`domain/ladder_round/dose.py`: `warmed`, `decayed`, `scheduler_factor`). For optimizer step s,
+  counted from 1, of a training of T steps with W warm-up steps: the recipe as it is has the factor min(1, s / W); with
+  the decay the factor is s / W for s ≤ W (the recipe's own, 1 at s = W) and (T + 1 − s) / (T + 1 − W) for s > W: a
+  straight line from 1 at the warm-up's last step to ZERO AT THE STEP AFTER THE LAST ONE. "Zero at the end of the pass"
+  is read so: the last step is still a step (its factor is 1 / (T + 1 − W)). At T = 100, W = 5: steps 1, 5, 6, 50, 99,
+  100 have 0.2, 1, 1, 1, 1, 1 as it is and 0.2, 1, 95/96, 51/96, 2/96, 1/96 with the decay (0.98958, 0.53125, 0.02083,
+  0.01042). The factors of a pass add up to 98.0 as it is and 50.5 with the decay: a decayed training moves about half
+  as far in all, which is said beside any read of its level. A training no longer than its warm-up has no step after
+  it, and every factor is the recipe's own. The scheduler counts the updates made so far, so it is handed the factor of
+  step s at s − 1; with the decay off it is handed the very expression it always was.
+- **Every training records its learning rate, and its step HOLDS it** (a hold the section does not ask for in those
+  words). The rate is read from the optimizer before each step's update, stored beside that step's row in the model's
+  loss file and summed up in its summary (`learning_rate`). `train_a_model` refuses, with the step not marked done, a
+  training that recorded none, fewer than it made steps, or one that is not its schedule's within a billionth of the
+  rate (`dose.held_to_the_schedule`): a `decay` whose rate did not fall is a `constant` under another name.
+- **The averaged adapters** (`infrastructure/adapter_files.py`: `mean_of`, `is_the_mean`, beside `compared`; numpy and
+  the file format alone, no torch). The file is the FIRST model's, byte for byte (its header: the names, types, shapes
+  and places as the library laid them out), with every tensor's numbers written over. A NUMBER'S MEAN IS SUMMED IN
+  FLOAT64 AND ROUNDED ONCE TO THE TENSOR'S OWN TYPE: for float32 it is the nearest float32 to the mean, within half a
+  unit in the last place (a relative 6e-8). Written for float16, float32 and float64; bfloat16 and whole numbers are
+  refused, and the first step holds the start adapter's types to that before anything is trained. The models' adapter
+  configs must agree (a list in them compared sorted: a set of module names is saved in no fixed order) and the first
+  is copied. READ BACK, the step holds: every number is that mean BIT FOR BIT (made again from the four files); it is
+  NONE OF THEM (it differs from each in at least one number); and its config and every matrix have the start adapter's
+  rank and alpha. Refused otherwise, the step not marked. Its summary also compares it with the start adapter.
+- **A measurement** is 32 attempts at each goal problem with the sampling seed `pre_r64`'s run recorded for its first
+  sampling (1001), under the set `l4_reach_<model>`, the model server started for rank 64. No set of a rung, of the
+  second sampling or of the held-aside set exists in this run.
+- **Readings the section left open, and the ones taken.** (1) **The figure** is successes over attempts on all of G (an
+  audited problem's episodes counted once); its noise is the section's formula on that model's own rows. (2) **"The
+  sampling noise beside it"** (the first read) is the root of the mean square of the four `constant` models' noises.
+  (3) **L5's `published` over its three seeds** is read BY THE REPORT STEP, from the runs of the setting's seeds, so that
+  a seed that finishes while this stage runs is read; the fixed rows' own seed is the copy the first step held. A seed
+  is THERE when its report step is done and its report is to be read, `published` is trained and measured, and its
+  stored first sampling pairs with this run's (the problems, the seed, the attempts, Lean having answered). A seed
+  whose own report read INCONCLUSIVE is read, and said (a rise of a training's loss decides nothing of its figure). With
+  any seed NOT THERE the spread is given and the name is NOT READ; the rows of each seed that is there are copied into
+  this run (`l5_noise_stored_published_seed<N>.jsonl`). (4) **The edges.** "At least half" and "at most half" hold at
+  exactly half; a recipe with no spread at all has none to lower (NOT SHOWN). (5) **"Only a ratio of about three is
+  beyond chance"** is said from the upper 5% point of F at as many degrees each (9.28 at 3 and 3: a ratio of 3.0 between
+  two standard deviations). (6) **The level's interval** is the mean ± t × the standard deviation of the paired
+  differences over the root of the orders (3.182 at four orders; 4.303 and 12.706 at three and two, a smoke run's);
+  an interval that ends at zero is not below it; its other name is NAMED NOTHING. (7) **AVERAGING is named for each
+  averaged model by itself**; exactly twice its noise below the mean still gives; the outcome the section does not name
+  is AVERAGING GIVES LESS THAN THE MEAN OF ITS MODELS. (8) **WHAT FOLLOWS, the second case, reads `mean_constant`**, the
+  averaged adapter of the recipe a later stage would then train with; `mean_decay`'s name stands beside. The three
+  cases are named EVERY LATER STAGE TRAINS WITH THE DECAY / A LATER STAGE TRAINS EACH MODEL FOUR TIMES AND MEASURES THE
+  AVERAGED ADAPTER / THE SPREAD IS THE RECIPE'S OWN AT THIS SIZE: THE CHOICE GOES TO THE OWNER. (9) **The checks.** "No
+  row is anything but one of the 800" is read on the training loop's own record, by id and place, and asks too that
+  each fixed row stands once. "It is served": its set was sampled by the step that asked the model server for THAT
+  adapter. ONE verdict for the run: any failed check of any model, and the reads are INCONCLUSIVE, what was measured
+  kept apart and none of it printed. A set Lean did not answer also fails the report step, and the task queued again
+  samples that set again. (10) **Beside**: the share of distinct attempts is the first sampling's own (L5's `published`
+  of seed 0: 0.914 on its 32 attempts, where its own run's 0.813 is over all 93).
+- **Figures of the section, as the stored runs put them.** "The model that scored 103.1" scored it over all 93
+  attempts. ON THE FIRST SAMPLING ALONE, which is all this stage reads, L5's `published` has 103.79 per 1,000 at seed 0
+  (1,302 of 12,544; 220 goal problems solved) and 78.60 at seed 1 (986; 177). The sampling noise "about 0.003" is
+  0.0020 to 0.0024 on the six stored first samplings of L5's models. THE BUDGET IS 337 MINUTES BY THE MEASURED STEP
+  TIMES, not 312: a training step took 238 to 254 seconds (it loads the model) and a measurement starts the model
+  server before its 28 minutes. est_minutes is 420, which leaves a quarter for a slower pool.
+- **The smoke stage** (`ladder_l5_noise_smoke`) runs fourteen steps (two of the four orders) and reads
+  `ladder_l5_deep_smoke` and the three smoke runs that task read; it writes `ladder_l5_noise_smoke`. HOW IT GOES ON:
+  `RLVR_LEAN_LADDER_L5_NOISE_SMOKE_ORDERS=2`, set by this stage ALONE and refused by the first step unless the run
+  directory is one the task names AND the map is the fixtures'. Under it, each recorded: L5's smoke run, whose report
+  is INCONCLUSIVE, is read all the same (one NOT TO BE READ never is); only the first two orders are trained; the fixed
+  rows are TWO rows, which have two orders, and an order that is the one L5 trained in (order seed 2, on the pulled
+  smoke run) or another's is trained all the same; and an averaged adapter that IS one of its models is kept and
+  served (two rows are one batch and one optimizer step whatever their order: the four trainings are most likely one
+  training, number for number). L5's own smoke-only variable is not set: that run's two looser draws are made again as
+  it recorded them. WHAT IT DOES NOT EXERCISE: a learning rate that FALLS (a training of two rows is one step, inside
+  the warm-up: the decay is asked for, its schedule built, its one recorded rate held, and that rate is the recipe's
+  own); four orders; the reads on rows that can be read.
+- **Measured before any run, on the pulled copies** (links in a scratch store; no GPU, no Lean; the pulled directories
+  only read). The first step ran to its end for seed 0: the 800 rows are L5's stored set, id for id and place for place
+  in its order, the first 800 of its draw, with no text and no barred row; eight sets of 800 rows, 100 optimizer steps
+  each; no order seed of 1 to 4 gives seed 0's order and no two give one. Two orders share 6 to 13 of their first 80
+  rows and 4 to 11 of their last 80 (by chance: 8), and at most 3 rows stand at the same place in two orders; against
+  seed 0's order, 4 to 10 of the first 80 and 4 to 12 of the last. The smoke stage's first step ran to its end on the
+  pulled smoke copies. THE SCHEDULER ITSELF, on a CPU: the optimizer's rate before each of 100 steps is the schedule's
+  bit for bit, as it is and with the decay (torch 2.8). THE TRAINING FUNCTION ITSELF, on a CPU with a made-up model of
+  a few hundred numbers and the real optimizer and scheduler: with both options off it returns what the code before
+  the build returns, number for number; with the rates recorded it is that result and the 100 rates; with the decay the
+  first six steps' losses are the recipe's own and the later ones are not. The mean of four made-up adapters, read
+  back: 0 of its numbers are not the mean, and the largest gap to the mean in float64 is 6e-8. The report's reads on
+  STAND-IN rows (the stored first samplings of L5's six models in the ten models' places) reach every name.
+- **Existing stages write what they wrote.** In the scripted world, with the code before the build and after it: L5 at
+  the search's own seed is the same 108 files and 14 step summaries, a further seed's the same 97 and 14, L6's the same
+  149 and 17 (timings and the copy's own path apart; two runs of the code before the build differ in nothing).
+  Asserted in the suite: a training of L5 and of L6 hands the pass the start adapter and nothing more, and no summary
+  or loss file of theirs holds a learning rate; with this stage run beside it, L5's own task queued again returns what
+  is stored and moves no file, and a further seed of L5 run AFTER this stage leaves the files a further seed leaves.
+  Five assertions that state where things live were brought up to date (one more smoke stage names the rank check's
+  smoke run, the map's, L5's smoke run and L4t2's; L5's own stages and jobs are named by its stage).
+- **Fragile, and not shown without the box.** (a) THE FIRST LEARNING RATE THAT FALLS ON THE BOX is step 6 of
+  `ladder_l5_noise_train_decay_1`, about 35 minutes into the real run: the smoke run cannot show one. A training whose
+  rates are not its schedule's fails its step, unmarked, after its four minutes. (b) An averaged adapter is a file no
+  library wrote: the smoke run is the first time the model server takes one. (c) The adapters' numbers are taken to be
+  float32 (149,913,600 of them, about 600 MB a file): the first step refuses another type, and the smoke run meets the
+  real files first. (d) L5's seed 2 may not be finished when the report step runs: the first read is then NOT READ, and
+  the task queued again builds the report again with the seeds that are there. (e) ONE failed check of one of ten
+  models makes the run INCONCLUSIVE. (f) The ten measurements are hours apart on a pool that changes: the timeout
+  shares are printed, and no check is built on them.
+- **Mutated.** One hundred and fifty-nine one-change mutations of what this build added, each applied to a copy of the
+  tree and never to the working tree: the decay's factor (inside the warm-up, after it, in the middle, at the last step, in
+  a training no longer than its warm-up), the recipe's own factor, and what the scheduler is handed with the decay off;
+  the steps of a training; what a record of the rates is held to; the three functions' options (off for every other
+  stage, on as asked here, the stand-in's); L5's run of a given seed; the fixed rows (text, place, the draw and its
+  seed, the order, the training's own record) and each order (its seed, the one trained before, two alike); the check
+  of the rows; the figure and each term of its noise; each read's inputs, threshold and names (half, the seeds of L5,
+  the t and F values, the level's sign, its interval and its edge at zero, twice the noise, the mean and not the best);
+  what follows in each of its cases; in the report whose figures each read takes, each check, whose checks decide, an
+  INCONCLUSIVE run; in the stage the sampling (its attempts, its seed, the rungs, the second sampling), each refusal,
+  each guard of the smoke-only variable and each thing it allows, which rows and which recipe a model is trained with,
+  which adapters an average takes and each thing it is held to, whose adapter is served, the seeds of L5 and when one
+  is NOT THERE; the mean of adapters (a sum, three of the four, summed in float32, written at another place, a file
+  that is not the mean or is one of its adapters, each refusal); the registration and the setting. The first run: 155
+  noticed, 4 not. The four asked for assertions, which were added: a row that is none of the fixed rows fails the
+  check though every fixed row stands beside it; an audited problem's episodes are counted once in the figure; a real
+  run refuses an order that is the one L5 trained in (the stage handing the rule `loosely` for every run went
+  unseen); an averaged model is not measured before its own step has made its adapter. The last run, all 159 against
+  the tree with these additions: 159 noticed. SIX MORE, OF THE TRAINING FUNCTION ITSELF, which the suite cannot see
+  (its environment has no torch), each put to that function's run on a CPU: the decay not handed to the scheduler, or
+  counted over the rows and not the steps; the recipe as it is handed the decay; the rate read after the step's
+  update, or taken from the config; the rates put in every result. Six noticed.
+
 ## Fixtures (these become the tests)
 
 1. An episode that proves the statement resolves the problem; so does one that proves the exact negation; one

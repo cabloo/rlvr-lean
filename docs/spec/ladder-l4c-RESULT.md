@@ -1,5 +1,17 @@
 # Ladder loop, L4c (six fresh rounds from the larger pretrained model, reward-weighted rows with rehearsal, and its own control; seed 0): THE GAIN IS NOT SHOWN TO BE THE ROUNDS'. Against the pretrained model the six-round model adds on its failures (13.2 successes per 1,000 against 8.4, +0.0048 [+0.0006, +0.0097]). Against a model trained on the same published rows and none of the rounds' it is behind: 13.2 against 19.3 on those failures (−0.0062 [−0.0110, −0.0017]), 229 goal problems solved against 258 (gained 19, lost 48, p = 0.001), 120 solved reliably against 135. The model's own proofs, six rounds of them, made it sharper on what it could do and narrower; the published rows beside them did the adding.
 
+**Correction, 2026-10-11 (after L5's seeds 0 and 1).** The differences this note reports between two single trained
+models do not stand as effects. L5 trained the same three kinds of model at two seeds (another draw of the rows and
+of their order; nothing else changes) and their figures on all of G moved between the seeds by up to 24 successes
+per 1,000 attempts and 45 goal problems (`published` 103.1 and 79.5, with 262 and 217 goal problems solved; `deep`
+112.5 and 97.2; `shallow` 104.5 and 110.0). Every interval in this note is over problems, with one training a model:
+it says nothing of what another training of the same kind would give. Here: "the gain is not shown to be the
+rounds'" rests on `with` against `rehearsal_alone` (229 goal problems against 258, p = 0.001 over problems): two
+single trainings, 29 problems apart, where two trainings of `published` are 45 apart. That the model's own proofs
+narrow it is NOT ESTABLISHED, and neither is the contrary. The fault is in the read, which is mine, and not in the
+run; the figures themselves stand as measured. See `ladder-l5-RESULT.md` and the spec's "L5n: what is one training
+worth?".
+
 Labelled **pretrained on published proofs**, as everything built on that file is.
 
 Spec: `docs/spec/ladder-loop.spec.md`, "L4c: the arm from `pre_r64` with a rule L4t2 names" on "L4b: the arm

@@ -1,5 +1,16 @@
 # Ladder loop, L4t (what should a round train on? seed 0, from the larger pretrained model): THE OLD RULE NARROWS AT RANK 64 TOO, and neither new rule clears the bar set for it. Trained on the stored rounds' proofs, the model solves 217 goal problems against 245 (gained 25, lost 53) and gains nothing per attempt; reward-weighted rows and rows mixed with published proofs both give the breadth back (241 and 234) without a clear gain per attempt on all goal problems. By its own rule the six-round arm (L4b) is not run as specified. On the start model's own failures all three trained models succeed about 1.7 times as often, on no more problems.
 
+**Correction, 2026-10-11 (after L5's seeds 0 and 1).** The differences this note reports between two single trained
+models do not stand as effects. L5 trained the same three kinds of model at two seeds (another draw of the rows and
+of their order; nothing else changes) and their figures on all of G moved between the seeds by up to 24 successes
+per 1,000 attempts and 45 goal problems (`published` 103.1 and 79.5, with 262 and 217 goal problems solved; `deep`
+112.5 and 97.2; `shallow` 104.5 and 110.0). Every interval in this note is over problems, with one training a model:
+it says nothing of what another training of the same kind would give. Here: "the old rule narrows at rank 64 too"
+(217 goal problems against 245) is not established: `published` at L5's seed 1, with no row of the model's own, also
+solves 217. Which rule "gives the breadth back" is not established either. The fault is in the read, which is mine,
+and not in the run; the figures themselves stand as measured. See `ladder-l5-RESULT.md` and the spec's "L5n: what is
+one training worth?".
+
 Labelled **pretrained on published proofs**, as everything built on that file is.
 
 Spec: `docs/spec/ladder-loop.spec.md`, "L4t: what should a round train on?" with its amendment "L4r's first

@@ -69,6 +69,7 @@ from typing import Sequence
 
 from rlvr_lean.domain.ladder_round.assembly import ATTEMPT, training_set
 from rlvr_lean.domain.ladder_round.ceiling import the_training_took
+from rlvr_lean.domain.ladder_round.dose import held_to_the_schedule
 from rlvr_lean.domain.ladder_round.l3d import WITH, WITHOUT, tenth
 from rlvr_lean.domain.ladder_round.l4 import PRE, goal_set_again
 from rlvr_lean.domain.ladder_round.l4_rows import (
@@ -206,6 +207,16 @@ class Stage:
 
 
 THE_STAGE = Stage()
+
+
+@dataclass(frozen=True)
+class Schedule:
+    """How ONE training of a stage is made beside the arm's recipe, and what it records of it (L5n: spec "L5n: what is
+    one training worth?"; `gpu/ladder_l5_noise.py`). `train_a_model` WITHOUT one is every other caller's: the recipe as
+    it is, and nothing more recorded. With one, each step's learning rate is recorded and HELD to the schedule before
+    the step is marked done."""
+    decay: bool                         # ONE change to the recipe: after the warm-up the learning-rate factor falls in a straight line to zero at the end of the pass (`dose.decayed`)
+    order: str                          # the order the model's rows stand in, as its summary says it (another than the task's seed's)
 
 
 def the_start(config: dict, rows: Rows) -> Start:
@@ -554,13 +565,16 @@ def ladder_l4_rows_prepare(config: dict) -> dict:
 
 
 # --------------------------------------------------------------------------------------------------- train
-def train_a_model(config: dict, store: ArtifactStore, model: str, start_model: str, run: str, one: Stage = THE_STAGE) -> dict:
+def train_a_model(config: dict, store: ArtifactStore, model: str, start_model: str, run: str, one: Stage = THE_STAGE, schedule: Schedule | None = None) -> dict:
     """One trained model: from the start adapter, one pass over its stored training set in its order, the arm's recipe
     (`one_pass(start=...)`, as the arm's twin is trained). The adapter is kept under `adapters/<model>`. From another
     start than `pre` the adapter attached has the START ADAPTER's rank and alpha (`config_from`), and the one saved is
     read back and held to them before the step is marked done (`the_adapter_saved`). `store`: the stage's run.
     `start_model`: the model it is trained from, by its name. `run`: the run's name, for the training's own
-    TensorBoard run. `one`: the stage, as it names its steps and files."""
+    TensorBoard run. `one`: the stage, as it names its steps and files. `schedule` (L5n; None for every other caller,
+    whose training, files and summary are what they were): the training's learning rate is recorded step by step, put
+    beside each step's row in the loss file and HELD to the schedule asked for (`dose.held_to_the_schedule`: refused,
+    and the step not marked done, when a step's is another), with the decay when the schedule says so."""
     marker = one.train_marker(model)
     if store.is_done(marker):
         return store.done_summary(marker)
@@ -574,9 +588,18 @@ def train_a_model(config: dict, store: ArtifactStore, model: str, start_model: s
     examples, steps = ladder_l4_start.examples_of(set_rows, prepared["pretraining_file_sha256"]), -(-len(set_rows) // batch)
     _say(f"{one.reader}: training `{model}` from the stored adapter `{start_model}` on {len(set_rows):,} rows in "
          + ("the twin's order" if model == OLD_RULE else "the content-hash order") + f", {steps:,} optimizer steps")
+    asked = {} if schedule is None else {"learning_rates": True, **({"decay": True} if schedule.decay else {})}        # nothing more is asked of the pass by any stage but L5n
     result, step_rows, row_losses, positions = one_pass(config_from(config, prepared, of_the_start), examples, {model: steps}, seed, batch, store.root / ladder_assembly.ADAPTERS,
-                                                        f"{run}_{model}", positions=True, start=start)
+                                                        f"{run}_{model}", positions=True, start=start, **asked)
     result.pop("checkpoints")
+    rates = result.pop("learning_rates", None)
+    if schedule is not None:        # what the training was made with, HELD to what was asked for before anything of it is stored
+        try:
+            of_the_rate = held_to_the_schedule(rates if rates and len(rates) == len(step_rows) else None, config["training"]["learning_rate"], config["training"]["warmup_steps"],
+                                               schedule.decay)
+        except ValueError as error:
+            raise RuntimeError(f"`{model}`: {error}. Nothing of this model is measured, and the step is not marked done") from error
+        step_rows = [{**row, "learning_rate": rate} for row, rate in zip(step_rows, rates)]
     _write_json(store, one.loss_file(model), {
         "stage": L4, "label": LABEL, "model": model, "seed": seed, "stand_in_engine": _stand_in(), "rows": len(row_losses), "steps": result["steps"], "effective_batch": batch,
         "what": "row_losses: each training row's mean loss per target token, in the order trained, read BEFORE the update of the optimizer step it was in. "
@@ -586,10 +609,12 @@ def train_a_model(config: dict, store: ArtifactStore, model: str, start_model: s
     took = the_training_took(row_losses, tenth(len(row_losses), config["ladder_loop"]["l4"]["loss_share_of_rows"]))
     summary = {"stage": L4, "label": LABEL, "model": model, "seed": seed, "trained_from": f"the stored adapter {start}", "rows": len(set_rows),
                "rows_by_origin": prepared["training_sets"][model]["rows_by_origin"], "passes": 1,
-               "order": "the twin's own (the content hash of the task's seed and each row's id, the other rows left out)" if model == OLD_RULE else
+               "order": schedule.order if schedule is not None else
+                        "the twin's own (the content hash of the task's seed and each row's id, the other rows left out)" if model == OLD_RULE else
                         "a content hash of the task's seed and each row's id (`assembly.training_order`)", "adapter": str(store.root / ladder_assembly.ADAPTERS / model),
                "first_step_loss": step_rows[0]["mean_loss"], "last_step_loss": step_rows[-1]["mean_loss"], "mean_loss_over_the_first_rows": took["first"],
-               "mean_loss_over_the_last_rows": took["last"], "rows_compared": took["rows_compared"], "stand_in_engine": _stand_in(), **result}
+               "mean_loss_over_the_last_rows": took["last"], "rows_compared": took["rows_compared"], "stand_in_engine": _stand_in(), **result,
+               **({"learning_rate": of_the_rate} if schedule is not None else {})}
     summary.update(the_adapter_saved(store.root / ladder_assembly.ADAPTERS / model, model, of_the_start))      # refused, and the step not marked done, at another rank than the start adapter's
     store.mark_done(marker, summary)        # the adapter is saved, and kept
     if summary.get("allocated_after_cleanup_gb", 0) > MAX_LEFTOVER_GB:

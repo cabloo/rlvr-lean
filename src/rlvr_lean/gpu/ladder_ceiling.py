@@ -61,6 +61,7 @@ from rlvr_lean.domain.ladder_round.ceiling import (
     training_example,
     training_rows,
 )
+from rlvr_lean.domain.ladder_round.dose import learning_rates as scheduled_rates
 from rlvr_lean.domain.ladder_round.dose import run_dose
 from rlvr_lean.domain.ladder_round.read import GOAL, group_ids
 from rlvr_lean.domain.problem_pool.episodes import RUNGS, VERIFIED
@@ -383,22 +384,30 @@ def ladder_ceiling_prepare(config: dict) -> dict:
 
 # --------------------------------------------------------------------------------------------------- train
 def one_pass(config: dict, examples: list[dict], steps: Mapping[str, int], seed: int, batch: int, adapters: Path, tensorboard_run: str,
-             positions: bool = False, start: Path | None = None) -> tuple[dict, list[dict], list[float], list[int] | None]:
+             positions: bool = False, start: Path | None = None, decay: bool = False, learning_rates: bool = False) -> tuple[dict, list[dict], list[float], list[int] | None]:
     """ONE pass from the base over `examples` IN THE ORDER GIVEN (nothing is shuffled), the round's recipe otherwise
     (`ladder_dose._train_with_readings`), an adapter saved under `adapters` after each step of `steps` (name ->
     optimizer step). Returns (what the training says of itself, every optimizer step's row, each example's mean
     loss per target token in the order trained and read BEFORE its step's update, and with `positions` the
     position of every example trained on, in the order trained: the training loop's own record). The stand-in
     trains nothing and makes the losses up. `start` (L4's arm): a stored adapter the pass goes on FROM, in the place
-    of a fresh one on the base."""
+    of a fresh one on the base. `decay`, `learning_rates` (L5n, and no other caller: both off, the pass and what it
+    returns are what they were): the training's own two options, the learning-rate factor falling to zero after the
+    warm-up, and each step's learning rate in what the training says of itself (the stand-in's are the schedule's)."""
     in_order = [list(range(len(examples)))]
     record = {"positions": True} if positions else {}      # asked for only by a caller that reads it: the ceiling's own call is what it was
     if start is not None:
         record["start"] = start
+    if decay:
+        record["decay"] = True
+    if learning_rates:
+        record["learning_rates"] = True
     if _stand_in():
         result = run_dose(len(examples), batch, 1, seed, [], steps, *ladder_dose._stand_in_calls(len(examples), [], []),
-                          orders=in_order, per_example=True, **{key: value for key, value in record.items() if key != "start"})
+                          orders=in_order, per_example=True, **{key: value for key, value in record.items() if key == "positions"})
         result["note"] = "no adapter was trained and every loss is made up: a pre-flight without a GPU"
+        if learning_rates:
+            result["learning_rates"] = scheduled_rates(config["training"]["learning_rate"], config["training"]["warmup_steps"], result["steps"], decay)
     else:
         import torch
 
@@ -476,7 +485,7 @@ class Model:
     stage: str = "ladder_ceiling"       # the stage, as `runner.entry` names it
     label: str = CEILING                # what its sets and printed lines are called
     also: Callable[[list[dict], list[list[dict]]], dict] | None = None      # more to say of what it wrote: (its attempts on the rungs, on G a sampling)
-    rungs: bool = True                  # False (L4t's measurements at another temperature, and no other caller): G alone, no set of the rungs is sampled or named
+    rungs: bool = True                  # False (L4t's measurements at another temperature and L5n's of G's first sampling, and no other caller): G alone, no set of the rungs is sampled or named
 
 
 def measure_model(config: dict, store: ArtifactStore, prepared: Mapping, one: Model) -> dict:

@@ -711,7 +711,49 @@ _LADDER_L6_SMOKE = {"environment": {**{name: value for name, value in _LADDER_L5
                                     "RLVR_LEAN_LADDER_L6_RUN": "ladder_l6_cycle_smoke",
                                     "RLVR_LEAN_LADDER_L6_L4P_RUN": "ladder_l4_dose_r64_smoke", "RLVR_LEAN_LADDER_L6_SMOKE_PROBLEMS": "2"}}
 STAGES["ladder_l6_cycle_smoke"] = [(environment, step, _LADDER_L6_SMOKE) for environment, step in _LADDER_L6]
-SOUNDNESS_ALARM_EXIT = 3       # `gpu.__main__`'s code for a proof of both sides of one statement (it cannot be imported here)
+
+# L5n: what is one training worth? The spread between trainings, and a recipe that lowers it (spec ladder-loop, "L5n: what is one
+# training worth? The spread between trainings, and a recipe that lowers it"; `gpu/ladder_l5_noise.py`). Labelled pretrained on
+# published proofs. NO ROUND, NO SEARCH, NO DRAW OF ROWS. THE ROWS ARE L5's AND ARE ONLY READ: the set the finished run of L5's
+# search seed (`ladder_l5_deep_pre_r64_seed<l5.search_seed>`) trained `published` on, by id and place, with every stored run that
+# task read (`pre_r64`'s map, L4t2's finished run, the run of the check that made `pre_r64`). It writes
+# `ladder_l5_noise_pre_r64_seed<N>` and nothing else. `ladder_l5_noise_prepare` refuses, before anything is written, an L5 run that
+# is missing, unfinished, not to be read, INCONCLUSIVE or made otherwise, and stores the fixed rows in the content-hash order of
+# each ORDER SEED (`ladder_loop.l5_noise.orders`: 1 to 4). Then, order by order, two trainings from `pre_r64` at its rank by L4t's
+# own training body, each measured before the next is trained: `constant_<k>` (the recipe as it is) and `decay_<k>` (ONE change:
+# after the warm-up the learning rate falls linearly to zero at the end of the pass). Then, trained by nothing, each recipe's
+# AVERAGED adapter (`ladder_l5_noise_average_<recipe>`: every number the mean of that recipe's four adapters', read back and held to
+# it), measured as the others. A MEASUREMENT IS THE GOAL SET'S FIRST SAMPLING ALONE (32 attempts, the sampling seed `pre_r64`'s run
+# recorded): no rung, no second sampling, no held-aside set. Then the report, which reads L5's `published` of each of its seeds
+# from those runs when they are on the box and finished (NOT THERE otherwise, nothing refused).
+def _l5_noise_steps(orders: tuple) -> list:
+    steps = [("sync", "gpu"), ("gpu", "fix_tokenizers"), ("gpu", "ladder_l5_noise_prepare")]
+    for order in orders:
+        for recipe in ("constant", "decay"):
+            steps += [("guard", None), ("gpu", f"ladder_l5_noise_train_{recipe}_{order}"), ("guard", None), ("gpu", f"ladder_l5_noise_measure_{recipe}_{order}")]
+    for recipe in ("constant", "decay"):
+        steps += [("guard", None), ("gpu", f"ladder_l5_noise_average_{recipe}"), ("guard", None), ("gpu", f"ladder_l5_noise_measure_mean_{recipe}")]
+    return steps + [("guard", None), ("gpu", "ladder_l5_noise_report")]
+
+
+STAGES["ladder_l5_noise"] = _l5_noise_steps((1, 2, 3, 4))
+# The same steps for TWO of the four orders on what the smoke runs left in the box's store: L5's smoke run (`ladder_l5_deep_smoke`:
+# its `published` set of two rows) and the three it read (`ladder_l4b_map_smoke`, `ladder_l4_rows2_r64_smoke`,
+# `ladder_l4_rank_smoke`), with the 12-row fixture in the pretraining file's place and the fixtures' held-out set, in a run
+# directory of its own. It names the runs L5's smoke stage names, by L5's own variables (L5's functions read them), and NOT L5's
+# smoke-only variable: that run's two looser draws are made again as it recorded them. L5's smoke run reads INCONCLUSIVE (a
+# training of two rows has no loss to compare), which a real run is refused for, and two rows have two orders. So this stage ALONE
+# sets `RLVR_LEAN_LADDER_L5_NOISE_SMOKE_ORDERS=2`: L5's run is read all the same (recorded); the first two of the setting's orders
+# are trained (four trainings, two with the decay; two averaged adapters, each the mean of two); an order that is the one L5
+# trained in, or the other's, is trained all the same (recorded). The first step REFUSES that variable in a run directory of the
+# seed's own or on the pool's base map, so no real run takes that path. A training of two rows is ONE optimizer step, inside the
+# warm-up: the decay is asked for and its schedule built, and no step's rate falls. And one step on one batch of the same two rows
+# is ONE training whatever their order: the adapters may be the same adapter, their mean then is each of them, which a real run
+# refuses and this run keeps, serves and says.
+_LADDER_L5_NOISE_SMOKE = {"environment": {**{name: value for name, value in _LADDER_L5_SMOKE["environment"].items() if name != "RLVR_LEAN_LADDER_L5_SMOKE_PROBLEMS"},
+                                          "RLVR_LEAN_LADDER_L5_NOISE_RUN": "ladder_l5_noise_smoke", "RLVR_LEAN_LADDER_L5_NOISE_SMOKE_ORDERS": "2"}}
+STAGES["ladder_l5_noise_smoke"] = [(environment, step, _LADDER_L5_NOISE_SMOKE) for environment, step in _l5_noise_steps((1, 2))]
+SOUNDNESS_ALARM_EXIT = 3      # `gpu.__main__`'s code for a proof of both sides of one statement (it cannot be imported here)
 
 
 def step_fields(entry_step: tuple) -> tuple[str, str | None, dict]:

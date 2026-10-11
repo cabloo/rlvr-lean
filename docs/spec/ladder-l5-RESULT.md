@@ -1,5 +1,16 @@
 # Ladder loop, L5 (do DEEP solves teach what ordinary solves do not? seed 0): NOT SEPARATED AT THIS SIZE on the primary, and a lead on the goal set. On 600 held-aside hard problems a model trained on 400 of its own deep solves is level with one trained on the same number of published proofs (51.5 against 50.8 successes per 1,000, +0.0006 [−0.0060, +0.0073]). On the held-out goal set it is the best model measured so far (112.5 per 1,000 against 103.1; 275 goal problems solved against 262; 151 reliably; 16 of the 81 never solved before), mostly by solving more often what the start model already reached; the one sign of reach is the long problems solved at least once, 36 against 25. One training each: a lead, not a result. Two further seeds decide it.
 
+**Correction, 2026-10-11 (after L5's seeds 0 and 1).** The differences this note reports between two single trained
+models do not stand as effects. L5 trained the same three kinds of model at two seeds (another draw of the rows and
+of their order; nothing else changes) and their figures on all of G moved between the seeds by up to 24 successes
+per 1,000 attempts and 45 goal problems (`published` 103.1 and 79.5, with 262 and 217 goal problems solved; `deep`
+112.5 and 97.2; `shallow` 104.5 and 110.0). Every interval in this note is over problems, with one training a model:
+it says nothing of what another training of the same kind would give. Here: seed 0's lead of `deep` on the goal set
+and its "one sign of reach" did not repeat at seed 1, where `shallow` is the best model on every read; the primary
+on the held-aside set holds zero at both seeds (+0.0006, +0.0007). The read over three seeds follows in this note
+when seed 2 is in. The fault is in the read, which is mine, and not in the run; the figures themselves stand as
+measured. See `ladder-l5-RESULT.md` and the spec's "L5n: what is one training worth?".
+
 Labelled **pretrained on published proofs**, as everything built on that file is.
 
 Spec: `docs/spec/ladder-loop.spec.md`, "L5: do DEEP solves teach what ordinary solves do not?" with its

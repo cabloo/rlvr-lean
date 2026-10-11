@@ -212,13 +212,19 @@ def a_further_seed(config: dict, deep: Deep) -> bool:
     return training_seed(config) != deep.seed_of_the_search
 
 
-def own_run(config: dict, deep: Deep) -> str:
+def own_run(config: dict, deep: Deep, seed: int | None = None) -> str:
     """This task's run directory: the seed's own, or the one the task names (a smoke run). A FURTHER SEED of a run the
-    task names writes beside it, `<the named run>_seed<N>`: the named run is the search's own, which it only reads."""
-    seed, named = training_seed(config), os.environ.get(RUN_VARIABLE)
+    task names writes beside it, `<the named run>_seed<N>`: the named run is the search's own, which it only reads.
+    `seed` (L5n, which reads the runs of several seeds of this stage; None, every caller here: the task's own): the
+    run directory of the task of THAT seed."""
+    named = os.environ.get(RUN_VARIABLE)
+    if seed is None:
+        seed, further = training_seed(config), a_further_seed(config, deep)
+    else:
+        further = seed != deep.seed_of_the_search
     if not named:
         return run_name(deep, seed)
-    return f"{named}_seed{seed}" if a_further_seed(config, deep) else named
+    return f"{named}_seed{seed}" if further else named
 
 
 def search_directory(config: dict, deep: Deep) -> Path:

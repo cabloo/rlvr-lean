@@ -1,5 +1,15 @@
 # Ladder loop, L4 (the loop from a model pretrained on published proofs, seed 0): NOT SHOWN ON TOP OF PRETRAINING. Six rounds from the pretrained model make it more reliable on what it could already do (+17% successes per attempt on the goal set, +11 points on the middle rung) and narrower (fewer distinct goal problems, 227 against 238; less varied attempts); on the 210 goal problems it could not solve the gain is +0.0012 [−0.0022, +0.0058]. The pretraining itself: one pass over 24,866 published proofs gives a model that solves 238 of the 392 goal problems and 94 reliably, and three times the ceiling's proofs buy no more reach
 
+**Correction, 2026-10-11 (after L5's seeds 0 and 1).** The differences this note reports between two single trained
+models do not stand as effects. L5 trained the same three kinds of model at two seeds (another draw of the rows and
+of their order; nothing else changes) and their figures on all of G moved between the seeds by up to 24 successes
+per 1,000 attempts and 45 goal problems (`published` 103.1 and 79.5, with 262 and 217 goal problems solved; `deep`
+112.5 and 97.2; `shallow` 104.5 and 110.0). Every interval in this note is over problems, with one training a model:
+it says nothing of what another training of the same kind would give. Here: "more reliable and narrower" (`with`
+against `pre`, 227 goal problems against 238) is inside that spread; the primary read NOT SHOWN and stays so. The
+fault is in the read, which is mine, and not in the run; the figures themselves stand as measured. See
+`ladder-l5-RESULT.md` and the spec's "L5n: what is one training worth?".
+
 Everything here is **pretrained on published proofs**: distillation of other provers, then the loop. It is the
 arm the owner chose on 2026-10-08 beside the base arm (`ladder-l3d2-RESULT.md`), so that what the loop adds on
 top of pretraining is itself measured.
