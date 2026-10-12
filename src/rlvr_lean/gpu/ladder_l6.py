@@ -217,6 +217,20 @@ def round_one_reader(cycle: Cycle, smoke: bool) -> ladder_l5.OfTheSearch:
         stands="no second round stands on such a run", models="L6's models are read beside that run's, on its search and its held-aside set", inconclusive=smoke)
 
 
+def solved_by_search_one(found: dict) -> list[str]:
+    """The problems search 1 solved, as round 1's run stores them (`found`: `ladder_l5.read_the_search`). REFUSED
+    (RuntimeError): a stored search that does not count the deep solves its own step counted, or holds no verified
+    attempt for a problem it counts as solved. TWO STAGES CALL IT (this one's `read_round_one`; L6b's first step,
+    `gpu/ladder_l6b.py`, which reads no M(1)): change it and both change."""
+    directory, prepared = found["directory"], found["prepared"]
+    solved = [row["problem_id"] for row in _rows(directory / f"episodes_{ladder_l5.SEARCH_SET}_problems.jsonl") if row["resolved"] > 0]
+    verified = {attempt["problem_id"] for attempt in ladder_ceiling._stored_attempts(directory, ladder_l5.SEARCH_SET) if attempt["status"] == VERIFIED}
+    if len(solved) != prepared["deep_solves"] or verified != set(solved):       # held HERE, before search 2 is made: a round-1 row is one of these stored attempts
+        raise RuntimeError(f"round 1's stored search ({directory.name}) counts {len(solved)} problems as solved, its stored attempts hold a verified one for {len(verified)}, "
+                           f"and its own step counted {prepared['deep_solves']} deep solves: the run does not agree with itself. Nothing was written.")
+    return solved
+
+
 def read_round_one(found: dict, read: dict, cycle: Cycle) -> dict:
     """What L6 needs of round 1's run BESIDE what a further seed of L5 reads of it (`ladder_l5.read_the_search` and
     `read_for_the_search` have read and held that): M(1). REFUSED (RuntimeError), naming the task to run: a round 1
@@ -243,11 +257,7 @@ def read_round_one(found: dict, read: dict, cycle: Cycle) -> dict:
     goal_ids = [row["problem_id"] for row in read["goal_problems"]]
     on_g = [ladder_ceiling._stored(directory, set_name, goal_ids, sampling["sampling_seed"], sampling["episodes"], f"`{M1}` ({sampling['name']})", READING)[0]
             for set_name, sampling in zip(sets, plan["goal_samplings"])]
-    solved = [row["problem_id"] for row in _rows(directory / f"episodes_{ladder_l5.SEARCH_SET}_problems.jsonl") if row["resolved"] > 0]
-    verified = {attempt["problem_id"] for attempt in ladder_ceiling._stored_attempts(directory, ladder_l5.SEARCH_SET) if attempt["status"] == VERIFIED}
-    if len(solved) != prepared["deep_solves"] or verified != set(solved):       # held HERE, before search 2 is made: a round-1 row is one of these stored attempts
-        raise RuntimeError(f"round 1's stored search ({directory.name}) counts {len(solved)} problems as solved, its stored attempts hold a verified one for {len(verified)}, "
-                           f"and its own step counted {prepared['deep_solves']} deep solves: the run does not agree with itself. Nothing was written.")
+    solved = solved_by_search_one(found)
     return {"adapter": adapter, "on_g": on_g, "solved": solved}
 
 
@@ -277,6 +287,35 @@ def read_the_stored_model(config: dict, cycle: Cycle, read: dict) -> dict:
 
 
 # ------------------------------------------------------------------------------------------ search_prepare
+def the_second_search(config: dict, cycle: Cycle, found: dict, read: dict, solved: list[str], at_least: int) -> dict:
+    """SEARCH 2's PROBLEMS AND ITS SAMPLING SEED, with nothing written: what search 1 left unsolved and the candidates
+    neither draw took (`l6.second_search`), HELD to partition the candidates with round 1's solves and the held-aside
+    set; none held out, none that is no base-map problem; a sampling seed no stored sampling used. `found`, `read`:
+    round 1's run by L5's own reading. `solved`: the problems search 1 solved. `at_least`: a SMOKE run's least number
+    of problems (0: the rule and nothing else). Returns `second_search`'s problems and partition, with the sampling
+    seed and the seeds it is none of. REFUSED (RuntimeError) as the first step says. TWO STAGES CALL IT (this one's
+    first step; L6b's, `gpu/ladder_l6b.py`, whose search is made by another model): change it and both change."""
+    the_map, drawn, aside = (read[key] for key in ("the_map", "drawn", "aside"))
+    try:
+        second = second_search(the_map["rows"], drawn, aside, solved, cycle.seed_of_the_search, at_least)
+    except ValueError as error:
+        raise RuntimeError(f"{error} (round 1's run {found['directory'].name}; the map {the_map['directory'].name}). Nothing was written.") from error
+    searched = second["problems"]
+    heldout = {row["problem_id"] for row in ladder_loop.load_problems(ladder_loop.data_directory())[0]} | {row["problem_id"] for row in read["groups"]}
+    barred = sorted(row["problem_id"] for row in searched if row["problem_id"] in heldout or row["problem_id"] not in the_map["base_map"])
+    if not searched or barred:
+        raise RuntimeError((f"{len(barred)} problems of search 2 are held out or are not base-map problems (first: {barred[0]})" if barred else
+                            "search 2 has no problem to attempt: search 1 solved every problem it attempted, and its draw and the held-aside set took every candidate")
+                           + f" (round 1's run {found['directory'].name}). Nothing was written.")
+    sampling = search_seed(config, cycle)
+    used = {**read["used"], "L5's deep search": read["sampling"], "L5's held-aside set": read["aside_sampling"]}
+    taken = sorted(name for name, value in used.items() if value == sampling)
+    if taken:
+        raise RuntimeError(f"search 2's sampling seed is {sampling} ({SETTING}.search.sampling_place {cycle.sampling_place}) and {taken} already sampled with it: it has a "
+                           "sampling seed of its own. Nothing was written.")
+    return {**second, "sampling_seed": sampling, "used": used}
+
+
 def ladder_l6_search_prepare(config: dict) -> dict:
     cycle = the_settings(config)
     store = _store(config, cycle)
@@ -304,23 +343,8 @@ def ladder_l6_search_prepare(config: dict) -> dict:
     of_the_stored = read_the_stored_model(config, cycle, read)
 
     # ---- search 2's problems: what search 1 left unsolved, and the candidates neither draw took; HELD to partition the candidates with round 1's solves and the held-aside set
-    try:
-        second = second_search(the_map["rows"], drawn, aside, of_round_one["solved"], cycle.seed_of_the_search, at_least)
-    except ValueError as error:
-        raise RuntimeError(f"{error} (round 1's run {found['directory'].name}; the map {the_map['directory'].name}). Nothing was written.") from error
-    searched = second["problems"]
-    heldout = {row["problem_id"] for row in ladder_loop.load_problems(ladder_loop.data_directory())[0]} | {row["problem_id"] for row in read["groups"]}
-    barred = sorted(row["problem_id"] for row in searched if row["problem_id"] in heldout or row["problem_id"] not in the_map["base_map"])
-    if not searched or barred:
-        raise RuntimeError((f"{len(barred)} problems of search 2 are held out or are not base-map problems (first: {barred[0]})" if barred else
-                            "search 2 has no problem to attempt: search 1 solved every problem it attempted, and its draw and the held-aside set took every candidate")
-                           + f" (round 1's run {found['directory'].name}). Nothing was written.")
-    sampling = search_seed(config, cycle)
-    used = {**read["used"], "L5's deep search": read["sampling"], "L5's held-aside set": read["aside_sampling"]}
-    taken = sorted(name for name, value in used.items() if value == sampling)
-    if taken:
-        raise RuntimeError(f"search 2's sampling seed is {sampling} ({SETTING}.search.sampling_place {cycle.sampling_place}) and {taken} already sampled with it: it has a "
-                           "sampling seed of its own. Nothing was written.")
+    second = the_second_search(config, cycle, found, read, of_round_one["solved"], at_least)
+    searched, sampling, used = second["problems"], second["sampling_seed"], second["used"]
 
     # ---- from here on files are written: the problems of every set this run samples, what its report reads of the stored models, search 2's problems
     def as_set(own: list[dict], set_name: str) -> list[dict]:

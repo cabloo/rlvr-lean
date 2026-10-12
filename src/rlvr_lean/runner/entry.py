@@ -791,7 +791,194 @@ STAGES["ladder_l5_draws"] = _l5_draws_steps()
 _LADDER_L5_DRAWS_SMOKE = {"environment": {**{name: value for name, value in _LADDER_L5_SMOKE["environment"].items() if name != "RLVR_LEAN_LADDER_L5_SMOKE_PROBLEMS"},
                                           "RLVR_LEAN_LADDER_L5_DRAWS_RUN": "ladder_l5_draws_smoke", "RLVR_LEAN_LADDER_L5_DRAWS_SMOKE": "1"}}
 STAGES["ladder_l5_draws_smoke"] = [(environment, step, _LADDER_L5_DRAWS_SMOKE) for environment, step in _l5_draws_steps()]
-SOUNDNESS_ALARM_EXIT = 3      # `gpu.__main__`'s code for a proof of both sides of one statement (it cannot be imported here)
+
+
+# L5s: the dose (spec ladder-loop, "L5s: the dose. Every own solve in stock that the model finds less than half the time, against
+# the same number of published proofs"; `gpu/ladder_l5_stock.py`). Labelled pretrained on published proofs. NO ROUND AND NO SEARCH:
+# one task at the scout's seed (`ladder_loop.l5_stock.seeds`; `more_seeds` once `escalated` is recorded). L5's finished search and
+# every stored run that task read are ONLY READ, as L5d reads them. It writes `ladder_l5_stock_pre_r64_seed<N>` and nothing else.
+# `ladder_l5_stock_prepare` refuses, before anything is written, a task of a seed that is not one of the stage's and an L5 run that
+# is missing, unfinished, not to be read, INCONCLUSIVE or made otherwise; it builds the two sets: `stock` (EVERY deep solve of the
+# search, EVERY ordinary solve L5's setting gives, and as many published rows of the seed's order) and `published_stock` (twice as
+# many published rows: the bar at equal steps). Then `stock` in the orders of order seeds 1 to 4, its averaged adapter and its
+# measurement (THE GOAL SET'S FIRST SAMPLING ALONE: 32 attempts, the sampling seed `pre_r64`'s run recorded), then
+# `published_stock` the same, then the report: the checks, and THE DOSE against `deep` of L5d's own run of that seed
+# (`ladder_l5_draws_pre_r64_seed<N>`), read when it is on the box and finished and NOT READ otherwise.
+def _l5_stock_steps() -> list:
+    steps = [("sync", "gpu"), ("gpu", "fix_tokenizers"), ("gpu", "ladder_l5_stock_prepare")]
+    for model in ("stock", "published_stock"):
+        for order in (1, 2, 3, 4):
+            steps += [("guard", None), ("gpu", f"ladder_l5_stock_train_{model}_{order}")]
+        steps += [("guard", None), ("gpu", f"ladder_l5_stock_average_{model}"), ("guard", None), ("gpu", f"ladder_l5_stock_measure_{model}")]
+    return steps + [("guard", None), ("gpu", "ladder_l5_stock_report")]
+
+
+STAGES["ladder_l5_stock"] = _l5_stock_steps()
+# The same steps on what the smoke runs left in the box's store: L5's smoke run and the three it read, as L5d's smoke stage names
+# them (L5's own variables; NOT L5's smoke-only variable, and not L5d's), in a run directory of its own (`ladder_l5_stock_smoke`).
+# The task's seed is 3 (the job's `--seeds`). L5d's run variable STAYS SET, so the dose is read against L5d's SMOKE run of that
+# seed (`ladder_l5_draws_smoke_mean_constant`: queue `ladder_l5_draws_smoke` before it; NOT READ, and said, when it is not there).
+# L5's smoke run reads INCONCLUSIVE, which a real run is refused for, and the fixtures' model solves every map problem in every map
+# attempt, so the rule gives no ordinary solve. So this stage ALONE sets `RLVR_LEAN_LADDER_L5_STOCK_SMOKE=1`: L5's run is read all
+# the same (recorded), one deep solve is enough, as many ordinary solves as there are deep solves are taken by the run's minimum
+# (marked), orders of a set's handful of rows that are alike are trained all the same, and an averaged adapter that is one of its
+# models is kept. The first step REFUSES that variable in a run directory of the seed's own or on the pool's base map.
+_LADDER_L5_STOCK_SMOKE = {"environment": {**{name: value for name, value in _LADDER_L5_DRAWS_SMOKE["environment"].items() if name != "RLVR_LEAN_LADDER_L5_DRAWS_SMOKE"},
+                                          "RLVR_LEAN_LADDER_L5_STOCK_RUN": "ladder_l5_stock_smoke", "RLVR_LEAN_LADDER_L5_STOCK_SMOKE": "1"}}
+STAGES["ladder_l5_stock_smoke"] = [(environment, step, _LADDER_L5_STOCK_SMOKE) for environment, step in _l5_stock_steps()]
+
+
+# L5f: the three kinds again, from the twice-pretrained model (spec ladder-loop, "L5f: the three kinds again, from the
+# twice-pretrained model"; `gpu/ladder_l5_full.py`). Labelled pretrained on published proofs. L5d's STAGE WITH ONE CHANGE, THE
+# START ADAPTER: `second_full`, the adapter L4p's run keeps (`ladder_l4_dose_pre_r64_seed<the search's seed>/adapters/second_full`),
+# ONLY READ. One task at the scout's seed (`ladder_loop.l5_full.seeds`; `more_seeds` once `escalated` is recorded). It writes
+# `ladder_l5_draws_second_full_seed<N>` and nothing else. `ladder_l5_full_prepare` refuses, before anything is written, a task of a
+# seed that is not one of the stage's, an L5 run that is missing, unfinished, not to be read, INCONCLUSIVE or made otherwise, an
+# L4p run without `second_full` (its markers, its adapter at rank 64, its stored rows on G), and a run of L5d of that seed
+# (`ladder_l5_draws_pre_r64_seed<N>`) that is missing, unfinished, INCONCLUSIVE, not to be read or of another recipe; the three sets
+# are L5d's for the seed and are HELD to be the ones that run stored and trained, each in its four orders. Then, in L5d's order,
+# model by model: the set in the orders of order seeds 1 to 4 FROM `second_full`, its averaged adapter and its measurement (THE
+# GOAL SET'S FIRST SAMPLING ALONE: 32 attempts, the sampling seed `pre_r64`'s run recorded); then the report: the checks, THE STACK.
+def _l5_full_steps() -> list:
+    steps = [("sync", "gpu"), ("gpu", "fix_tokenizers"), ("gpu", "ladder_l5_full_prepare")]
+    for model in ("published", "shallow", "deep"):
+        for order in (1, 2, 3, 4):
+            steps += [("guard", None), ("gpu", f"ladder_l5_full_train_{model}_{order}")]
+        steps += [("guard", None), ("gpu", f"ladder_l5_full_average_{model}"), ("guard", None), ("gpu", f"ladder_l5_full_measure_{model}")]
+    return steps + [("guard", None), ("gpu", "ladder_l5_full_report")]
+
+
+STAGES["ladder_l5_full"] = _l5_full_steps()
+# The same steps on what the smoke runs left in the box's store: L5's smoke run and the three it read, as L5d's smoke stage names
+# them (L5's own variables; NOT L5's smoke-only variable, and not L5d's), in a run directory of its own (`ladder_l5_full_smoke`).
+# The task's seed is 3 (the job's `--seeds`). `second_full` is L4P's SMOKE RUN's, named by L6's variable for it
+# (`RLVR_LEAN_LADDER_L6_L4P_RUN=ladder_l4_dose_r64_smoke`); L5d's run variable STAYS SET, so the sets are held to L5d's SMOKE run of
+# that seed (`ladder_l5_draws_smoke_mean_constant`: queue `ladder_l5_draws_smoke` before it; the first step refuses when it is not
+# there). L5's smoke run reads INCONCLUSIVE, which a real run is refused for. So this stage ALONE sets
+# `RLVR_LEAN_LADDER_L5_FULL_SMOKE=1`: L5's run is read all the same (recorded), one deep solve is enough, orders of a set's handful
+# of rows that are alike are trained all the same, and an averaged adapter that is one of its models is kept. The first step
+# REFUSES that variable in a run directory of the seed's own or on the pool's base map.
+_LADDER_L5_FULL_SMOKE = {"environment": {**{name: value for name, value in _LADDER_L5_DRAWS_SMOKE["environment"].items() if name != "RLVR_LEAN_LADDER_L5_DRAWS_SMOKE"},
+                                         "RLVR_LEAN_LADDER_L6_L4P_RUN": "ladder_l4_dose_r64_smoke",
+                                         "RLVR_LEAN_LADDER_L5_FULL_RUN": "ladder_l5_full_smoke", "RLVR_LEAN_LADDER_L5_FULL_SMOKE": "1"}}
+STAGES["ladder_l5_full_smoke"] = [(environment, step, _LADDER_L5_FULL_SMOKE) for environment, step in _l5_full_steps()]
+
+
+# L5c: the continuation (spec ladder-loop, "L5c: the continuation"; `gpu/ladder_l5_cont.py`). Labelled pretrained on published
+# proofs. NO ROW IS ONE OF THE MODEL'S OWN PROOFS. One task at the scout's seed (`ladder_loop.l5_cont.seeds`; `more_seeds` once
+# `escalated` is recorded). It READS L5f's finished run of that seed (`ladder_l5_draws_second_full_seed<N>`: its four trainings of
+# its `published` set, its averaged `published`, that set as stored and its rows on the first sampling) and `second_full` as L5f
+# reads it, and writes `ladder_l5_cont_second_full_seed<N>` and nothing else. `ladder_l5_cont_prepare` refuses, before anything is
+# written, a task of a seed that is not one of the stage's, what L5f's own first step refuses of L5's run and of `second_full`, and
+# a run of L5f of that seed that is missing, unfinished, INCONCLUSIVE, not to be read, of another seed, start or recipe, or without
+# its five `published` adapters and its stored sets. Then `single` (L5f's stored `published_1`, measured: no training); then model
+# by model `wide` (four more orders of L5f's 800 rows from `second_full`, order seeds 5 to 8; the mean of EIGHT with L5f's four),
+# `again` (the next rows of the seed's order from L5f's averaged `published`, four orders, averaged) and `more` (L5s's rule's rows
+# from `second_full`, four orders, averaged), each measured on THE GOAL SET'S FIRST SAMPLING ALONE (32 attempts, the sampling seed
+# `pre_r64`'s run recorded); then the report: the checks, WHAT MADE IT, and the three reads against L5f's stored `published`.
+def _l5_cont_steps() -> list:
+    steps = [("sync", "gpu"), ("gpu", "fix_tokenizers"), ("gpu", "ladder_l5_cont_prepare"), ("guard", None), ("gpu", "ladder_l5_cont_measure_single")]
+    for model, orders in (("wide", (5, 6, 7, 8)), ("again", (1, 2, 3, 4)), ("more", (1, 2, 3, 4))):
+        for order in orders:
+            steps += [("guard", None), ("gpu", f"ladder_l5_cont_train_{model}_{order}")]
+        steps += [("guard", None), ("gpu", f"ladder_l5_cont_average_{model}"), ("guard", None), ("gpu", f"ladder_l5_cont_measure_{model}")]
+    return steps + [("guard", None), ("gpu", "ladder_l5_cont_report")]
+
+
+STAGES["ladder_l5_cont"] = _l5_cont_steps()
+# The same steps on what the smoke runs left in the box's store: L5's smoke run and the three it read, L4p's smoke run for
+# `second_full`, and L5f's SMOKE RUN (`ladder_l5_full_smoke`: queue `ladder_l5_full_smoke` before it; the first step refuses when
+# it is not there or not finished), each named as L5f's smoke stage names it, by the variables those stages' own functions read,
+# WITHOUT L5f's smoke-only variable (L5f's run is only read here) and WITHOUT L5d's run variable (L5d's run is not read here: the
+# sets are held to L5f's stored ones). A run directory of its own (`ladder_l5_cont_smoke`). The task's seed is 3 (the job's
+# `--seeds`). L5's smoke run reads INCONCLUSIVE, which a real run is refused for. So this stage ALONE sets
+# `RLVR_LEAN_LADDER_L5_CONT_SMOKE=1`: L5's run is read all the same (recorded), one deep solve is enough, orders of a set's
+# handful of rows that are alike are trained all the same, and an averaged adapter that is one of its models is kept. The first
+# step REFUSES that variable in a run directory of the seed's own or on the pool's base map.
+_LADDER_L5_CONT_SMOKE = {"environment": {**{name: value for name, value in _LADDER_L5_FULL_SMOKE["environment"].items()
+                                            if not name.endswith(("_L5_FULL_SMOKE", "_L5_DRAWS_RUN"))},
+                                         "RLVR_LEAN_LADDER_L5_CONT_RUN": "ladder_l5_cont_smoke", "RLVR_LEAN_LADDER_L5_CONT_SMOKE": "1"}}
+STAGES["ladder_l5_cont_smoke"] = [(environment, step, _LADDER_L5_CONT_SMOKE) for environment, step in _l5_cont_steps()]
+
+
+# L5m: the best model, measured in full (spec ladder-loop, "L5m: the best model, measured in full"; `gpu/ladder_l5_measure.py`).
+# Labelled pretrained on published proofs. NO TRAINING: one task measures ONE stored averaged adapter, THE CANDIDATE
+# (`ladder_loop.l5_measure.candidate`: the stage that made it, its seed, its name there; the task's `--seeds` is that seed), in
+# full, against `second_full`. It READS the candidate's adapter and its run's records (L5f's `ladder_l5_draws_second_full_seed<N>`
+# or L5c's `ladder_l5_cont_second_full_seed<N>`), `second_full` and its stored rungs and samplings of G in L4p's run, and L5's
+# finished search with every stored run its task read; it writes `ladder_l5_measure_<stage>_<model>_seed<N>` and nothing else. Its
+# steps are named `ladder_l5m_...` (`ladder_l5_measure_<model>` is a step of L5's own). `ladder_l5m_prepare` refuses, before
+# anything is written, a task of another seed than the candidate's, what L5's first step and L5f's reading of `second_full` refuse,
+# a run of the candidate that is missing, unfinished, INCONCLUSIVE, not to be read or measured otherwise, a record of the mean that
+# does not hold, and a row the candidate was trained on that is held out, of G or of the held-aside set. Then the candidate on the
+# three rungs and on G's TWO samplings (its first measured again, not copied), the candidate on the held-aside set, the bar on the
+# held-aside set (from its stored adapter, unless a stored measurement with the same setting is on the box: then that step makes
+# nothing), and the report: the checks, THE HELD-ASIDE SET, FRESH ATTEMPTS, and what stands beside them.
+def _l5_measure_steps() -> list:
+    return [("sync", "gpu"), ("gpu", "fix_tokenizers"), ("gpu", "ladder_l5m_prepare"), ("guard", None), ("gpu", "ladder_l5m_measure_candidate"),
+            ("guard", None), ("gpu", "ladder_l5m_held_aside_candidate"), ("guard", None), ("gpu", "ladder_l5m_held_aside_second_full"),
+            ("guard", None), ("gpu", "ladder_l5m_report")]
+
+
+STAGES["ladder_l5_measure"] = _l5_measure_steps()
+# The same steps on what the smoke runs left in the box's store: L5's smoke run and the three it read, L4p's smoke run for
+# `second_full`, and THE SMOKE RUN OF THE STAGE THAT MADE THE CANDIDATE (`ladder_l5_full_smoke` for a candidate of L5f, the
+# setting's default; `ladder_l5_cont_smoke` for one of L5c), each named as L5c's smoke stage names it, by the variables those
+# stages' own functions read, WITHOUT L5c's smoke-only variable (its run is only read here). L6's run variable is NOT set: no
+# stored measurement of the bar on the held-aside set is found, so the smoke run MEASURES it, as the real run does. A run
+# directory of its own (`ladder_l5_measure_smoke`). The task's seed is 3 (the job's `--seeds`). L5's smoke run reads INCONCLUSIVE,
+# which a real run is refused for. So this stage ALONE sets `RLVR_LEAN_LADDER_L5_MEASURE_SMOKE=1`: L5's run is read all the same
+# (recorded), and a candidate whose averaged adapter is one of its members is measured all the same. The first step REFUSES that
+# variable in a run directory of the candidate's own or on the pool's base map. THE SMOKE RUNS ON THE BOX HOLD ONE SAMPLING OF G (the
+# smoke `pre_r64`'s run reads L1's smoke run alone): the smoke run measures the candidate on that one and makes no read on fresh
+# attempts (recorded, and said by its report); a real run is refused for one sampling.
+_LADDER_L5_MEASURE_SMOKE = {"environment": {**{name: value for name, value in _LADDER_L5_CONT_SMOKE["environment"].items() if not name.endswith("_L5_CONT_SMOKE")},
+                                            "RLVR_LEAN_LADDER_L5_MEASURE_RUN": "ladder_l5_measure_smoke", "RLVR_LEAN_LADDER_L5_MEASURE_SMOKE": "1"}}
+STAGES["ladder_l5_measure_smoke"] = [(environment, step, _LADDER_L5_MEASURE_SMOKE) for environment, step in _l5_measure_steps()]
+
+
+# L6b: a second round, from the best model (spec ladder-loop, "L6b: a second round, from the best model"; `gpu/ladder_l6b.py`).
+# Labelled pretrained on published proofs. One task at one seed (`ladder_loop.l6b.seeds`). B is L5f's stored averaged `published`
+# of that seed. It READS L5f's finished run of the seed (`ladder_l5_draws_second_full_seed<N>`: B and its four trainings), L5c's
+# (`ladder_l5_cont_second_full_seed<N>`: its stored `again`, THE BAR), L5d's (`ladder_l5_draws_pre_r64_seed<N>`: the own rows of its
+# stored `deep` set), `second_full` as L5f reads it, and L5's finished search with every stored run its task read; L6's own run is
+# NOT read (its functions make search 2's problems). It writes `ladder_l6b_published_seed<N>` and nothing else.
+# `ladder_l6b_search_prepare` refuses, before anything is written, a task of another seed than the setting's, what L5d's own first
+# step and L5f's and L5c's readings refuse, a run of L5c of that seed that is missing, unfinished, INCONCLUSIVE, not to be read,
+# measured otherwise or whose `again` was not trained from B, and next rows of the seed's order that are not L5c's `again` set. Then
+# `ladder_l6b_search` (B, served at rank 64, 64 attempts at each problem of search 2, sampling seed 1052) and `ladder_l6b_prepare`
+# (the two sets; with fewer new solves than `l6.search.minimum` no set is built and the twelve steps after it make nothing); then
+# model by model `new_own` and `old_own`: four trainings FROM B in the orders of order seeds 1 to 4, the averaged adapter, and its
+# measurement on THE GOAL SET'S FIRST SAMPLING ALONE (32 attempts, the sampling seed `pre_r64`'s run recorded); then the report:
+# the checks, the search's yield, THE PRIMARY (`new_own` minus L5c's stored `again`) and WHOSE PROOFS (`new_own` minus `old_own`).
+def _l6b_steps() -> list:
+    steps = [("sync", "gpu"), ("gpu", "fix_tokenizers"), ("gpu", "ladder_l6b_search_prepare"), ("guard", None), ("gpu", "ladder_l6b_search"),
+             ("guard", None), ("gpu", "ladder_l6b_prepare")]
+    for model in ("new_own", "old_own"):
+        for order in (1, 2, 3, 4):
+            steps += [("guard", None), ("gpu", f"ladder_l6b_train_{model}_{order}")]
+        steps += [("guard", None), ("gpu", f"ladder_l6b_average_{model}"), ("guard", None), ("gpu", f"ladder_l6b_measure_{model}")]
+    return steps + [("guard", None), ("gpu", "ladder_l6b_report")]
+
+
+STAGES["ladder_l6b"] = _l6b_steps()
+# The same steps on what the smoke runs left in the box's store: L5's smoke run and the three it read, L4p's smoke run for
+# `second_full`, L5d's SMOKE RUN of the seed (`ladder_l5_draws_smoke_mean_constant`, by L5d's run variable), L5f's
+# (`ladder_l5_full_smoke`) and L5c's (`ladder_l5_cont_smoke`: queue `ladder_l5_cont_smoke` before it; the first step refuses when it
+# is not there or not finished), each named as L5f's smoke stage names it, by the variables those stages' own functions read,
+# WITHOUT L5f's or L5c's smoke-only variable (their runs are only read here) and WITHOUT L6's run variable or smoke-only variable
+# (L6's run is not read). A run directory of its own (`ladder_l6b_smoke`). The task's seed is 3 (the job's `--seeds`). L5's smoke
+# run reads INCONCLUSIVE, which a real run is refused for, and the fixture's map leaves search 2 no problem. So this stage ALONE
+# sets `RLVR_LEAN_LADDER_L6B_SMOKE_PROBLEMS=2`: L5's run is read all the same, and so is a report of L5c's smoke run that reads
+# INCONCLUSIVE (both recorded); the search attempts the two map problems no search took; one new solve is enough; K is 1 (half of
+# L5f's smoke set of two rows); orders of a set's handful of rows that are alike are trained all the same, and an averaged adapter
+# that is one of its models is kept. The first step REFUSES that variable in a run directory of the seed's own or on the pool's
+# base map.
+_LADDER_L6B_SMOKE = {"environment": {**{name: value for name, value in _LADDER_L5_FULL_SMOKE["environment"].items() if not name.endswith("_L5_FULL_SMOKE")},
+                                     "RLVR_LEAN_LADDER_L5_CONT_RUN": "ladder_l5_cont_smoke",
+                                     "RLVR_LEAN_LADDER_L6B_RUN": "ladder_l6b_smoke", "RLVR_LEAN_LADDER_L6B_SMOKE_PROBLEMS": "2"}}
+STAGES["ladder_l6b_smoke"] = [(environment, step, _LADDER_L6B_SMOKE) for environment, step in _l6b_steps()]
+SOUNDNESS_ALARM_EXIT = 3    # `gpu.__main__`'s code for a proof of both sides of one statement (it cannot be imported here)
 
 
 def step_fields(entry_step: tuple) -> tuple[str, str | None, dict]:

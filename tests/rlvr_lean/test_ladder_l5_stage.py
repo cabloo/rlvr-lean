@@ -840,7 +840,8 @@ def test_the_stage_is_registered_with_a_guard_before_every_gpu_step_and_the_smok
     # ITS VARIABLES are named by its smoke stage, and the two that say WHERE A RUN IS by L6's smoke stage, L5n's and L5d's too, which read this stage's smoke run by this
     # stage's own functions. THE SMOKE-ONLY ONE is its smoke stage's ALONE: no other stage of the package sets it and no other module reads it.
     names = lambda variable: sorted(name for name, own_ in entry.STAGES.items() if any(variable in entry.step_fields(step)[2].get("environment", {}) for step in own_))      # noqa: E731
-    assert names(RUN) == names(L4T2_RUN) == ["ladder_l5_deep_smoke", "ladder_l5_draws_smoke", "ladder_l5_noise_smoke", "ladder_l6_cycle_smoke"]
+    assert names(RUN) == names(L4T2_RUN) == ["ladder_l5_cont_smoke", "ladder_l5_deep_smoke", "ladder_l5_draws_smoke", "ladder_l5_full_smoke", "ladder_l5_measure_smoke", "ladder_l5_noise_smoke", "ladder_l5_stock_smoke",
+                                         "ladder_l6_cycle_smoke", "ladder_l6b_smoke"]
     assert names(SMOKE) == ["ladder_l5_deep_smoke"] and SMOKE == "RLVR_LEAN_LADDER_L5_SMOKE_PROBLEMS"
     assert sorted(str(path.relative_to(PACKAGE)) for path in PACKAGE.rglob("*.py") if SMOKE in path.read_text()) == ["gpu/ladder_l5.py", "runner/entry.py"]
     assert "ladder_l5_deep_smoke" in names(MAP_RUN) and "ladder_l5_deep" not in names(MAP_RUN)

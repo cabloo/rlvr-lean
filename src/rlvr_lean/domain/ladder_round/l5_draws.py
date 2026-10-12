@@ -219,13 +219,14 @@ def on_the_parts(rows: Sequence[Mapping], parts: Mapping[str, Sequence[str]]) ->
     return {part: figure([by_id[problem_id] for problem_id in ids if problem_id in by_id]) for part, ids in parts.items()}
 
 
-def the_counts(rows: Mapping[str, Sequence[Mapping]], long_ids: Collection[str]) -> dict[str, dict]:
+def the_counts(rows: Mapping[str, Sequence[Mapping]], long_ids: Collection[str], against: str = PUBLISHED) -> dict[str, dict]:
     """The counts at one seed: the goal problems each model solves at least once in its attempts, gained and lost
-    against `published`; and the same of the long problems (`long_ids`: a shortest published proof of 8 lines or more)."""
+    against `published`; and the same of the long problems (`long_ids`: a shortest published proof of 8 lines or more).
+    `against` (L5s, `domain/ladder_round/l5_stock.py`: the start model): the model the others are counted against."""
     solves = {model: {row["problem_id"] for row in own if row["resolved"] > 0} for model, own in rows.items()}
 
     def of(model: str, among: Collection[str] | None) -> dict:
-        own, base = (solves[name] if among is None else solves[name] & set(among) for name in (model, PUBLISHED))
+        own, base = (solves[name] if among is None else solves[name] & set(among) for name in (model, against))
         return {"solved": len(own), "gained": len(own - base), "lost": len(base - own)}
 
     return {model: {**of(model, None), "long": {"problems": len(long_ids), **of(model, long_ids)}} for model in rows}

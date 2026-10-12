@@ -203,6 +203,72 @@ def read_l5n(config: dict, draws: Draws) -> dict:
 
 
 # ------------------------------------------------------------------------------------------------- prepare
+@dataclass(frozen=True)
+class OfASeed:
+    """Who draws from L5's finished search by a seed, as a refusal names what is its own. Every default is L5d's; L5s
+    (`gpu/ladder_l5_stock.py`), whose sets hold a seed's rows, gives its own."""
+    who: str = "L5d"                            # "... and <who> has nothing to train"
+    run_variable: str = RUN_VARIABLE            # the variable that names a smoke run's directory
+    smoke_variable: str = SMOKE_VARIABLE        # ... and its smoke-only variable, refused on the pool's problems
+
+
+DRAWN = ("found", "read", "start", "the_map", "at_least", "directory", "theirs", "sampling", "training", "batch", "recipe", "of_this", "solves", "table", "enough", "kept", "ordinary",
+         "of_ordinary", "sets", "counted", "sha256", "pretraining", "aside")
+
+
+def drawn_by_the_seed(config: dict, draws: Draws, seed: int, smoke: bool, reader: ladder_l5.OfTheSearch, averages: bool, one: OfASeed = OfASeed()) -> dict:
+    """WHAT A SEED READS, HOLDS AND DRAWS, with NOTHING WRITTEN: L5's finished run and every stored run its task read, by
+    L5's own reading; how a model here is measured and trained, held to those runs; the deep solves by `seed`, and the
+    three sets by L5's own rule for it. `smoke`: a SMOKE run. `reader`: who reads L5's run. `averages`: the averaged
+    recipe, whose start adapter's floating type is held here. Returns what `DRAWN` names. REFUSED (RuntimeError) as the
+    module's note says of the first step. TWO STAGES CALL IT (this one's first step; L5s's, `gpu/ladder_l5_stock.py`):
+    change it and both change."""
+    deep = draws.deep
+    # ---- L5's finished run, and every stored run its task read: by L5's OWN reading, as a further seed of L5 reads them (refused there, with nothing written)
+    found = ladder_l5.read_the_search(config, deep, reader)
+    # A smoke run reads a SMOKE run of L5: its two looser draws are made again as that run recorded them (L5's own smoke-only variable is L5's smoke stage's alone).
+    read = ladder_l5.read_for_the_search(config, deep, found, reader, at_least=((found["searched"].get("smoke") or {}).get("problems_at_least") or 0) if smoke else 0)
+    start, the_map, plan, recorded, at_least = (read[key] for key in ("start", "the_map", "plan", "recorded", "at_least"))
+    if smoke and not the_map["fixture"]:
+        raise RuntimeError(f"{one.smoke_variable} is set: it is for a SMOKE run alone, in a run directory the task names ({one.run_variable}) and on the fixtures' base map. A run on "
+                           "the pool's problems reads a run of L5 whose checks passed. Nothing was written.")
+    directory, theirs = found["directory"], found["searched"]
+
+    # ---- how a model here is measured, and how it is trained: the start model's FIRST sampling of G as its run recorded it; the recipe that trained L5's models
+    sampling = plan["goal_samplings"][0]
+    if (sampling["name"], sampling["episodes"]) != (draws.sampling, draws.attempts):
+        raise RuntimeError(f"{SETTING} names the sampling `{draws.sampling}` of {draws.attempts} attempts a problem, and the run of `{draws.start}` ({start.directory.name}) "
+                           f"recorded its first sampling of the goal set as `{sampling['name']}` of {sampling['episodes']}: every model here is measured on that sampling "
+                           "alone, with its recorded sampling seed. Nothing was written.")
+    training, batch = config["training"], config["training"]["effective_batch"]
+    recipe = {"learning_rate": training["learning_rate"], "warmup_steps": training["warmup_steps"], "effective_batch": batch,
+              "lora": config_from(config, {"start_recipe": recorded}, start)["lora"]}
+    then = {key: (theirs.get("recipe") or {}).get(key) for key in recipe}
+    if then != recipe:
+        raise RuntimeError(f"L5's run {directory.name} trained its models with {then} and this task would train with {recipe}: a seed here is a further seed of L5, and "
+                           f"`{CONSTANT}` is the recipe that run's models were trained with. Nothing was written.")
+    if averages and not ladder_ceiling._stand_in():     # the mean of adapters is written in the adapters' own floating type: held HERE, on the start adapter, and not after the trainings
+        other = sorted({entry["dtype"] for entry in tensors_of(start.adapter / ADAPTER_FILE)[0].values()} - set(MEAN_TYPES))
+        if other:
+            raise RuntimeError(f"the start adapter {start.adapter} holds tensors of type {other}: the averaged adapters are written in {list(MEAN_TYPES)} "
+                               "(`infrastructure.adapter_files.mean_of`), and an adapter trained from it has its types. Nothing was written.")
+
+    # ---- THE THREE SETS, by L5's own rule for THIS TASK's seed: the two functions L5's three sets step draws by, on what a further seed of L5 would have recorded
+    by_k, aside = read["by_k"], [row["problem_id"] for row in read["aside"]]
+    of_this = {"map_run": str(the_map["directory"]), "pretraining_file_sha256": read["sha256"], "smoke": bool(at_least),
+               "the_map": {"set": the_map["set"], "episodes_each": the_map["recorded"]["episodes_each"], "problems_by_k": {str(k): by_k[k] for k in sorted(by_k)}},
+               "the_search": {"episodes_each": deep.attempts, "minimum_deep_solves": 1 if at_least else deep.minimum}}
+    solves, table, enough, in_the_set = ladder_l5.deep_solves_by_the_seed(deep, seed, read["drawn"], directory, *ladder_l5.the_stored_search(directory), of_this["the_map"],
+                                                                          of_this["the_search"], ladder_l5.counted_by_the_search(found)).values()
+    if not enough["passes"]:
+        raise RuntimeError(f"the deep search of {directory.name} found {len(solves)} deep solves and {enough['minimum']} are asked: no set is built on it, and {one.who} has "
+                           "nothing to train. Nothing was written.")
+    kept = [row for row in solves if row["problem_id"] in in_the_set]
+    ordinary, of_ordinary, sets, counted, sha256, pretraining = ladder_l5.sets_by_the_seed(config, deep, start, seed, kept, read["drawn"], aside, of_this, read["groups"]).values()
+    return dict(zip(DRAWN, (found, read, start, the_map, at_least, directory, theirs, sampling, training, batch, recipe, of_this, solves, table, enough, kept, ordinary, of_ordinary,
+                            sets, counted, sha256, pretraining, aside), strict=True))
+
+
 def ladder_l5_draws_prepare(config: dict) -> dict:
     draws = the_settings(config)
     store = _store(config, draws)
@@ -222,49 +288,12 @@ def ladder_l5_draws_prepare(config: dict) -> dict:
         of_the_recipe = the_recipe(draws.recipe, of_l5n)
     except ValueError as error:
         raise RuntimeError(f"{error} ({SETTING}.recipe; L5n's run is written by {l5n_task(draws)}). Nothing was written.") from error
-    # ---- L5's finished run, and every stored run its task read: by L5's OWN reading, as a further seed of L5 reads them (refused there, with nothing written)
-    reader = the_reader(draws, smoke)
-    found = ladder_l5.read_the_search(config, deep, reader)
-    # A smoke run reads a SMOKE run of L5: its two looser draws are made again as that run recorded them (L5's own smoke-only variable is L5's smoke stage's alone).
-    read = ladder_l5.read_for_the_search(config, deep, found, reader, at_least=((found["searched"].get("smoke") or {}).get("problems_at_least") or 0) if smoke else 0)
-    start, the_map, plan, recorded, at_least = (read[key] for key in ("start", "the_map", "plan", "recorded", "at_least"))
-    if smoke and not the_map["fixture"]:
-        raise RuntimeError(f"{SMOKE_VARIABLE} is set: it is for a SMOKE run alone, in a run directory the task names ({RUN_VARIABLE}) and on the fixtures' base map. A run on "
-                           "the pool's problems reads a run of L5 whose checks passed. Nothing was written.")
-    directory, theirs = found["directory"], found["searched"]
-
-    # ---- how a model here is measured, and how it is trained: the start model's FIRST sampling of G as its run recorded it; the recipe that trained L5's models
-    sampling = plan["goal_samplings"][0]
-    if (sampling["name"], sampling["episodes"]) != (draws.sampling, draws.attempts):
-        raise RuntimeError(f"{SETTING} names the sampling `{draws.sampling}` of {draws.attempts} attempts a problem, and the run of `{draws.start}` ({start.directory.name}) "
-                           f"recorded its first sampling of the goal set as `{sampling['name']}` of {sampling['episodes']}: every model here is measured on that sampling "
-                           "alone, with its recorded sampling seed. Nothing was written.")
-    training, batch = config["training"], config["training"]["effective_batch"]
-    recipe = {"learning_rate": training["learning_rate"], "warmup_steps": training["warmup_steps"], "effective_batch": batch,
-              "lora": config_from(config, {"start_recipe": recorded}, start)["lora"]}
-    then = {key: (theirs.get("recipe") or {}).get(key) for key in recipe}
-    if then != recipe:
-        raise RuntimeError(f"L5's run {directory.name} trained its models with {then} and this task would train with {recipe}: a seed here is a further seed of L5, and "
-                           f"`{CONSTANT}` is the recipe that run's models were trained with. Nothing was written.")
+    # ---- L5's finished run and every stored run its task read, how a model is measured and trained, and THE THREE SETS by L5's own rule for THIS TASK's seed
     averages = draws.recipe == MEAN_CONSTANT
-    if averages and not ladder_ceiling._stand_in():     # the mean of adapters is written in the adapters' own floating type: held HERE, on the start adapter, and not after the trainings
-        other = sorted({entry["dtype"] for entry in tensors_of(start.adapter / ADAPTER_FILE)[0].values()} - set(MEAN_TYPES))
-        if other:
-            raise RuntimeError(f"the start adapter {start.adapter} holds tensors of type {other}: the averaged adapters are written in {list(MEAN_TYPES)} "
-                               "(`infrastructure.adapter_files.mean_of`), and an adapter trained from it has its types. Nothing was written.")
-
-    # ---- THE THREE SETS, by L5's own rule for THIS TASK's seed: the two functions L5's three sets step draws by, on what a further seed of L5 would have recorded
-    by_k, aside = read["by_k"], [row["problem_id"] for row in read["aside"]]
-    of_this = {"map_run": str(the_map["directory"]), "pretraining_file_sha256": read["sha256"], "smoke": bool(at_least),
-               "the_map": {"set": the_map["set"], "episodes_each": the_map["recorded"]["episodes_each"], "problems_by_k": {str(k): by_k[k] for k in sorted(by_k)}},
-               "the_search": {"episodes_each": deep.attempts, "minimum_deep_solves": 1 if at_least else deep.minimum}}
-    solves, table, enough, in_the_set = ladder_l5.deep_solves_by_the_seed(deep, seed, read["drawn"], directory, *ladder_l5.the_stored_search(directory), of_this["the_map"],
-                                                                          of_this["the_search"], ladder_l5.counted_by_the_search(found)).values()
-    if not enough["passes"]:
-        raise RuntimeError(f"the deep search of {directory.name} found {len(solves)} deep solves and {enough['minimum']} are asked: no set is built on it, and L5d has "
-                           "nothing to train. Nothing was written.")
-    kept = [row for row in solves if row["problem_id"] in in_the_set]
-    ordinary, of_ordinary, sets, counted, sha256, _ = ladder_l5.sets_by_the_seed(config, deep, start, seed, kept, read["drawn"], aside, of_this, read["groups"]).values()
+    drawn = drawn_by_the_seed(config, draws, seed, smoke, the_reader(draws, smoke), averages)
+    found, read, start, at_least, directory, theirs, sampling, training, batch, recipe, solves, table, enough, kept, ordinary, sets, counted, sha256, aside = (drawn[key] for key in (
+        "found", "read", "start", "at_least", "directory", "theirs", "sampling", "training", "batch", "recipe", "solves", "table", "enough", "kept", "ordinary", "sets", "counted",
+        "sha256", "aside"))
     goal_ids = [row["problem_id"] for row in read["goal_problems"]]
     try:
         beside = {model: refuse_problems_of(sets[model], set(goal_ids), set(aside), f"the training set of `{model}`") for model in MODELS}

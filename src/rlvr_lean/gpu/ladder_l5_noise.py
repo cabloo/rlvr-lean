@@ -53,6 +53,7 @@ import os
 import shutil
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Mapping
 
 from rlvr_lean.domain.ladder_round.dose import decayed, steps_per_pass, warmed
 from rlvr_lean.domain.ladder_round.l5 import PUBLISHED, refuse_barred
@@ -365,12 +366,16 @@ def ladder_l5_noise_average(config: dict, recipe: str) -> dict:
     return the_mean_adapter(store, the_start(config, noise), model, of, marker, summary, bool(prepared.get("smoke")))
 
 
-def the_mean_adapter(store: ArtifactStore, start: Start, model: str, of: list[str], marker: str, summary: dict, smoke: bool, one: ladder_l4_rows.Stage = THE_STAGE) -> dict:
+def the_mean_adapter(store: ArtifactStore, start: Start, model: str, of: list[str], marker: str, summary: dict, smoke: bool, one: ladder_l4_rows.Stage = THE_STAGE,
+                     kept: Mapping[str, Path] | None = None) -> dict:
     """THE BODY OF AN AVERAGING STEP, which two stages call (this one's; L5d's, `gpu/ladder_l5_draws.py`, whose averaged
     recipe measures such an adapter: change it and both change): the adapter `model`, kept under `adapters/<model>`, is
     the mean of the adapters of the trained models `of`, and is refused as `ladder_l5_noise_average` says. `marker`: the
     step. `summary`: what the step's summary begins with. `smoke`: a SMOKE run, in which an averaged adapter that is one
-    of its models is kept. `one`: the stage whose step it is."""
+    of its models is kept. `one`: the stage whose step it is. `kept` (L5c's `wide`, `gpu/ladder_l5_cont.py`; None for
+    every other caller, whose adapter is the mean of the trainings of ITS run and nothing else): adapters ANOTHER RUN
+    keeps, by name and directory, ONLY READ: they stand first among the adapters averaged, and no step of this run
+    made them."""
     for name in of:
         _need(store, one.train_marker(name), f"the averaged adapter `{model}`", one.name)
     target = store.root / ladder_assembly.ADAPTERS / model
@@ -378,15 +383,16 @@ def the_mean_adapter(store: ArtifactStore, start: Start, model: str, of: list[st
         summary.update({"averaged": False, "note": "no adapter was trained, and none was averaged: a pre-flight without a GPU"})
         store.mark_done(marker, summary)
         return summary
-    directories = [store.root / ladder_assembly.ADAPTERS / name for name in of]
+    names = [*(kept or {}), *of]
+    directories = [*(kept or {}).values(), *(store.root / ladder_assembly.ADAPTERS / name for name in of)]
     lacking = [str(directory) for directory in directories if not (directory / ADAPTER_FILE).exists() or not (directory / ladder_l4_rank.ADAPTER_CONFIG).exists()]
     if lacking:
         raise RuntimeError(f"{lacking} are not there: the adapters `{model}` is the mean of are kept by this stage. Nothing was averaged")
     configs = [_adapter_config(directory) for directory in directories]
     if any(own != configs[0] for own in configs[1:]):
-        raise RuntimeError(f"the adapters of {of} were not saved with one adapter config: `{model}` is saved with the config they share. Nothing was averaged")
+        raise RuntimeError(f"the adapters of {names} were not saved with one adapter config: `{model}` is saved with the config they share. Nothing was averaged")
     files = [directory / ADAPTER_FILE for directory in directories]
-    _say(f"{one.reader}: averaging the adapters of {', '.join(f'`{name}`' for name in of)} into `{model}`: no training")
+    _say(f"{one.reader}: averaging the adapters of {', '.join(f'`{name}`' for name in names)} into `{model}`: no training")
     target.mkdir(parents=True, exist_ok=True)
     try:
         made = mean_of_adapters(files, target / ADAPTER_FILE)

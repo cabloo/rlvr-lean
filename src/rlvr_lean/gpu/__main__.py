@@ -33,9 +33,14 @@ def main() -> int:
         ladder_l4_rows2,
         ladder_l4b,
         ladder_l5,
+        ladder_l5_cont,
         ladder_l5_draws,
+        ladder_l5_full,
+        ladder_l5_measure,
         ladder_l5_noise,
+        ladder_l5_stock,
         ladder_l6,
+        ladder_l6b,
         ladder_loop,
         ladder_round,
         milestone2,
@@ -45,7 +50,8 @@ def main() -> int:
     steps = {**milestone2.STEPS, **pipeline.STAGES, **diagnostics.STEPS, **ladder_loop.STEPS, **ladder_round.STEPS, **ladder_dose.STEPS, **ladder_l2.STEPS,
              **ladder_l3a.STEPS, **ladder_l3a2.STEPS, **ladder_l3c.STEPS, **ladder_ceiling.STEPS, **ladder_l3d1.STEPS, **ladder_l3d2.STEPS,
              **ladder_l4.STEPS, **ladder_l4_rank.STEPS, **ladder_l4_rows.STEPS, **ladder_l4_rows2.STEPS, **ladder_l4_dose.STEPS, **ladder_l4b.STEPS,
-             **ladder_l5.STEPS, **ladder_l6.STEPS, **ladder_l5_noise.STEPS, **ladder_l5_draws.STEPS}
+             **ladder_l5.STEPS, **ladder_l6.STEPS, **ladder_l5_noise.STEPS, **ladder_l5_draws.STEPS, **ladder_l5_stock.STEPS,
+             **ladder_l5_full.STEPS, **ladder_l5_cont.STEPS, **ladder_l5_measure.STEPS, **ladder_l6b.STEPS}
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("step", choices=sorted(steps))
     parser.add_argument("--out", required=True, type=Path)

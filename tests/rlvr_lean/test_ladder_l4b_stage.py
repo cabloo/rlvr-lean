@@ -640,7 +640,7 @@ def test_the_stages_run_the_map_first_then_l4s_steps_with_a_guard_before_every_g
         if not name.startswith("ladder_l4b"):
             named = {key for step in steps for key in entry.step_fields(step)[2].get("environment", {})}
             assert not named & {RULE, MINIMUM, START_CHECKS} and all(entry.step_fields(step)[2].get("environment", {}).get(ARM) != L4B_ARM for step in steps)
-            assert (MAP_RUN in named) is (name in ("ladder_l5_deep_smoke", "ladder_l6_cycle_smoke", "ladder_l5_noise_smoke", "ladder_l5_draws_smoke")) and not any(entry.step_fields(step)[1] in ladder_l4b.STEPS for step in steps)
+            assert (MAP_RUN in named) is (name in ("ladder_l5_deep_smoke", "ladder_l6_cycle_smoke", "ladder_l5_noise_smoke", "ladder_l5_draws_smoke", "ladder_l5_stock_smoke", "ladder_l5_full_smoke", "ladder_l5_cont_smoke", "ladder_l5_measure_smoke", "ladder_l6b_smoke")) and not any(entry.step_fields(step)[1] in ladder_l4b.STEPS for step in steps)
 
 
 def test_the_steps_run_through_the_gpu_entry_point(l4b, monkeypatch, tmp_path):

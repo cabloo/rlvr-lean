@@ -786,6 +786,27 @@ def deep_solves_by_the_seed(deep: Deep, seed: int, drawn: Sequence[Mapping], sea
     return {"solves": solves, "table": table, "enough": enough, "in_the_set": in_the_set}
 
 
+def ordinary_by_the_seed(deep: Deep, seed: int, count: int, drawn: Sequence[Mapping], aside: Sequence[str], read: Mapping) -> tuple[list[dict], list[dict], list[dict]]:
+    """THE ORDINARY SOLVES BY A SEED, with NOTHING WRITTEN: `count` of the map's problems the start model solved in
+    `deep.least` to `deep.most` of its map attempts, and one stored verified MAP attempt of each, both drawn by `seed`
+    (`l5.ordinary_draw`, `l5.solve_rows`). `drawn`, `aside`, `read`: as `sets_by_the_seed` takes them. Returns the map's
+    per-problem rows, the ordinary solves as drawn, and their rows. Refused (RuntimeError) when the map is no longer the
+    one the search was prepared on, and (ValueError) as the draw and the rows refuse. TWO CALLERS: `sets_by_the_seed`
+    (as many as there are deep rows) and L5s's first step (`gpu/ladder_l5_stock.py`: every one the rule gives)."""
+    of_the_map, smoke, taken = read["the_map"], bool(read.get("smoke")), {row["problem_id"] for row in drawn}
+    directory = Path(read["map_run"])
+    map_rows = _rows(directory / f"episodes_{of_the_map['set']}_problems.jsonl")
+    if {str(k): problems for k, problems in sorted(Counter(row["resolved"] for row in map_rows).items())} != of_the_map["problems_by_k"]:
+        raise RuntimeError(f"the map {directory.name} is not the map this run's search was prepared on (its problems by k are no longer {of_the_map['problems_by_k']}). "
+                           "Nothing was written.")
+    ordinary = ordinary_draw(map_rows, deep.least, deep.most, count, seed, not_among={*taken, *aside}, loosely=smoke)
+    why = {row["problem_id"]: row for row in ordinary}
+    map_problems = {row["problem_id"]: row for row in _rows(directory / "problems.jsonl") if row["set"] == of_the_map["set"]}
+    of_ordinary = [{**row, "map_k": why[row["problem_id"]]["map_k"], "taken_by": why[row["problem_id"]]["taken_by"]}
+                   for row in solve_rows([map_problems[row["problem_id"]] for row in ordinary], ladder_ceiling._stored_attempts(directory, of_the_map["set"]), map_rows, seed, SHALLOW)]
+    return map_rows, ordinary, of_ordinary
+
+
 def sets_by_the_seed(config: dict, deep: Deep, start: Start, seed: int, kept: list[dict], drawn: Sequence[Mapping], aside: Sequence[str], read: Mapping,
                      groups: Sequence[Mapping]) -> dict:
     """THE THREE SETS BY A SEED, with NOTHING WRITTEN: as many ordinary solves as there are deep rows (`kept`: the deep
@@ -796,19 +817,9 @@ def sets_by_the_seed(config: dict, deep: Deep, start: Start, seed: int, kept: li
     `groups`: the held-out groups. Returns the ordinary solves as drawn, their rows, the three sets, what was counted
     of barred rows in each, and the pretraining file's SHA-256. Refused (RuntimeError) as the three sets step refuses.
     TWO STAGES CALL IT, as `deep_solves_by_the_seed`."""
-    of_the_map, smoke, taken = read["the_map"], bool(read.get("smoke")), {row["problem_id"]: row for row in drawn}
-    directory = Path(read["map_run"])
-    map_rows = _rows(directory / f"episodes_{of_the_map['set']}_problems.jsonl")
-    if {str(k): count for k, count in sorted(Counter(row["resolved"] for row in map_rows).items())} != of_the_map["problems_by_k"]:
-        raise RuntimeError(f"the map {directory.name} is not the map this run's search was prepared on (its problems by k are no longer {of_the_map['problems_by_k']}). "
-                           "Nothing was written.")
+    taken, directory = {row["problem_id"]: row for row in drawn}, Path(read["map_run"])
     try:
-        ordinary = ordinary_draw(map_rows, deep.least, deep.most, len(kept), seed, not_among={*taken, *aside}, loosely=smoke)
-        why = {row["problem_id"]: row for row in ordinary}
-        map_problems = {row["problem_id"]: row for row in _rows(directory / "problems.jsonl") if row["set"] == of_the_map["set"]}
-        of_ordinary = [{**row, "map_k": why[row["problem_id"]]["map_k"], "taken_by": why[row["problem_id"]]["taken_by"]}
-                       for row in solve_rows([map_problems[row["problem_id"]] for row in ordinary], ladder_ceiling._stored_attempts(directory, of_the_map["set"]), map_rows,
-                                             seed, SHALLOW)]
+        map_rows, ordinary, of_ordinary = ordinary_by_the_seed(deep, seed, len(kept), drawn, aside, read)
         pretraining, sha256 = ladder_l4_start.pretrained_on(start.directory, read["pretraining_file_sha256"], start.name)
         sets = build_the_sets(kept, of_ordinary, pretraining, seed)
         refuse_overlap(aside, list(taken), sets)                # THE HELD-ASIDE SET IS THE TEST: none of its problems was searched, and no set holds a row of one

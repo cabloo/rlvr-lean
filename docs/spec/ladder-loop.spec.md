@@ -4284,6 +4284,1020 @@ below).**
   the tree with these additions: 244 noticed. The pass's own control, a copy with nothing changed, passes its tests
   (48 of this stage's; 133 with those of L5, its further seeds, L6 and L5n).
 
+**Outcome of L5d at three seeds (2026-10-12 UTC; `docs/spec/ladder-l5d-RESULT.md`): THE MODEL'S OWN PROOFS
+BESIDE PUBLISHED ONES BEAT PUBLISHED ONES ALONE ON THE GOAL SET.** The number of seeds is THREE: seed 5 finished unread
+at 10:59 UTC, and the owner answered the ask before it was read (about 11:06 UTC: "let's do 3 seeds. I
+don't need super high confidence to keep pushing in this direction"). Seeds 6 to 8 were not run. All checks pass at
+each seed. The primary, per 1,000 attempts: seed 3 +13.91, seed 4 +13.07, seed 5 +11.08; mean +12.69, interval over
+the three seeds [+9.08, +16.30]. Per 1,000 on all of G, `published` / `shallow` / `deep`: 90.88 / 99.41 / 110.17,
+95.34 / 105.31 / 111.53, 97.58 / 102.84 / 114.48. Beside: `deep` minus `published` +17.46 [+13.41, +21.50];
+`shallow` minus `published` +7.92 [+1.93, +13.91]; `deep` minus `shallow` +9.54 [+2.31, +16.77]. Where it sits: REACH
+TOO (on the 200 [+9.19, +31.70]; on G' [+0.26, +8.97]). The standard deviation of the primary's difference over the
+seeds is 1.45. Seed 3's difference with the second check of its timed-out attempts is +13.08; seed 4 owes none; seed
+5's is in the note. **What follows by the rule above:** the bet's first condition holds on the goal set at this size
+and a second round runs. It is run from the best model and not from `pre_r64` (L6b, below, with its reasons): from
+the twice-pretrained model the same difference read -14.87 at the one seed of L5f, with own proofs that the weaker
+model found. L6 as fixed does not run before L6b is read.
+
+### L5s: the dose. Every own solve in stock that the model finds less than half the time, against the same number of published proofs (fixed 2026-10-12, after L5d's seed 3 and before any run of this stage)
+
+**Under the owner's words** (2026-10-12): "make as much progress as you can tonight on improving this solver's solve
+rate against the heldout tasks." Labelled **pretrained on published proofs** (it starts from `pre_r64`).
+
+**Why.** The one lever with a repeated sign for the solve rate on the held-out goal set is the model's own
+Lean-checked proofs of problems it never trained on: beside published proofs they are above published proofs alone
+at 3 seeds of 3 in L5 (+16.5 per 1,000 attempts on average) and at L5d's first fresh seed (+13.9; `published` 90.9,
+`shallow` 99.4, `deep` 110.2, each the average of four orders). Every one of those models was trained on 400 of its
+own proofs. Nothing here has measured what MORE of them does. And nothing trained from `pre_r64` has read above
+113 per 1,000: 800 rows of any kind, 12,433 and 24,866 published rows all land between 76 and 113. In stock, found
+and checked already, are 1,634 own solves of problems `pre_r64` solves less than half the time: the 520 deep solves
+of L5's search (failed 8 of 8, solved within 64) and the 1,114 base-map problems it solved in 1 to 3 of its 8 map
+attempts. This stage trains on ALL of them, four times the dose, and reads whether the solve rate goes with the dose.
+It is the question the full-size cycle (`ladder-cycle.spec.md`, seventeen times the dose) rests on, asked tonight at
+the size that needs no new search.
+
+**What runs: one task, no search, no sampling but the measurements.** The seed is 3, L5d's first fresh seed: this
+stage's sets then HOLD that seed's rows (its 400 deep solves, its 400 ordinary solves, its first 800 published rows),
+and its two models stand beside that seed's three with the same published order, the same recipe and the same
+measurement. L5's finished search is READ as L5d reads it. Two sets, built with L5's own functions for the task's
+seed:
+- `stock`: EVERY deep solve of the search, one verified attempt of each drawn by the seed as L5 draws it; EVERY
+  ordinary solve as L5 defines one (its own setting: a base-map problem solved in 1 to 3 of its 8 map attempts), one
+  stored verified map attempt of each drawn by the seed as L5 draws it; and the first N rows of the seed's hash order
+  of the pretraining file, N the number of own rows. Expected 520 + 1,114 = 1,634 own rows and 3,268 rows in all; the
+  counts are the stored runs', recorded, never numbers of the code.
+- `published_stock`: the first 2N rows of that order and nothing else. The bar at equal steps.
+Each set is trained from `pre_r64` at its rank, one pass, in four orders (order seeds 1 to 4 of its own rows) with
+the recipe as it is, and the model measured is the adapter that is the mean of the four (L5n's function, held as L5n
+holds it): the recipe L5n named, as L5d runs it. Each of the two is measured on G's first sampling alone, 32 attempts
+a problem with the sampling seed `pre_r64`'s run recorded (1001). `stock` is trained, averaged and measured first,
+then `published_stock`. A published row is stored by id and place, never with text.
+
+**The reads, fixed before the run.** One seed: a scout, by the repo's seed rule. A model's figure is its successes
+per attempt on all of G over the 32 attempts. Two averaged models of the same rows differ by a standard deviation of
+about 0.0048 (the order's part of an averaged model about 0.0025, the sampling noise 0.0023, each twice).
+- **Checks, read first; any FAIL: INCONCLUSIVE, and nothing else is said.** L5d's own for a seed: each set is its rule
+  made again and held (`stock` holds every deep solve and every ordinary solve the rule gives and no other own row;
+  the published rows are the first N and the first 2N of the seed's order), no row with text, no barred row (no
+  held-out problem; published rows of the `pretrain` half alone; no problem of G or of the held-aside set); each
+  trained adapter is not the start adapter's and is read back at its rank; each averaged adapter is the mean of its
+  four, bit for bit, and is the one served; Lean answered (at most 0.02 of a set without an answer); the stored first
+  sampling of `pre_r64` is the setting's.
+- **The dose (the scout's read).** `stock` minus `deep` of L5d's seed 3 (read from that seed's finished run; when
+  the run is not on the box the read is NOT READ and that is said). At or above zero: THE SOLVE RATE DOES NOT FALL
+  WITH THE DOSE: ESCALATE, seeds 4 and 5 of this stage run (three seeds conclude). Below zero by more than 0.010
+  (twice the standard deviation above): MORE OF ITS OWN PROOFS COSTS AT THIS SEED; no further seed. Between: NOT
+  SHOWN AT ONE SEED; no further seed is queued by this read.
+- **Its own proofs at four times the dose.** `stock` minus `published_stock`: L5d's primary at this dose, printed
+  beside that seed's own (+0.01391 at 400). One seed names nothing; three do, with L5d's rule and names.
+- **The steps without its own proofs.** `published_stock` minus `published` of L5d's seed 3 (3,268 rows against
+  800 of the same order), printed. `stock` differs from that seed's models by its steps too; this is the same change
+  of steps with no own proof.
+- **The solve rate against the start model.** Each of the two against `pre_r64`'s stored first sampling, paired by
+  problem: per attempt on all of G, on the 200 goal problems `pre_r64` solves in that sampling and on G′ (the 192 it
+  does not); the goal problems solved in the 32 attempts, gained and lost.
+- **Overfitting, for each model against `pre_r64`** (the owner: "without overfitting"): the goal problems lost
+  beside the ones gained; the share of distinct attempts on G; the 74 long goal problems (8 lines or more) solved,
+  gained and lost.
+- **Timeouts:** each set's share; where the two differ by more than a point, the timed-out attempts are checked
+  again (Lean only, no measurement running) and the reads are given both ways.
+
+**What follows, fixed now.** ESCALATE: seeds 4 and 5 of this stage, each after L5d's own run of that seed; over the
+three, `stock` minus `published_stock` is read with L5d's primary rule, and the dose with an interval over seeds.
+The averaged adapter that reads highest on G's first sampling is then the one measured in full (the rungs, the
+second sampling, the held-aside set), a step that is not built here. COSTS, or NOT SHOWN: no further seed; the dose
+is not the lever at this size, and that goes into the owner's decision on the full-size cycle with its interval.
+
+**What it cannot say.** One seed. The bar is a second pass over proofs `pre_r64` has trained on, where the own
+proofs are of problems it has not (as in L5d). The own proofs are of base-map problems, found by `pre_r64` alone.
+Nothing here is on the held-aside set or the rungs. A model's figure on 32 attempts.
+
+**Budget.** Eight trainings of 3,268 rows (about 16 minutes each at 800 rows in 3.9 minutes) and two measurements of
+about 28 minutes: about three hours and a quarter on the one GPU. A smoke stage on the fixtures first.
+
+**Made exact by the build (2026-10-12; nothing queued, nothing run on a GPU, nothing sent to Lean; the sets, the
+reads, the checks and "What follows" above are not changed; the readings taken where the section left something
+open, what was NOT built, what the smoke stage does not exercise and what is fragile are below).**
+- **The stages.** `ladder_l5_stock` and `ladder_l5_stock_smoke` (`gpu/ladder_l5_stock.py`; rules
+  `domain/ladder_round/l5_stock.py`; report `reporting/ladder_l5_stock.py`), settings `ladder_loop.l5_stock`
+  (`seeds: [3]`, `more_seeds: [4, 5]`, `escalated: false`; one reader, `the_settings`; the start and the search's
+  seed are L5's own settings, the sampling, its attempts and the recipe L5d's, the order seeds L5n's, and no setting
+  of this block names them). Run directory `ladder_l5_stock_pre_r64_seed<N>`. Jobs `ladder_l5_stock_seed3.json`
+  (est_minutes 230: the budget's three hours and a quarter, and room for a slower Lean pool) and
+  `ladder_l5_stock_smoke.json` (30), with the `resources` of L5d's jobs key for key. No job is written for seeds 4
+  and 5: they are written when the escalation is recorded.
+- **The seeds.** A task's seed is the scout's (`seeds`) or, ONCE `escalated` IS TRUE, one of `more_seeds`
+  (`l5_stock.the_seed`): a task of a further seed is refused by the first step until the setting records the
+  escalation, and a task of any other seed always. The settings reader refuses seeds that are not distinct whole
+  numbers, a seed that is none of L5d's (`l5_draws.seeds` and `more_seeds`: this stage's sets hold the rows of L5d's
+  own run of the seed), an `escalated` that is not true or false, and a recipe of L5d's that is not `mean_constant`
+  (this stage trains each set in four orders and measures the averaged adapter, and has no other path). Nothing in
+  the code queues a seed or sets `escalated`: after a report that reads ESCALATE the setting is changed by hand, in a
+  commit, and seeds 4 and 5 are queued, each after L5d's own run of that seed.
+- **FOURTEEN steps,** in this order: `ladder_l5_stock_prepare`; `ladder_l5_stock_train_stock_1` to `_4`,
+  `ladder_l5_stock_average_stock`, `ladder_l5_stock_measure_stock`; `ladder_l5_stock_train_published_stock_1` to
+  `_4`, `ladder_l5_stock_average_published_stock`, `ladder_l5_stock_measure_published_stock`;
+  `ladder_l5_stock_report`. Each is resumable and a finished one returns what it stored; the report step ALONE is
+  built again each time its task is queued, so that the dose is read once L5d's run of the seed is there. No step
+  deletes an adapter, and no step writes into a run it reads.
+- **Existing functions are called, not copied; three bodies were cut out of the stages that held them, which now call
+  them.** L5's finished run is read by L5d's own first-step reading, `ladder_l5_draws.drawn_by_the_seed` (cut out of
+  L5d's first step: L5's run and every stored run its task read by `ladder_l5.read_the_search` and
+  `read_for_the_search`, a further seed's refusals, how a model is measured and trained, the deep solves by the task's
+  seed, L5d's three sets at that seed, and the averaged recipe's hold of the start adapter's type), under the words
+  an `OfASeed` gives (who reads, and which two variables name a smoke run). The ordinary solves are drawn by
+  `ladder_l5.ordinary_by_the_seed` (cut out of `sets_by_the_seed`: the map's rows, the ordinary solves the rule and,
+  in a smoke run alone, the run's minimum give, and one stored verified map attempt of each drawn by the seed). The
+  checks of each model and their lines are `reporting/ladder_l5_draws.checks_of_the_models` and `lines_of_the_checks`
+  (cut out of L5d's report). `l5_draws.the_counts` takes the model a count is against (`against`, `published` by
+  default). A training is L4t's own body (`ladder_l4_rows.train_a_model` with the schedule L5d's `mean_constant`
+  hands it), an average L5n's (`ladder_l5_noise.the_mean_adapter`), a measurement the ceiling's
+  (`ladder_ceiling.measure_model` with `rungs=False` and the one sampling). L5, a further seed of it, L5n, L5d and L6
+  write what they wrote: their own stage tests pass unchanged (the four edits to earlier tests are lists of the
+  stages that name a variable, each with this stage's smoke added).
+- **The two sets, made exact.** `l5_stock.the_sets`, held by `hold_the_sets`.
+  - EVERY deep solve: the problems L5's search solved, with no cap; one verified attempt of each, drawn by the task's
+    seed by `ladder_l5.deep_solves_by_the_seed` (the function a further seed of L5 draws by, the cap lifted).
+  - EVERY ordinary solve: the problems of the start model's map solved in `l5.shallow.solved_at_least` to
+    `solved_at_most` of its attempts (1 to 3 of 8), in the map's order, less the problems the search attempted and the
+    held-aside ones (`l5_stock.ordinary_of_the_rule`). Both of those were drawn from the problems the map failed in
+    all 8 attempts, so at the real sizes the leave-out removes no ordinary solve: it is the rule L5 draws under,
+    stated. There is no draw of WHICH ordinary solves; which stored verified map attempt of each is drawn by the seed.
+  - The published rows: `l4_rows.rehearsal_rows(pretraining, count, seed)`, the call L5's and L5d's published rows are
+    the first of, with N and with 2N. A file with fewer than 2N rows is refused.
+  - Each set is stored in the content-hash order of the task's seed (`assembly.training_order`) and, as
+    `<model>_<k>`, in that of each order seed; an order seed that is the task's seed (3 at seed 3) gives the seed's own
+    order and is trained all the same, and two order seeds that give one order are refused (`l5_draws.four_orders`).
+  - HELD, each a refusal by the first step with nothing written: the sizes (N own rows and N published in `stock`, 2N
+    published and no other in `published_stock`), at least one deep and one ordinary solve, no id twice, no problem
+    with two own rows, no own row of a problem of the pretraining file, the published rows being the first N and 2N of
+    the seed's order by id and place, no row with text, no held-aside or searched problem out of place
+    (`l5.refuse_overlap`), no barred row (`l5.refuse_barred`: no held-out problem, published rows of the `pretrain`
+    half alone), no problem of G or of the held-aside set (`l5_draws.refuse_problems_of`), and THAT SEED's ROWS:
+    every row of L5d's `deep` and `shallow` at the seed is a row of `stock` and every row of its `published` a row of
+    `published_stock`, by id (`l5_stock.holds_the_seeds_rows`; L5d's three sets are made again by L5d's own function,
+    not read from L5d's run).
+  - The ordinary solves as drawn are stored in `l5_stock_ordinary_solves.jsonl` (each with the map's k and
+    `taken_by`); the counts are in the first step's summary (`the_stock`) and in the report.
+- **The first check makes the rule again** (`the_rule_again`, `l5_stock.the_sets_are_the_rule`): the report step
+  reads the problems the search solved from the search run's own per-problem rows and the ordinary solves from the
+  map run's, and holds the stored sets to them (every one, no other own row), to the seed's published order, to
+  carrying no text, and each ordered set to being its model's rows in its order seed's order. Then L5d's own checks
+  for a seed, by L5d's functions, and the start model's stored first sampling being the setting's.
+- **L5d's run of the seed** is found by L5d's own function (`ladder_l5_draws.own_run`:
+  `ladder_l5_draws_pre_r64_seed<N>`) and read by the report step alone, from `ladder_l5_draws_report.done.json` and
+  `report_ladder_l5_draws.json` (what that report says of its own seed, `of_this_seed`). It is NOT READ, with why,
+  and nothing is refused, when the run is not on the box or has no report; when its report is of another seed or of
+  another recipe than this run's; when it reads INCONCLUSIVE or is not to be read; and when it was measured otherwise
+  than this run (the sampling, its attempts, its sampling seed, the number of goal problems): `l5_stock.of_l5d`. Then
+  the dose and "the steps without its own proofs" read NOT READ, "its own proofs at this dose" is given without L5d's
+  primary beside, and "what follows" names nothing.
+- **The dose is decided on whole numbers** (`l5_stock.the_dose`: the two models' successes and attempts as fractions,
+  never a rounded figure). At or above zero is a difference of zero or more; "below zero by more than 0.010" is a
+  difference under −0.010, so a difference of exactly −0.010 reads NOT SHOWN AT ONE SEED. The standard deviation of
+  two averaged models (0.0048) is printed in the dose's line and decides nothing by itself. The names are the
+  section's, in capitals as written there.
+- **The reads beside it, made exact.** The parts of G are the start model's own stored first sampling's (the goal
+  problems it solves there; G′, held to the stored G′). "Solved" is at least one success in the 32 attempts; gained
+  and lost are against the start model's stored rows, paired by problem. The share of distinct attempts on G is each
+  measurement's own record of it, and the start model's as its own run recorded it. The long goal problems are those
+  whose shortest published proof has 8 lines or more (`data/ladder_l0/heldout_proof_lines.jsonl`, read by the report
+  and by nothing before it). Timeouts are `l5.timed_out` on the two sets.
+- **A report that is not to be read** (Lean gave no verdict on more than 0.02 of a set) has `ok` false and fails its
+  step, as L5d's does; the task queued again samples that set again from its adapter.
+- **NOT BUILT.** The read over three seeds (each seed's report keeps what it needs under `of_this_seed`: its
+  figures, its dose and `stock` minus `published_stock`). The check again in Lean of the timed-out attempts where
+  the two sets' shares differ by more than a point: the report names the case and says no step does it, so the reads
+  "both ways" are NOT given by this stage and are owed by hand, as for L5 and L5d. The measurement in full of the
+  best averaged adapter (the section says so).
+- **The smoke stage,** `ladder_l5_stock_smoke`: the fourteen steps at seed 3 on what the smoke runs left on the box
+  (`ladder_l5_deep_smoke` and the three smoke runs that task read), in `ladder_l5_stock_smoke`. It ALONE sets
+  `RLVR_LEAN_LADDER_L5_STOCK_SMOKE=1`, which the first step refuses unless the run directory is one the task names
+  (`RLVR_LEAN_LADDER_L5_STOCK_RUN`) and the base map is the fixtures'; it sets neither L5's smoke-only variable nor
+  L5d's. With it: L5's INCONCLUSIVE smoke run is read all the same and that is recorded; one deep solve is enough;
+  where the fixtures' map gives the rule fewer ordinary solves than there are deep solves, as many as there are deep
+  solves are taken, the others by the run's minimum and marked so (`taken_by`), and the first check holds the sets to
+  the rule's and those; orders that are alike are trained; an averaged adapter that is one of its models is kept.
+  The stage names L5d's run variable (`RLVR_LEAN_LADDER_L5_DRAWS_RUN=ladder_l5_draws_smoke`), so the dose is read
+  against `ladder_l5_draws_smoke_mean_constant` when `ladder_l5_draws_smoke` has run under the recipe in force, and is
+  NOT READ otherwise. IT DOES NOT EXERCISE: the real sizes and so the memory and the time of a training of 3,268 rows;
+  a learning rate after the warm-up; the rule's own ordinary solves at their number; the refusals of an INCONCLUSIVE
+  run of L5, of a further seed and of two orders alike; the reads on G′ and on the long goal problems. Nothing it
+  measures is a result.
+- **Fragile.** One failed check of one model makes the run INCONCLUSIVE. The dose is one seed's difference of two
+  models whose sets differ in size as well as in their own proofs; "the steps without its own proofs" stands beside
+  it for that and names nothing. A training here is four times L5d's rows, the longest pass a rank-64 adapter has
+  made on this card since the rank check's own, and its memory is not measured before the run. A seed's report built
+  before L5d's run of that seed is finished says NOT READ until its task is queued again.
+
+**Outcome of L5s (seed 3, 2026-10-12 UTC; `docs/spec/ladder-l5s-RESULT.md`): THE DOSE IS NOT SHOWN AT ONE SEED,
+and by the stage's own rule no further seed runs.** One task (`ladder_l5_stock_seed3_r1`, 04:33 to 07:11 UTC, from
+`6d5c1c4fd`), all checks pass. Per 1,000 attempts on G's first sampling: `stock` (1,634 own solves and 1,634
+published rows) 105.55, `published_stock` (3,268 published rows) 111.85; `stock` minus that seed's `deep` -4.62.
+Beside it, naming nothing: `stock` minus `published_stock` -6.30 (at 800 rows the own-proof kinds led by +13.91);
+`published_stock` minus that seed's `published` +20.97; goal problems solved in 32 attempts 225 and 224 (the start
+model 200); the timeout shares under a point apart. Every route from `pre_r64` measured so far lands between 105 and
+112 per 1,000; the own deep solves reached that band with a quarter of the rows and nothing went past it. L5f asks
+whether they go past it from the twice-pretrained model.
+
+### L5f: the three kinds again, from the twice-pretrained model. Do the model's own proofs still add after a whole second pass over published ones? (fixed 2026-10-12, after L5d's seeds 3 and 4 and before any run of this stage)
+
+**Under the owner's words.** 2026-10-12: "make as much progress as you can tonight on improving this solver's solve
+rate against the heldout tasks." And the bet this project tests (2026-10-09): "I just want to make sure that this is
+actually creating a feedback cycle that is able to push the model beyond capabilities that we're able to get through
+pre-training alone". Labelled **pretrained on published proofs** (it starts from `second_full`).
+
+**Why.** Two routes from `pre_r64` now read the same on G's first sampling (32 attempts a problem, per 1,000
+attempts; `pre_r64` itself 77.7):
+- MORE PRETRAINING: `second_full`, a whole second pass over the 24,866 published rows (L4p; one training): 110.25,
+  224 goal problems solved.
+- THE MODEL'S OWN PROOFS: `deep`, 800 rows of which 400 are deep solves and 400 published, the average of four
+  orders (L5d): 110.17 at seed 3 and 111.53 at seed 4 (226 and 219 solved); and at both seeds the two kinds with own
+  proofs are above the same number of published rows alone (+13.91 and +13.07).
+
+Nothing has trained the model's own proofs FROM the twice-pretrained model. If the two gains are one gain (any more
+training of this model gives it, and it saturates), the three kinds from `second_full` read alike and near
+`second_full`. If the own proofs carry something a second pass over published proofs does not, the kinds with own
+proofs read above `published` from `second_full` too, and above `second_full`: the best model stored, and the bet's
+own question at the strongest pretraining we have.
+
+**What runs: one task, L5d's stage with ONE change, the start adapter.** The seed is 3. The three sets are L5d's for
+that seed (L5's rule, made by L5's own functions) and are HELD to be, id for id and order for order, the sets L5d's
+finished run of seed 3 trained from `pre_r64`: the two runs then differ by the start alone. Each set is trained from
+`second_full`'s stored adapter (L4p's run of the pretraining's seed; only read; rank 64 and alpha 128, as that run
+recorded them) in four orders (order seeds 1 to 4) with the recipe as it is, the model measured is the adapter that
+is the mean of the four, and each of the three is measured on G's first sampling alone, 32 attempts a problem with
+the sampling seed `pre_r64`'s run recorded (1001), which is the one `second_full` was measured with. It writes a run
+directory of its own, with the start's name in it. L5d from `pre_r64` writes what it wrote.
+The deep and the ordinary solves are `pre_r64`'s own (the once-pretrained model found them), not `second_full`'s; the
+published rows of every set are rows `second_full` has trained on twice. No row carries text; a published row by id
+and place.
+
+**The reads, fixed before the run.** One seed: a scout. A model's figure is its successes per attempt on all of G
+over the 32 attempts. An averaged model's figure has a standard deviation of about 0.0034 (the order's part 0.0025,
+the sampling noise 0.0023); the primary's difference of one seed (a mean of two models minus a third) about 0.0042.
+- **Checks, read first; any FAIL: INCONCLUSIVE, and nothing else is said.** L5d's own for a seed, with the start
+  adapter `second_full`'s; the sets are the ones L5d's run of the seed trained; the stored first sampling of
+  `second_full` is the setting's (392 problems, 32 attempts, sampling seed 1001); `second_full`'s adapter is there, is
+  at its rank and is not `pre_r64`'s. L4p's own check of `second_full`'s loss (which rose over its pass, and which
+  L4p's note found to be the wrong check for a second pass) is printed and decides nothing, as in L6.
+- **The stack (the scout's read).** The mean of `shallow` and `deep`, minus `published`, all three from
+  `second_full`: L5d's primary. At or above zero: THE MODEL'S OWN PROOFS DO NOT FALL BEHIND PUBLISHED ONES AFTER A
+  SECOND PASS: ESCALATE, seeds 4 and 5 of this stage run, each after L5d's own run of that seed (three seeds
+  conclude, with L5d's primary rule and names). Below zero by more than 0.0085 (twice the standard deviation above):
+  THEY COST AFTER A SECOND PASS AT THIS SEED; no further seed. Between: NOT SHOWN AT ONE SEED; no further seed is
+  queued by this read.
+- **The level, beside it and naming nothing at one seed.** Each of the three minus `second_full`'s stored first
+  sampling, paired by problem (does ANY further training add to the twice-pretrained model: 800 rows it has seen
+  twice, for `published`); and each of the three minus the same kind of L5d's seed 3 (the same rows from `pre_r64`:
+  what the second pass adds under them). The highest figure of the three is printed beside every stored model's
+  first-sampling figure it is read against (`pre_r64` 77.7, `second_full` 110.25, L5d's three at this seed).
+- **The solve rate against the two start models.** Each of the three against `second_full`'s stored first sampling
+  and against `pre_r64`'s: per attempt on all of G, on the 200 goal problems `pre_r64` solves in its first sampling
+  and on G′ (the 192 it does not); the goal problems solved in the 32 attempts, gained and lost.
+- **Overfitting, for each model against `second_full`** (the owner: "without overfitting"): the goal problems lost
+  beside the ones gained; the share of distinct attempts on G; the 74 long goal problems (8 lines or more) solved,
+  gained and lost.
+- **Timeouts:** each set's share; where two differ by more than a point, the timed-out attempts are checked again
+  (Lean only, no measurement running) and the reads are given both ways.
+
+**What follows, fixed now.** ESCALATE: seeds 4 and 5 of this stage, each after L5d's own run of that seed; over the
+three, the primary is read with L5d's rule. The averaged adapter that reads highest on G's first sampling, of this
+stage and of L5s, is then the one measured in full (the rungs, the second sampling, the held-aside set), a step that
+is not built here. COSTS, or NOT SHOWN: no further seed; the own proofs' gain at this dose is not shown beyond a
+second pass over published proofs, and that goes to the owner beside L5s's read and the full-size cycle's decision.
+
+**What it cannot say.** One seed. `second_full` is ONE training in one order: every model here inherits that
+order's luck, so the differences between the three kinds do not carry it, and "what the second pass adds under them"
+does (a single training's order is worth about 0.005). The own proofs are of base-map problems and were found by
+`pre_r64`, not by the model they are trained into here: a round of search BY the twice-pretrained model is another
+experiment (L6's shape). Nothing here is on the held-aside set or the rungs. A model's figure on 32 attempts.
+
+**Budget.** Twelve trainings of 800 rows (about four minutes each) and three measurements of about 25 minutes: about
+an hour and three quarters on the one GPU, as a seed of L5d. A smoke stage on the fixtures first (it reads the smoke
+run of L4p for its `second_full`).
+
+**Made exact by the build (2026-10-12; nothing queued, nothing run on a GPU, nothing sent to Lean; the reads, the
+checks and "What follows" above are not changed; the readings taken where the section left something open, what was
+NOT built, what the smoke stage does not exercise and what is fragile are below).**
+- **The stages and their names.** `ladder_l5_full` and `ladder_l5_full_smoke` (`gpu/ladder_l5_full.py`; rules
+  `domain/ladder_round/l5_full.py`; report `reporting/ladder_l5_full.py`), settings `ladder_loop.l5_full` (`start:
+  second_full`, `seeds: [3]`, `more_seeds: [4, 5]`, `escalated: false`; one reader, `the_settings`). THE RUN DIRECTORY
+  is `ladder_l5_draws_second_full_seed<N>`: L5d's own name with the start's name in the start's place, as L4t names a
+  run from another start. The stage, its steps (`ladder_l5_full_*`), its files (`l5_full_*`,
+  `report_ladder_l5_full.json`) and its jobs (`ladder_l5_full_seed3.json`, est_minutes 130;
+  `ladder_l5_full_smoke.json`, 30; the `resources` of L5d's jobs key for key) are NOT named `ladder_l5_draws_...`:
+  L5d's own tests hold the jobs `ladder_l5_draws*.json` and the steps of that name to be L5d's alone, and L5d
+  from `pre_r64` is to write what it wrote. No job is written for seeds 4 and 5.
+- **The seeds.** As L5s's, by L5s's own two functions (`l5_stock.the_seed`, `fixed_seeds`): a task's seed is the
+  scout's or, ONCE `escalated` IS TRUE, one of `more_seeds`; a task of a further seed is refused by the first step
+  until then, and of any other seed always. The settings reader refuses a start that is not `second_full` (the one
+  start this section specifies), seeds that are not distinct whole numbers or are not seeds of L5d's, an `escalated`
+  that is not true or false, and a recipe of L5d's that is not `mean_constant`. Nothing in the code queues a seed or
+  sets `escalated`.
+- **TWENTY steps,** in L5d's order: `ladder_l5_full_prepare`; then for `published`, for `shallow` and for `deep`:
+  `ladder_l5_full_train_<model>_1` to `_4`, `ladder_l5_full_average_<model>`, `ladder_l5_full_measure_<model>`;
+  `ladder_l5_full_report`. Each is resumable and a finished one returns what it stored; the report step ALONE is
+  built again each time its task is queued. No step deletes an adapter, and no step writes into a run it reads.
+- **THE ONE CHANGE, and how it is made.** L4t's training body takes the start model it is HANDED
+  (`ladder_l4_rows.train_a_model(start_from=...)`, off by default: every other caller hands it none and it finds the
+  start itself, as before; asserted). This stage hands it `second_full`: the start `pre_r64` resolves to
+  (`ladder_l4_start.the_start`, with its rank, its alpha and its check) under the name `second_full`, with the
+  directory and adapter of L4p's run. So every training loads `second_full`'s adapter into a fresh adapter at rank 64
+  and alpha 128, every adapter saved is read back and held to that rank, the count of numbers that are not the start
+  adapter's is against `second_full`'s file, the averaged adapters are L5n's own function handed the same start, and
+  the three measurements are served at rank 64 (`config_from(serving=True)`). The recipe, the learning rates recorded
+  and held, the adapter seed (the task's) and the order seeds are L5d's `mean_constant`'s.
+- **Where `second_full` lives is stated once.** `ladder_l6.l4p_directory` (L4p's run of the pretraining's seed; the
+  variable L6 names for it, which a smoke run sets) and L4p's own names for its markers and files; this module holds
+  neither a run's name nor an adapter's path. It is read by L6's own reading of the stored model
+  (`ladder_l6.read_the_stored_model`: L4p's markers of its prepare step and of `second_full`'s training and
+  measurement, and `second_full`'s rows on G held to the problems, the attempts and the sampling seeds the start model
+  was measured with). L6 says NOT THERE and goes on; HERE THAT IS REFUSED, naming L4p's task, because every model is
+  trained from that adapter.
+- **What the first step holds of `second_full`, each a refusal with nothing written.** L4p's run recorded rank 64 and
+  alpha 128 for its models, and saved `second_full` read back at them. L4p's own bit-for-bit comparison at the end of
+  that training recorded numbers that are not `pre_r64`'s. That rank and alpha are the ones L5's run trained its
+  models at. And ON A GPU BOX (the test the trainings themselves make of where they run), the files themselves, as
+  every later step reads them: the adapter is there; read back, it is at rank 64 and alpha 128 with every matrix of
+  rank 64; compared with `pre_r64`'s file number for number, some are not `pre_r64`'s; and its tensors are of a type
+  the averaged adapters are written in. Its stored first sampling (392 problems, 32 attempts, sampling seed 1001) is
+  copied into the run (`l4_stored_second_full_<sampling>.jsonl`) beside `pre_r64`'s. The report's two checks of it
+  read what the first step stored.
+- **L4p's own checks of `second_full` are printed and decide nothing.** The first step reads what L4p's report says
+  of the model (`can_this_model_be_read`), stores the names of the checks that failed and the two mean losses of its
+  pass, and prints them; the report prints them in a line of its own after the checks. Nothing is refused for them and
+  no check of this stage reads them. With L4p's report not on the box the line says so.
+- **L5d's run of the seed** is found by L5d's own function (`ladder_l5_draws.own_run`, by L5s's `read_l5d`) and read
+  by L5s's own reading of what its report says of its seed (`l5_stock.of_l5d`). THE FIRST STEP REFUSES, naming the
+  task (`ladder_l5_draws_seed<N>.json`), a run that is not there or has no report, of another seed or another recipe
+  than `mean_constant`, INCONCLUSIVE, not to be read, or measured otherwise than this run (the sampling, its
+  attempts, its sampling seed, the number of goal problems); and one that does not hold its fifteen stored sets
+  (`l5_draws_training_<name>.jsonl`: the three, and each in its four orders) and its twelve trainings' own records
+  (`l5_draws_loss_<name>.json`).
+- **The sets are held to L5d's, twice.** The first step makes the three sets by L5d's own first-step reading
+  (`ladder_l5_draws.drawn_by_the_seed`, under the words an `OfASeed` gives: L5's finished run, a further seed's
+  refusals, L5's rule by the task's seed) and each in its four orders (`l5_draws.four_orders`), and holds them
+  (`l5_full.hold_to_theirs`): each of the fifteen is, id for id and place for place, the set L5d's run stored under
+  that name, and each of the twelve ordered sets is what that run's training loop RECORDED it trained on. The refusal
+  names the first set and the first place that differ. The report makes the same comparison again from this run's
+  stored sets and L5d's run as it is then (`the_sets_are_theirs`), and that is the check "the sets are the ones L5d's
+  run of the seed trained". A set that is L5d's rule but was not what L5d's run trained fails it.
+- **The checks, in the report's order.** Each set is L5's rule for its seed, made again and held (L5d's own); the
+  sets are the ones L5d's run trained; `second_full`'s adapter is there, at its rank, and is not `pre_r64`'s;
+  `second_full`'s stored first sampling is the setting's; then L5d's own checks of the models
+  (`reporting/ladder_l5_draws.checks_of_the_models`, `lines_of_the_checks`), each adapter counted against
+  `second_full`'s. Any FAIL: the headline is INCONCLUSIVE, the failed checks are named, and no read is made.
+- **The stack is decided on whole numbers** (`l5_full.the_stack`: each model's successes and attempts as fractions,
+  never a rounded figure). At or above zero is a difference of zero or more; "below zero by more than 0.0085" is a
+  difference under −0.0085, so a difference of exactly −0.0085 reads NOT SHOWN AT ONE SEED. The two standard
+  deviations the section gives (0.0034, 0.0042) are printed in its line and decide nothing by themselves. The names
+  are the section's, in capitals as written there. A model with no attempt on G makes it NOT READ.
+- **The level, made exact** (`l5_full.the_level`). Each of the three minus `second_full`'s stored first sampling is
+  per attempt on all of G (the goal problems solved, gained and lost against it, paired by problem, are in the read
+  against the two start models). Each minus the same kind of L5d's run of the seed is read from what L5d's REPORT says of its seed when the report
+  step runs: with that run gone, of another recipe, INCONCLUSIVE or not to be read by then, this difference is NOT
+  READ, with why, and nothing else changes. The highest figure of the three is printed with its model's name (the
+  first of `published`, `shallow`, `deep` on a tie) beside `pre_r64`'s, `second_full`'s and L5d's three.
+- **Against the two start models, made exact.** L5s's own function (`l5_stock.against_the_start`), once for each
+  start. The parts of G are `pre_r64`'s in BOTH: the goal problems `pre_r64` solves in its own stored first sampling
+  and G′ (held to the stored G′), as the section names them. "Solved" is at least one success in the 32 attempts;
+  gained and lost are against that start model's stored rows.
+- **Overfitting and timeouts, made exact.** Against `second_full`: lost beside gained, the share of distinct attempts
+  on G (each measurement's own record; `second_full`'s as L4p's run recorded it, over all its attempts on G, and said
+  so), and the long goal problems (shortest published proof of 8 lines or more,
+  `data/ladder_l0/heldout_proof_lines.jsonl`, read by the report and by nothing before it). Timeouts are
+  `l5.timed_out` on the three sets, with `second_full`'s own share beside; a pair more than a point apart is NAMED,
+  and the report says no step checks it again.
+- **A report that is not to be read** (Lean gave no verdict on more than 0.02 of a set) has `ok` false and fails its
+  step, as L5d's does; the task queued again samples that set again from its adapter.
+- **Existing functions are called, not copied.** L5's run and the three sets: L5d's first-step reading. `second_full`:
+  L6's. L5d's run: L5s's. A training: L4t's body. An average and its check: L5n's. A measurement: the ceiling's, with
+  no rung and the one sampling. The checks of the models and their lines: L5d's report's. L5, a further seed of it,
+  L5n, L5d, L5s and L6 write what they wrote: their own stage tests pass unchanged (the five edits to earlier tests
+  are lists of the stages that name a variable, each with this stage's smoke added).
+- **NOT BUILT.** The read over three seeds (each seed's report keeps what it needs under `of_this_seed`). The check
+  again in Lean of the timed-out attempts where two sets' shares differ by more than a point: the report names the
+  case, so the reads "both ways" are NOT given by this stage and are owed by hand, as for L5, L5d and L5s. The
+  measurement in full of the best averaged adapter (the section says so). Job files for seeds 4 and 5.
+- **The smoke stage,** `ladder_l5_full_smoke`: the twenty steps at seed 3 on what the smoke runs left on the box, in
+  `ladder_l5_full_smoke`. It ALONE sets `RLVR_LEAN_LADDER_L5_FULL_SMOKE=1`, which the first step refuses unless the
+  run directory is one the task names (`RLVR_LEAN_LADDER_L5_FULL_RUN`) and the base map is the fixtures'; it sets
+  neither L5's smoke-only variable nor L5d's. It names L6's variable for L4p's run
+  (`RLVR_LEAN_LADDER_L6_L4P_RUN=ladder_l4_dose_r64_smoke`) and L5d's run variable
+  (`RLVR_LEAN_LADDER_L5_DRAWS_RUN=ladder_l5_draws_smoke`). NEEDS ON THE BOX, all only read: `ladder_l4_dose_r64_smoke`
+  run to its end (its `adapters/second_full`, its markers and rows); `ladder_l5_draws_smoke_mean_constant` run to its
+  end with a report that is not INCONCLUSIVE (its stored sets are what this run's are held to; the first step refuses
+  without it); `ladder_l5_deep_smoke` and the three smoke runs that task read (`ladder_l4b_map_smoke`,
+  `ladder_l4_rows2_r64_smoke`, `ladder_l4_rank_smoke`). With the variable: L5's INCONCLUSIVE smoke run is read all the
+  same and that is recorded; one deep solve is enough; orders that are alike are trained; an averaged adapter that is
+  one of its models is kept. IT EXERCISES FOR THE FIRST TIME ON THE BOX a training whose start adapter is L4p's
+  `second_full`, an averaged adapter of such trainings served, and the hold of the sets to L5d's stored ones. IT DOES
+  NOT EXERCISE: the real sizes and so the memory and the time of a real training; a learning rate after the warm-up;
+  the refusals of an INCONCLUSIVE run of L5 or of L5d, of a further seed and of two orders alike; the reads on G′ and
+  on the long goal problems (G is one problem). Nothing it measures is a result, and its line THE STACK is no read.
+- **Fragile.** One failed check of one model makes the run INCONCLUSIVE. The first step refuses a real run for one
+  missing file of three stored runs: L4p's markers and `second_full`'s stored rows and attempts on G (what L6's
+  reading asks for), and L5d's fifteen stored sets and twelve loss records of the seed. `second_full` is ONE training:
+  what "the level" reads against L5d's kinds carries that training's order (about 0.005). The memory of a training
+  from `second_full` is that of a training from `pre_r64` at the same rank and rows, and is not measured before the
+  run. A seed's report built after L5d's run of the seed is moved or run again reads the level's second difference
+  NOT READ, or fails the check of the sets.
+
+**Outcome of L5f (seed 3, 2026-10-12 UTC): THEY COST AFTER A SECOND PASS AT THIS SEED, and by the stage's own rule
+no further seed runs: the outcome goes to the owner.** One task (`ladder_l5_full_seed3_r1`, 07:20 to 09:04 UTC, from
+`2220ba9a7`), all checks pass. Per 1,000 attempts on G's first sampling, each trained from `second_full` (110.25):
+`published` 144.77, `shallow` 126.35, `deep` 133.45; the stack (the mean of `shallow` and `deep`, minus `published`)
+-14.87, past the -8.5 line. Each is above `second_full` (+34.52, +16.10, +23.20) and above the same kind trained
+from `pre_r64` at this seed (+53.89, +26.95, +23.28); goal problems solved in 32 attempts 235, 245, 236 (`second_full`
+224). The timeout shares are more than a point apart (0.0256, 0.0335, 0.0473): the second check of the timed-out
+attempts is owed and the reads are given both ways in the result note. `published` here is the highest figure any
+model of this project has read on G's first sampling; L5c asks what made it.
+
+### L5c: the continuation. What lifted the published kind by 34 per 1,000 from the twice-pretrained model, and does more of it go higher? (fixed 2026-10-12, after L5f's seed 3 and before any run of this stage)
+
+Under the owner's words of 2026-10-12: "make as much progress as you can tonight on improving this solver's solve
+rate against the heldout tasks". Labelled **pretrained on published proofs**. No row of this stage is one of the
+model's own proofs: it is a stage about the published rows and the recipe.
+
+**Why.** L5f's `published` (from `second_full`: the first 800 published rows of seed 3's order, trained in four
+orders, the averaged adapter measured) reads 144.77 per 1,000 on G's first sampling against `second_full`'s 110.25.
+Every route from `pre_r64` had landed between 105 and 112. Two things changed at once between `second_full` and that
+model: 800 more rows of training, and the AVERAGE of four trainings. `second_full` is one training at a constant
+learning rate whose loss rose over its pass (0.127 over its first rows, 0.138 over its last); from `pre_r64`, L5n
+read the average of four at +4 per 1,000 over the mean of its four. Which of the two made the +34.5 is not known,
+and neither is whether more of either goes higher. Each answer is a recipe: a wider average, a second averaged step,
+or more rows.
+
+**What runs.** One task at seed 3. Everything is trained from an adapter that is only read, at rank 64, with the
+recipe as it is (constant learning rate, one pass), on rows of seed 3's order of the pretraining file (the order
+L5d's `published` and L5s's `published_stock` are the first rows of). Four models, each measured on G's first
+sampling alone (32 attempts at each of the 392 goal problems, sampling seed 1001), in this order:
+
+- **`single`**: L5f's stored `published_1` (the first of the four trainings its `published` is the average of), ONLY
+  READ and measured. No training.
+- **`wide`**: the average of EIGHT adapters: L5f's stored `published_1` to `published_4` and four new trainings of the
+  same 800 rows from `second_full` in the orders of order seeds 5 to 8.
+- **`again`**: from L5f's stored averaged `published` (not from `second_full`), the NEXT 800 rows of the order (rows
+  801 to 1,600) trained in four orders (order seeds 1 to 4), averaged. A second averaged step.
+- **`more`**: from `second_full`, the first 3,268 rows of the order (L5s's `published_stock` set, held to it id for
+  id) trained in four orders, averaged. Four times the rows in one step.
+
+**The reads, fixed before the run.** On whole numbers of successes over the 12,544 episodes, per 1,000 attempts.
+The bar is L5f's stored `published` (144.77), paired by problem. One seed: each read is a scout's.
+
+- **Checks, read first; any FAIL makes the run INCONCLUSIVE:** L5f's run of the seed is there, finished, not
+  INCONCLUSIVE, with its four `published` adapters and its averaged one at rank 64, each not the start adapter's;
+  each set is its rule made again (rows of the seed's order, no row with text, no held-out problem, no problem of G
+  or of the held-aside set); `wide`'s first 800 rows and `more`'s 3,268 are, id for id, L5f's `published` set and
+  L5s's `published_stock` set; each averaged adapter is the mean of its members and is the one served; Lean answered.
+- **WHAT MADE IT, `single` minus `published`:** below zero by more than 13 per 1,000: THE AVERAGE IS PART OF THE GAIN.
+  Otherwise ONE CONTINUATION GIVES IT. Beside it, `single` minus `second_full`'s stored first sampling: what 800 rows
+  of one training add.
+- **A WIDER AVERAGE, `wide` minus `published`;** **A SECOND STEP, `again` minus `published`;** **MORE ROWS, `more`
+  minus `published`.** Each: at or above +8.5 per 1,000 it ADDS: ESCALATE (two further seeds of that model and of
+  the bar); below zero by more than 8.5 it COSTS; between NOT SHOWN AT ONE SEED.
+- **Beside, naming nothing:** each model against `second_full` and against `pre_r64` (all of G, the 200 goal
+  problems `pre_r64` solves in its first sampling, G', goal problems solved, the 74 long ones); goal problems lost
+  beside gained against `second_full`; the share of distinct attempts.
+- **Timeouts:** each set's share; two more than a point apart are checked again and read both ways (no step does it).
+
+13 is twice the standard deviation of a difference between one training and an average of four (order spread 5.0
+for one, about 2.5 for four, binomial 2.5 each); 8.5 is L5f's own line for two averaged models.
+
+**What follows.** The highest model of this stage and of L5f is the candidate for a measurement in full (both
+samplings of G, the held-aside set, the rungs), which is not built. A model that reads ADDS gets its two further
+seeds before anything is said of it. If nothing adds, L5f's `published` recipe stands as the best known and the
+question of what made it is answered by `single` alone.
+
+**What it cannot say.** One seed and one draw of rows; `second_full` is one training. Nothing here is about the
+model's own proofs. The published rows are ones `second_full` has trained on twice: a gain on G from a third
+reading of them is a gain of the recipe, and whether it holds on the held-aside set is not measured here.
+
+**Budget.** One measurement with no training; four trainings of 800 rows and a measurement, twice; four trainings
+of 3,268 rows and a measurement: about 2 h 40 at 16 minutes a measurement. Its smoke run first.
+
+**Made exact by the build (2026-10-12; nothing queued, nothing run on a GPU, nothing sent to Lean; the reads, the
+checks and "What follows" above are not changed; the readings taken where the section left something open, what was
+NOT built, what the smoke stage does not exercise and what is fragile are below).**
+- **The stages and their names.** `ladder_l5_cont` and `ladder_l5_cont_smoke` (`gpu/ladder_l5_cont.py`; rules
+  `domain/ladder_round/l5_cont.py`; report `reporting/ladder_l5_cont.py`), settings `ladder_loop.l5_cont` (`start:
+  second_full`, `seeds: [3]`, `more_seeds: [4, 5]`, `escalated: false`; one reader, `the_settings`). THE RUN DIRECTORY
+  is its own, `ladder_l5_cont_second_full_seed<N>`; its files are `l5_cont_*` and `report_ladder_l5_cont.json`; its
+  jobs `ladder_l5_cont_seed3.json` (est_minutes 190) and `ladder_l5_cont_smoke.json` (30), with the `resources`
+  of L5f's jobs key for key. No job is written for seeds 4 and 5. Nothing of L5f's, L5d's, L5s's, L4p's or L5's run
+  is written: each is read, and left file for file as it was (asserted in the scripted world).
+- **The seeds.** As L5f's, by L5s's own two functions (`l5_stock.the_seed`, `fixed_seeds`): a task's seed is the
+  scout's or, ONCE `escalated` IS TRUE, one of `more_seeds`. The settings reader refuses a start that is not
+  `second_full` (and not L5f's own), seeds that are not distinct whole numbers or are not seeds of L5f's, and an
+  `escalated` that is not true or false. Nothing in the code queues a seed or sets `escalated`.
+- **TWENTY-ONE steps,** in the section's order: `ladder_l5_cont_prepare`; `ladder_l5_cont_measure_single`;
+  `ladder_l5_cont_train_wide_5` to `_8`, `ladder_l5_cont_average_wide`, `ladder_l5_cont_measure_wide`;
+  `ladder_l5_cont_train_again_1` to `_4`, `ladder_l5_cont_average_again`, `ladder_l5_cont_measure_again`;
+  `ladder_l5_cont_train_more_1` to `_4`, `ladder_l5_cont_average_more`, `ladder_l5_cont_measure_more`;
+  `ladder_l5_cont_report`. Each is resumable and a finished one returns what it stored; the report step ALONE is
+  built again each time its task is queued. No step deletes an adapter, and no step writes into a run it reads.
+- **What is called, not copied.** L5's finished search and every stored run its task read: L5d's own first-step
+  reading (`ladder_l5_draws.drawn_by_the_seed`, under the words an `OfASeed` gives). `second_full`: L5f's own reading
+  and start (`ladder_l5_full.read_second_full`, `the_start`), so everything L5f's first step refuses about it is
+  refused here in the same words. L5f's run of the seed: found by `ladder_l5_full.own_run` (this module holds no run
+  name of another stage and no adapter path). The trainings: L4t's body with `start_from`, as L5f hands it. The
+  averaged adapters: L5n's `the_mean_adapter`. The measurements: `measure_model` with `rungs=False`. The checks of
+  the models and their lines: L5d's (`reporting/ladder_l5_draws.checks_of_the_models`, `lines_of_the_checks`). The
+  reads against a stored model: `l5_stock.against_the_start`. THREE FUNCTIONS WERE CUT OR WIDENED FOR IT, each off by
+  default so that its first owner writes what it wrote (their tests pass unchanged, but for the lists of stages that
+  name a variable): `ladder_l5_stock.stock_by_the_seed` (L5s's two sets and what its rule counted, cut out of L5s's
+  first step, which now calls it); `ladder_l5_noise.the_mean_adapter(kept=...)` (adapters ANOTHER run keeps, averaged
+  before the run's own; handed none, it averages its own run's alone); and `lines_of_the_checks(mean_of=...)` (the
+  words for what an averaged adapter is the mean of: "its four's" unless told otherwise).
+- **The four models, made exact.** `single` has no adapter and no training set of its own: its measurement is served
+  from L5f's stored `published_1` where that run keeps it, and its step records the adapter it was served from.
+  `wide` is ONE averaged adapter of EIGHT: L5f's stored `published_1` to `published_4`, only read and in that order,
+  then this run's `wide_5` to `wide_8`, each from `second_full`. `again`'s four trainings load L5f's AVERAGED
+  `published` (`the_bar`: `pre_r64`'s start, with its rank, alpha and check, under the bar's name and with L5f's run's
+  directory and adapter), so the count of numbers that are not the start adapter's is against THAT file for `again`,
+  and against `second_full`'s for `wide` and `more`. Every adapter saved is read back at rank 64 and alpha 128; every
+  measurement is served at rank 64. The recipe is L5d's `mean_constant` (constant learning rate, one pass, each step's
+  rate recorded and held); the adapter seed is the task's.
+- **How "the first rows", "the next rows" and "held id for id" are made** (`l5_cont.the_sets`, `hold_the_sets`,
+  `hold_the_members`). The seed's order is `l4_rows.rehearsal_rows` of the pretraining file for the task's seed, the
+  draw L5d's `published` and L5s's `published_stock` are the first rows of. `wide` is its first F rows, F the number
+  of rows L5f's run STORED as `published` (800 at the real sizes: read from that run, never a number of the code);
+  `again` rows F + 1 to 2F; `more` its first S rows, S the size of L5s's `published_stock` BY L5s's RULE FOR THE SEED,
+  made here by calling the rule on the stored search and map (twice the own solves in stock; 3,268 expected,
+  RECORDED). L5s's stored run is NOT read, so a run of L5s that is gone or of another seed changes nothing. Each set
+  is in `assembly.training_order` of the task's seed, and each trained set in that of its order seed. HELD, each a
+  refusal: `wide` is, id for id and place for place, L5f's stored `published` set; `more` is, id for id and place for
+  place, the rule's `published_stock` set, and holds every row of `wide`; `again` has as many rows as `wide` and none
+  of them; every row is a published row by id and place, without text; L5f's four stored ordered sets are `wide`'s
+  rows in the order of their order seeds, and its four training loops recorded those rows, each once (so `wide` is
+  the mean of eight trainings of ONE set); no row of a held-out problem, none that is not of the `pretrain` half,
+  none of a problem of G or of the held-aside set; and no two of `wide`'s EIGHT order seeds (1 to 8), nor of another
+  model's four, give one order.
+- **L5f's run of the seed, and what the first step holds of it** (`read_l5fs_run`; each a refusal with nothing
+  written, naming the task that writes it). What its report says of its seed (`l5_cont.of_l5f`): there,
+  of this seed, from `second_full`, of the recipe `mean_constant`, not INCONCLUSIVE, to be read, and measured as this
+  run measures (the sampling, its attempts, its sampling seed, the number of goal problems). Its files: the markers
+  of its first step, of its four trainings of `published`, of that model's averaging and of its measurement; its
+  stored `published` set and that set in its four orders; the four trainings' loss records; its `published` rows on
+  the first sampling. Its adapters, AS ITS OWN STEPS RECORDED THEM (`l5_cont.theirs_are_held`): each of the four saved
+  and read back at rank 64 and alpha 128 with numbers that are not `second_full`'s, and the averaged one read back as
+  the mean of the four, none of them (a smoke run's recorded exception apart), at that rank. ON A GPU BOX, also the
+  five FILES as every later step reads them: there; read back at rank 64 and alpha 128; not `second_full`'s number
+  for number; of a type the mean is written in. The averaged adapter is NOT averaged again from the four files by
+  the first step: that it is their mean stands on L5f's own read-back.
+- **The checks, in the report's order.** Of the run: each set is its rule made again (the three sets and the twelve
+  ordered ones from the pretraining rows and the seed; no row with text; `wide` is L5f's stored set AS THAT RUN HOLDS
+  IT WHEN THE REPORT IS BUILT; L5f's four trainings are orders of it and recorded its rows; `more`'s size is L5s's
+  rule COUNTED AGAIN from the stored search and map: `the_sets_are_the_rule`); L5f's run of the seed carries the
+  stage (the first step's hold of its adapters, and its report READ AGAIN as it is then: a run that has since gone,
+  or reads INCONCLUSIVE, fails it); `second_full`'s adapter is there, at its rank, and is not `pre_r64`'s (L5f's
+  check); `single`'s set was sampled from L5f's stored `published_1`; `second_full`'s stored first sampling is the
+  setting's; the bar's stored first sampling is the setting's (392 problems, 32 attempts, the recorded sampling
+  seed). Then L5d's own checks: of each of the twelve trainings (its adapter is not its start adapter's and is at its
+  rank; it was trained on its set and nothing else, on the loop's own record; no barred row; no problem of G or of
+  the held-aside set), of each averaged model (its numbers are the mean of its members', it is none of them, at its
+  rank, and the one served; Lean answered), and of `single` (Lean answered). Any FAIL: the headline is INCONCLUSIVE,
+  the failed checks are named, and no read is made.
+- **The reads are decided on whole numbers** (`l5_cont.what_made_it`, `the_read`: successes and attempts as
+  fractions, never a rounded figure). "Below by more than 13 per 1,000" is a difference under −0.013: exactly −0.013
+  reads ONE CONTINUATION GIVES IT. "At or above +8.5" is a difference of 0.0085 or more; "below zero by more than
+  8.5" is under −0.0085, so exactly −0.0085 reads NOT SHOWN AT ONE SEED. The bar is the copy this run's first step
+  made of L5f's stored `published` rows (`l4_stored_l5f_published_<sampling>.jsonl`), paired by problem. A model
+  with no attempt on G makes its read NOT READ.
+- **Beside, made exact.** Each of the four against the bar, against `second_full` and against `pre_r64`, by L5s's
+  own function, once for each: per attempt on all of G, on the goal problems `pre_r64` solves in its own stored
+  first sampling and on G′ (the parts are `pre_r64`'s in all three), the goal problems solved, gained and lost, and
+  the long ones (8 lines or more). Overfitting is the lost beside the gained against `second_full` and the share of
+  distinct attempts. TIMEOUTS: each of the four sets' share and the two stored sets' beside; a pair more than a point
+  apart is NAMED and no step checks it again.
+- **What follows, made exact** (`l5_cont.what_follows`). With a model that reads ADDS: `ESCALATE: TWO FURTHER SEEDS
+  OF EACH MODEL THAT ADDS AND OF THE BAR`, naming the models and the seeds. With none: `NOTHING ADDS: L5f's
+  `published` RECIPE STANDS AS THE BEST KNOWN`. Either way the CANDIDATE for a measurement in full is named: the
+  highest per attempt on all of G of this stage's four models and the bar (the bar on a tie with it). The
+  measurement in full is not built.
+- **After an escalation.** Set `ladder_loop.l5_cont.escalated: true`. A task of seed 4 or 5 is then refused by its
+  first step until L5F's OWN RUN of that seed is on the box and finished, which needs `ladder_loop.l5_full.escalated`
+  too and, before it, L5d's own run of that seed: no run holds the bar at seeds 4 and 5 when this is written. The
+  read over three seeds is not built.
+- **NOT BUILT.** The further seeds' bar and the read over three seeds; the check again in Lean of the timed-out
+  attempts where two shares are more than a point apart; the measurement in full of the candidate (both samplings of
+  G, the held-aside set, the rungs); job files for seeds 4 and 5.
+- **The smoke stage** (`ladder_l5_cont_smoke`; `--seeds 3`). It ALONE sets
+  `RLVR_LEAN_LADDER_L5_CONT_SMOKE=1`, refused unless the run directory is one the task names
+  (`RLVR_LEAN_LADDER_L5_CONT_RUN=ladder_l5_cont_smoke`) and the base map is the fixtures'. It names L5's run and the
+  three that task read, L6's variable for L4p's run (`ladder_l4_dose_r64_smoke`) and L5f's run variable
+  (`ladder_l5_full_smoke`); it sets no other stage's smoke-only variable and not L5d's run variable. ON THE BOX IT
+  NEEDS: `ladder_l5_full_smoke` run to its end with a report that is not INCONCLUSIVE; `ladder_l4_dose_r64_smoke`
+  run to its end; `ladder_l5_deep_smoke` with `ladder_l4b_map_smoke`, `ladder_l4_rows2_r64_smoke` and
+  `ladder_l4_rank_smoke`. L5d's smoke run is not read. It runs all twenty-one steps: L5f's smoke `published` is two
+  rows, so `wide` is those two, `again` the next two and `more` four (one deep solve and one ordinary solve in
+  stock). WHAT IT DOES NOT EXERCISE: the real sizes; a learning rate past the warm-up (each of its trainings is one
+  optimizer step); eight orders that differ (two rows have two orders: pairs alike are trained all the same and
+  RECORDED, and an averaged adapter that is one of its members is kept and SAID); a read that means anything (the
+  fixture has one goal problem). WHAT IT IS THE FIRST RUN ON THE BOX OF: a mean of eight adapters of two runs; a
+  training FROM an averaged adapter; a measurement served from an adapter another run keeps.
+- **What could not be tested off the box.** The reads of the REAL adapters by the first step on a GPU box (L5f's
+  five read back at rank 64, of a type the mean is written in, and not `second_full`'s); that the real `more` by
+  L5s's rule comes to 3,268 rows on the stored search and map as they are, and that the real orders differ (they do
+  by the hash, and the first step refuses if two are alike); that L5f's real report says of its seed what `of_l5f`
+  asks (the measurement's four figures equal this run's); the memory and time of four passes of 3,268 rows from
+  `second_full` at rank 64 on this card (L5s's own were of the same size, from `pre_r64`) and of a training from an
+  averaged adapter.
+- **Fragile.** One failed check of one model makes the run INCONCLUSIVE. The first step refuses for one missing file
+  of L5f's run of the seed or of L4p's run. The bar is ONE stored sampling of ONE averaged model: every read here
+  carries its draw, and `single` is one training, whose order spread (5.0 per 1,000 from `pre_r64`) is the reason for
+  the line at 13. The tests: `tests/rlvr_lean/test_ladder_l5_cont.py` (the rules on hand-made rows, 32) and
+  `test_ladder_l5_cont_stage.py` (the stage on the scripted world, 8).
+
+### L5m: the best model, measured in full. Does the gain hold on the held-aside set and on fresh attempts? (fixed 2026-10-12, before L5c's read and before any run of this stage)
+
+Under the owner's words: "towards getting it to solve never before solved math problems and at more reliable rates,
+without overfitting", and of 2026-10-12: "make as much progress as you can tonight on improving this solver's solve
+rate against the heldout tasks". Labelled **pretrained on published proofs**.
+
+**Why.** L5f's `published` (144.77 per 1,000) and L5c's four models are measured on G's first sampling alone: 32
+attempts at 392 problems, the one set of 12,544 episodes every model of L5d, L5s, L5f and L5c is read on. More than
+a dozen models have been compared on that one sampling, and the highest of them carries the selection. Two
+measurements no stage of the night has selected on say whether the gain is the model's: G's SECOND sampling (61
+fresh attempts a problem) and the HELD-ASIDE set (600 problems, 16 attempts).
+
+**What runs.** No training. One task. The CANDIDATE is one stored averaged adapter, named in the settings before
+the task is queued and after L5c's report: the model that reads highest on G's first sampling among L5f's three
+and L5c's four (a tie: the earlier made). It is measured in full, as L5's models are: the rungs, G's two samplings
+(32 and 61 attempts, the sampling seeds `pre_r64`'s run recorded), the held-aside set (16 attempts). Its first
+sampling is measured AGAIN here, not copied from the stage that made it. The BAR is `second_full`, the model the
+candidate was trained from: G's two samplings and the rungs are read from L4p's stored attempts; its held-aside set
+is measured here from its stored adapter (only read, served at its rank) unless a stored measurement of it with the
+same setting exists, which is then read.
+
+**The reads, fixed before the run.** Per attempt, paired by problem, 95% bootstrap over problems: these are reads
+about two stored models on problems, not about a recipe over trainings.
+
+- **Checks, read first; any FAIL makes the run INCONCLUSIVE:** the candidate's adapter and `second_full`'s are
+  there, at rank 64, and are not each other's; the candidate is the adapter the stage that made it measured (its
+  stored record of the mean); every set is the setting's (problems, attempts, sampling seed); no held-out problem,
+  problem of G or held-aside problem is in a row the candidate's stage trained on (that stage's own record); Lean
+  answered.
+- **THE HELD-ASIDE SET (the primary):** the candidate minus `second_full`. The interval above zero: THE GAIN HOLDS
+  ON THE HELD-ASIDE SET. Spanning zero: NOT SHOWN ON THE HELD-ASIDE SET. Below zero: IT DOES NOT HOLD THERE.
+- **FRESH ATTEMPTS:** the candidate minus `second_full` on all of G over the 61 attempts of the second sampling:
+  THE GAIN HOLDS ON FRESH ATTEMPTS, NOT SHOWN, or IT DOES NOT HOLD, by the same rule.
+- **THE MEASUREMENT AGAIN, naming nothing:** the candidate's first sampling here minus its stored one, per 1,000.
+- **Beside, naming nothing:** all of G over the 93 attempts; G' over the 61; goal problems solved in 93, solved
+  reliably (half the attempts or more), and of the 147 `pre_r64` never solved in 93; the 74 long ones; each rung
+  (the easy rung is where L4r read a cost); the share of distinct attempts; timeouts by set.
+- **What follows.** Holds on both: the candidate is the best model measured in full, said without the caution of
+  selection, and is the start the next cycle is proposed from. Not shown or not holding on the held-aside set: the
+  night's first-sampling comparisons are said on the page to be selection on G until a further seed shows otherwise.
+
+**What it cannot say.** One candidate: one seed, one draw of rows. G and the held-aside set are of one source.
+Nothing here is about the model's own proofs.
+
+**Budget.** About 51,700 episodes for the candidate and 9,600 for the bar's held-aside set: about 1 h 20 with 30
+pool workers. Its smoke run first.
+
+**The order, amended 2026-10-12 at 10:58 UTC, before any run of this stage and before L5c's real run.** The stage
+was built before L5c's real run could start, and the highest model known is L5f's `published`. The first task
+measures THAT model now (the committed setting), so that the check free of the selection is in hand before more
+models are compared on the first sampling; L5c's real run follows it. If L5c's report then names a model that reads
+higher on G's first sampling, a second task measures that one against the same bar, and both are reported. Nothing
+else of the section changes: the reads, the bar and the rules are as fixed above.
+
+**Made exact by the build (2026-10-12; nothing queued, nothing run on a GPU, nothing sent to Lean; the reads, the
+checks and "What follows" above are not changed; the readings taken where the section left something open, what was
+NOT built, what the smoke stage does not exercise and what is fragile are below).**
+- **The stages and their names.** `ladder_l5_measure` and `ladder_l5_measure_smoke` (`gpu/ladder_l5_measure.py`;
+  rules `domain/ladder_round/l5_measure.py`; report `reporting/ladder_l5_measure.py`), settings
+  `ladder_loop.l5_measure` (one reader, `the_settings`). Its steps are named `ladder_l5m_...` and its files
+  `l5m_...`, because `ladder_l5_measure_<model>` is already a step of L5's own. THE RUN DIRECTORY is its own and is
+  named by its candidate, `ladder_l5_measure_<of>_<model>_seed<N>` (as committed
+  `ladder_l5_measure_l5_full_published_seed3`); its report is `report_ladder_l5_measure.json`; its jobs
+  `ladder_l5_measure_seed3.json` (est_minutes 110) and `ladder_l5_measure_smoke.json` (30), with the
+  `resources` of L5f's jobs key for key. No adapter directory exists in a run of this stage. Nothing of L5f's,
+  L5c's, L4p's, L5's or L6's run is written: each is read, and left file for file as it was (asserted in the
+  scripted world).
+- **The candidate, in the settings.** `ladder_loop.l5_measure.candidate` is three values: `of` (the stage that made
+  it: `l5_full` or `l5_cont`), `seed` (its seed in that stage, which must be one that stage's own settings list)
+  and `model` (its name there: `published`, `shallow`, `deep` of `l5_full`; `wide`, `again`, `more` of `l5_cont`).
+  `bar` is `second_full` and nothing else. Anything else is refused by the reader. As committed: `of: l5_full`,
+  `seed: 3`, `model: published`. It is SET BY HAND after L5c's report and before the task is queued; for a model
+  of L5c the change is two lines, `of: l5_cont` and `model: wide` (or `again`, `more`). Nothing in the code chooses
+  the candidate or reads L5c's report to choose it. THE TASK'S SEED IS THE CANDIDATE'S: a task of another seed is
+  refused by the first step. A RUN KEEPS ITS CANDIDATE: a later step in a run directory prepared for another
+  candidate is refused.
+- **FIVE steps.** `ladder_l5m_prepare`; `ladder_l5m_measure_candidate` (the three rungs, then G's two samplings);
+  `ladder_l5m_held_aside_candidate`; `ladder_l5m_held_aside_second_full`; `ladder_l5m_report`. Each is resumable
+  and a finished one returns what it stored; the report step ALONE is built again each time its task is queued. No
+  step trains, averages or deletes an adapter, and no step writes into a run it reads.
+- **What is called, not copied.** L5's finished search and every stored run its task read: L5's own first-step
+  reading (`ladder_l5.read_the_search`, `read_for_the_search`). `second_full`: L5f's own reading and start
+  (`ladder_l5_full.read_second_full`, `the_start`), so everything L5f's first step refuses about it is refused here
+  in the same words. The candidate's run: found by `ladder_l5_full.own_run` or `ladder_l5_cont.own_run` (this module
+  holds no run name of another stage and no adapter path). A stored set held to the setting:
+  `ladder_ceiling._stored`. The rungs and G: `ladder_ceiling.measure_model`, with the rungs, as L5's models are
+  measured. The held-aside set: L5's own body, `ladder_l5.on_the_held_aside_set`, handed the adapter's directory.
+  The refusals of a barred row: `l5.refuse_barred` and `l5_draws.refuse_problems_of`; the same two checks in the
+  report by their own functions. NO FUNCTION OF AN EARLIER STAGE WAS CHANGED: L5 to L6 write what they wrote (their
+  tests pass unchanged, but for six lists of stages that name a variable, which now hold `ladder_l5_measure_smoke`).
+- **The candidate, held by the first step.** By the record of the stage that made it, before anything is written:
+  its run's report of its seed (finished, not INCONCLUSIVE, to be read, from `second_full`, recipe `mean_constant`,
+  measured on the same first sampling); its record of the mean (`ladder_l5_full_average_<model>` or
+  `ladder_l5_cont_average_<model>`: the mean of its members, none of them alone, saved at rank 64 and alpha 128)
+  and of its measurement (sampled from the adapter this stage would serve); its stored rows on G's first sampling,
+  held to the setting; and, for every training the adapter is the mean of, that training's marker, stored ordered
+  set and loss record. For `wide` the members are eight: L5f's four in L5F's run and L5c's own four. ON A GPU BOX
+  the adapter's files are read too: missing, read back at another rank or alpha, or number for number
+  `second_full`'s, the step refuses. The rows the candidate was trained on are written to `l5m_trained_rows.jsonl`
+  by id and place (`training`, `id`, `problem_id`, `origin`, `row_of_the_file`), NEVER with text.
+- **The bar.** On the rungs and on G's two samplings its rows are L4p's stored attempts (`l4_rungs_second_full`,
+  `l4_reach_second_full`, `l4_more_second_full`), each held to the setting's problems, attempts and sampling seed,
+  copied into this run and held again by the report. ON THE HELD-ASIDE SET the section says "unless a stored
+  measurement of it with the same setting exists, which is then read": the one stage that would have made such a
+  measurement is L6 (its step `ladder_l6_held_aside_second_full`), so the first step looks in L6's run
+  (`ladder_l6_cycle_pre_r64_seed0`, or the run L6's own variable names). It is READ when that run holds the step's
+  marker and its set, sampled from the same adapter, on the same problems, with 16 attempts and the same sampling
+  seed; its rows are then copied to `l5m_stored_second_full_held_aside.jsonl`, the bar's step makes nothing and
+  marks nothing, and the report says where the rows are from. Otherwise NOTHING IS REFUSED: the first step records
+  why, and the bar is MEASURED HERE from the adapter L4p's run keeps, served at rank 64. L6 has not run for real,
+  so the real run is expected to MEASURE it (the budget above counts it).
+- **The sizes, which are read and not written in the code.** The rungs at 8 episodes a problem with sampling seed
+  1002; G's first sampling at 32 attempts with 1001 and its second at 61 with 1020 (the samplings `pre_r64`'s run
+  recorded: a run that recorded another number of samplings than two is refused); the held-aside set at 16 attempts
+  with 1051 (L5's own setting and seed). The candidate's first sampling is sampled again with the seed its stored
+  one was sampled with, from the same adapter.
+- **The checks, five.** (1) The two adapters are there at the rank and are not each other's: the candidate's by
+  its own stage's record (and by the files, when the first step read them), the bar's as L5f holds it, and the
+  bar's held-aside set was sampled from the bar's adapter. (2) The candidate is the adapter its stage measured: the
+  record of the mean and of its measurement, read AGAIN as they are when the report is built, with that run's
+  report of its seed, and every measurement of this run was sampled from that one adapter. (3) Every set is the
+  setting's: nine sets (the candidate's four; the bar's three stored ones and its held-aside set, stored or
+  measured; the candidate's stored first sampling), each by its problems, its attempts a problem and the sampling
+  seed its own step recorded. `pre_r64`'s stored sets are not among them: L5's first-step reading holds them. (4)
+  No barred row in what the candidate was trained on: no held-out problem, no published row outside the `pretrain`
+  half, no own row outside the base map, no problem of G, no held-aside problem. (5) Lean answered, on the five sets this run samples (four when the
+  bar's held-aside set is read); a set it did not answer makes the report NOT TO BE READ and fails its step.
+- **The reads, made exact.** Both by one rule (`l5_measure.by_the_interval`), the candidate minus `second_full`,
+  per attempt, paired by problem, 95% bootstrap over problems: the interval's lower end above zero HOLDS; its upper
+  end below zero DOES NOT HOLD; otherwise NOT SHOWN, so an interval that ENDS at zero spans it. FRESH ATTEMPTS is
+  all of G over the second sampling alone (61 attempts a problem at the real sizes). THE MEASUREMENT AGAIN is the
+  candidate's first sampling here minus its stored one. BESIDE: all of G over both samplings (93 attempts); the
+  first sampling as measured here; G' over the fresh attempts; goal problems solved in 93; SOLVED RELIABLY, read as
+  twice a problem's successes at or above its attempts over all 93; the goal problems `pre_r64` never solved in its
+  93 stored attempts (counted from its stored rows: 147 is expected and is not a number of the code); the long ones
+  (8 lines or more of the published proof, whose length the report alone reads); each rung; the share of distinct
+  attempts; timeouts by set, where a pair more than a point apart is NAMED.
+- **What follows, and the outcome the section does not name.** Holds on both: THE CANDIDATE IS THE BEST MODEL
+  MEASURED IN FULL. Not shown or not holding on the held-aside set, whatever the fresh attempts read: SELECTION ON G
+  until a further seed shows otherwise. The section names nothing for a gain that HOLDS ON THE HELD-ASIDE SET AND
+  NOT ON FRESH ATTEMPTS: the report says exactly that ("NOT NAMED BY THE SECTION"), claims nothing of it, and it
+  goes to the owner.
+- **Other readings taken where the section left something open.** L5c's `single` is refused as a candidate: it is
+  one training (L5f's stored `published_1`), not an averaged adapter with a record of the mean, and the section
+  says "one stored averaged adapter". "No ... row the candidate's stage trained on" is read on the trainings the
+  candidate's adapter is the mean of; for `again`, which was trained FROM L5f's averaged `published`, the rows of
+  that start are not read again here (L5f's own run and L5c's first step held them). A tie between two candidates
+  is not something the code sees: the settings name one.
+- **NOT built.** The check again in Lean of timed-out attempts (a pair of sets more than a point apart is named,
+  and no step checks it). A candidate that is one training. A second candidate, or a further seed, in one run. The
+  counts with assembly.
+- **The smoke stage.** `ladder_l5_measure_smoke` runs every step from the smoke runs on the box: it names L5's,
+  L4p's, L5f's and L5c's runs by the variables L5c's smoke stage sets (without L5c's smoke-only variable), its own
+  run directory `ladder_l5_measure_smoke`, and ALONE sets `RLVR_LEAN_LADDER_L5_MEASURE_SMOKE=1`: L5's smoke run
+  reads INCONCLUSIVE and is read all the same, and a candidate whose averaged adapter is one of its members (which
+  L5f's smoke stage records of its own run) is measured all the same; both are recorded and the report says A
+  SMOKE RUN. The first step refuses that variable in a run directory of the candidate's own, or on the pool's base
+  map. It does NOT name L6's run variable, so the smoke run MEASURES the bar on the held-aside set, as the real run
+  does. ON THE BOX it needs, each run to its end: `ladder_l5_full_smoke` (its report not INCONCLUSIVE),
+  `ladder_l4_dose_r64_smoke`, and `ladder_l5_deep_smoke` with the three smoke runs that task read
+  (`ladder_l4b_map_smoke`, `ladder_l4_rows2_r64_smoke`, `ladder_l4_rank_smoke`); a candidate of L5c needs
+  `ladder_l5_cont_smoke` too. WHAT IT DOES NOT EXERCISE: the real sizes; the path where the bar's held-aside set is
+  read from a stored run; a candidate of L5c; an averaged adapter that differs from its members; G's second
+  sampling and the read on fresh attempts (next bullet).
+- **The smoke world holds ONE sampling of G** (added 2026-10-12, after the first smoke run on the box, task
+  333ceb41, was refused at its first step). The smoke `pre_r64`'s run reads L1's smoke run alone, with no stored
+  run of L2 beside it, so it recorded G's first sampling and no second, and every smoke run after it (L5's own
+  among them) measured its models on that one. A SMOKE run of this stage goes on with it: the candidate is
+  measured on the rungs, on that one sampling and on the held-aside set; the bar's stored sets are the rungs' and
+  that sampling's; the first step records it (`smoke.one_sampling_of_g`); the report makes the primary on the
+  held-aside set, reads FRESH ATTEMPTS and what follows as NOT READ, and says so in its smoke line. A REAL RUN IS
+  REFUSED for a start run that recorded one sampling, as it was (the real start run recorded two), and the report
+  refuses a run of one sampling whose first step did not record that it went on from one. The scripted tests alone
+  exercise the second sampling and the read on fresh attempts; the test of the box's own smoke world builds every
+  smoke run by its own smoke stage, in the box's order.
+- **Fragile.** One failed check makes the run INCONCLUSIVE. The first step refuses for one missing file of the
+  candidate's run. The bar on the rungs and on G is one stored sampling of L4p's run. NOT TESTED HERE AGAINST THE
+  REAL RUNS, and so where the first step could refuse on the box: the candidate's real adapter files, read back
+  (rank, alpha, numbers that are not `second_full`'s); whether L4p's real run holds the three stored sets with the
+  problems, attempts and sampling seeds this config gives; whether L5f's real markers carry the fields read here
+  (its averaging record's `of`, `read_back`, `adapter_saved`, `against_the_start_adapter`; its measuring record's
+  `adapter`); and L5c's real run, which had not finished when this was built.
+- **Tests.** `tests/rlvr_lean/test_ladder_l5_measure.py` (the rules on hand-made rows) and
+  `test_ladder_l5_measure_stage.py` (the stage on the scripted world: the whole stage, the branches of the two
+  reads, each failed check, the GPU path of the first step and of the served adapters, the bar read from a stored
+  run and measured otherwise, a candidate of L5c, the refusals, the entry point, the smoke stage, the registration,
+  the two jobs).
+
+**Outcome of L5m (seed 3, 2026-10-12 UTC; `docs/spec/ladder-l5m-RESULT.md`): THE GAIN HOLDS ON THE HELD-ASIDE
+SET AND ON FRESH ATTEMPTS.** One task (`ladder_l5_measure_seed3_r1`, task c8e2546c, 12:18 to 14:17 UTC, from
+`a2bab6705`, 16 pool workers); all checks pass. The candidate is L5f's `published`, as the amended order names it; the
+bar `second_full`. THE HELD-ASIDE SET (the primary): +0.01615 [+0.00771, +0.02469], 77.5 against 61.35 per 1,000 over
+600 problems. FRESH ATTEMPTS: +0.03739 [+0.02643, +0.04839], 145.62 against 108.23 over the 392 goal problems. The
+measurement again: 146.44 against the stored 144.77 (+0.00167 [-0.00303, +0.00654]). Beside: all of G over 93
+attempts 145.9 against 108.93; G' on fresh attempts 42.09 against 26.9; goal problems solved in 93 attempts 264
+against 267 (gained 23, lost 26), solved reliably 32 against 16; the long ones +0.01642 [-0.00044, +0.03342]; the
+rungs +0.0512, +0.0266 (holds zero), +0.0425; distinct attempts on G 0.70 against 0.80. **What follows by the rule
+above:** THE CANDIDATE IS THE BEST MODEL MEASURED IN FULL: THE NEXT CYCLE IS PROPOSED FROM IT. Said beside it: the
+gain is in how often a problem is solved, not in how many problems are. L5c's real run follows; if its report names
+a model that reads higher, a second task measures that one.
+
+### L6b: a second round, from the best model. Do proofs the stronger model finds add where the weaker model's did not? (fixed 2026-10-12, after L5d's read at three seeds and L5f's seed 3, before L5c's and L5m's reads and before any run of this stage)
+
+Under the owner's words of 2026-10-12, on the ask "three fresh seeds or six": "let's do 3 seeds. I don't need super
+high confidence to keep pushing in this direction". Labelled **pretrained on published proofs**.
+
+**Why.** L5d reads, over three fresh seeds from the once-pretrained model: THE MODEL'S OWN PROOFS BESIDE PUBLISHED
+ONES BEAT PUBLISHED ONES ALONE ON THE GOAL SET (+12.69 per 1,000, interval over seeds +9.08 to +16.30). Its rule sends
+the bet to a second round. L6 as fixed on 2026-10-11 is a second round from `pre_r64`, searched by seed 0's `deep`
+model (about 110 per 1,000), one training a model, about nine hours. Since then the best model moved: L5f's averaged
+`published`, trained from the twice-pretrained model, reads 144.77, and from that stronger start the own-proof kinds
+read BELOW the published kind at the one seed run (-14.87). Every own proof in L5f was found by `pre_r64`, the weaker
+model, before the second pass. The bet is a cycle: the improved model searches, and what IT finds is trained on. That
+has not been run from the stronger model. L6b runs it, at the size of a scout. L6 as fixed does not run before L6b is
+read; its section stands unchanged.
+
+**The start, B.** L5f's stored averaged `published` of seed 3 (the adapter L5m measures in full and L5c's `again` is
+trained from). Only read.
+
+**The search.** B, served at rank 64, makes 64 attempts at each of the 865 hard problems of L6's "Search 2": the 480
+that search 1 left unsolved (`pre_r64` failed 64 of 64) and the 385 candidates that neither draw took (`pre_r64`
+failed 8 of 8). 55,360 attempts, L6's sampling place. The held-aside set is not searched. A problem B solves is a NEW
+SOLVE; its row is one verified attempt, drawn by the task's seed as L6 draws it. N is the number of new solves.
+Fewer than 150: nothing is trained and the search is the finding.
+
+**Two models are trained, each from B,** with the recipe as it is (four orders, order seeds 1 to 4, one pass,
+constant learning rate, the averaged adapter measured), 800 rows each, K = the smaller of 400 and N:
+- **`new_own`**: K new solves (drawn by the seed when N is above 400) and the published rows 801 to 1,600 - K of
+  seed 3's order.
+- **`old_own`**: K of `pre_r64`'s deep solves (the first K, in their stored order, of the 400 that L5d's `deep` set
+  of seed 3 holds) and the same published rows.
+
+**The bar is L5c's stored `again`,** only read: from B, the published rows 801 to 1,600 of the same order, the same
+recipe, measured the same way. The three models differ in their own rows alone: none, `pre_r64`'s, B's.
+
+**Measured:** each of the two on G's first sampling alone (32 attempts at each of the 392 goal problems, sampling
+seed 1001), as L5f's and L5c's models are.
+
+**The reads, fixed before the run.** On whole numbers of successes over the 12,544 episodes, per 1,000 attempts,
+paired by problem. One seed: each read is a scout's.
+
+- **Checks, read first; any FAIL makes the run INCONCLUSIVE:** B is L5f's averaged `published` of the seed (the mean
+  of its four, at rank 64, not `second_full`'s); L5c's run of the seed is there, finished and not INCONCLUSIVE, with
+  `again`'s set (rows 801 to 1,600 of the order) and its stored first sampling of the setting; the searched set is
+  L6's Search 2 set, made by L6's own function and held to L6's own checks (no problem held out, of G, of the
+  held-aside set or of round 1's solves); each set is its rule made again (no row with text among the published rows,
+  no barred row); the two own sets hold the same published rows; each trained adapter is not B's, each averaged adapter is the
+  mean of its four and is the one served; Lean answered (at most 0.02 of the search and of each set without an
+  answer).
+- **THE SEARCH, a finding of its own:** N, and of it how many of the 480 (problems `pre_r64` never solved in 64
+  attempts) and of the 385; how many are solved in under half of B's 64 attempts; their line counts beside round 1's.
+- **PRIMARY, its own new proofs from the best model: `new_own` minus `again`.** At or above +8.5 per 1,000: THE
+  MODEL'S OWN NEW PROOFS ADD FROM THE BEST MODEL. Below zero by more than 8.5: THEY COST THERE AT THIS SEED. Between:
+  NOT SHOWN AT ONE SEED.
+- **WHOSE PROOFS: `new_own` minus `old_own`.** At or above +8.5: PROOFS THE STRONGER MODEL FOUND TEACH MORE THAN THE
+  WEAKER MODEL'S. Below zero by more than 8.5: THEY TEACH LESS. Between: NOT SHOWN AT ONE SEED.
+- **Beside, naming nothing:** `old_own` minus `again` (L5f's read, one step up); each of the three against B's stored
+  first sampling (144.77), `second_full` and `pre_r64`: all of G, the 200 goal problems `pre_r64` solves in its first
+  sampling, G', goal problems solved (gained and lost against B), solved reliably (16 of 32 or more), the 74 long
+  ones, the share of distinct attempts.
+- **Timeouts:** each set's share; two more than a point apart are checked again and read both ways (no step does it).
+
+8.5 is L5f's own line for two averaged models.
+
+**What follows, fixed now.**
+- THE MODEL'S OWN NEW PROOFS ADD: the cycle turns from the best model. Two further seeds of `new_own` and of the bar
+  (not built: no run holds `again` at another seed) before anything is said over seeds; the highest model is a
+  candidate for a measurement in full; the cycle at full size has this beside L5d's read to put to the owner.
+- NOT SHOWN AT ONE SEED: said as it is, with the search's yield. A third round is not run on it.
+- THEY COST THERE: from the best model, at this size and seed, published rows read again are worth more than the
+  model's own proofs, old or new. It goes to the owner with L5f's read; the full-size cycle is not proposed on it.
+- Whatever the primary reads, WHOSE PROOFS says whether the search by the stronger model is the part worth scaling.
+
+**What it cannot say.** One seed, one search, one draw. G's first sampling alone, the set more than a dozen models
+have been compared on; nothing of the held-aside set. The bar is published rows B's lineage has read twice already;
+the own proofs are of problems it never trained on: as in L5d, a win is "its own proofs of new problems beat reading
+published proofs again", not "beat published proofs of new problems" (the fourth kind, not built without the owner's
+word). K own rows in 800: a dose of at most half. The new solves are of harder problems than the old ones, so WHOSE
+PROOFS does not tell "found by a stronger model" from "of harder problems".
+
+**Budget.** The search about an hour and a half to two hours with 30 pool workers; eight trainings of 800 rows
+(about four minutes each) and two measurements of about 16 minutes: about three hours. Its smoke run first. It runs
+after L5c's real run (the bar is read from it).
+
+**Made exact by the build (2026-10-12; nothing queued, nothing run on a GPU, nothing sent to Lean; the reads, the
+checks and "What follows" above are not changed; the readings taken where the section left something open, what was
+NOT built, what the smoke stage does not exercise and what is fragile are below).**
+- **The stages and their names.** `ladder_l6b` and `ladder_l6b_smoke` (`gpu/ladder_l6b.py`; rules
+  `domain/ladder_round/l6b.py`; report `reporting/ladder_l6b.py`), settings `ladder_loop.l6b` (`start: published`,
+  `bar: again`, `seeds: [3]`; one reader, `the_settings`, which refuses another start, another bar, a seed that L5c's
+  setting does not fix, and any other key). THE RUN DIRECTORY is its own, `ladder_l6b_published_seed<N>`; its files
+  are `l6b_*` and `report_ladder_l6b.json`; its jobs `ladder_l6b_seed3.json` (est_minutes 200) and
+  `ladder_l6b_smoke.json` (30), with the `resources` of L5c's jobs key for key. The stage names no variable. Nothing
+  of L5f's, L5c's, L5d's, L4p's, L5's or L6's run is written: each one read is left file for file as it was
+  (asserted in the scripted world, for the real-shaped runs and for the box's smoke runs).
+- **SIXTEEN steps,** in the section's order: `ladder_l6b_search_prepare`; `ladder_l6b_search`; `ladder_l6b_prepare`
+  (the two sets, and each set in its four orders); `ladder_l6b_train_new_own_1` to `_4`,
+  `ladder_l6b_average_new_own`, `ladder_l6b_measure_new_own`; `ladder_l6b_train_old_own_1` to `_4`,
+  `ladder_l6b_average_old_own`, `ladder_l6b_measure_old_own`; `ladder_l6b_report`. Each is resumable and a finished
+  one returns what it stored; the report step ALONE is built again each time its task is queued. No step deletes an
+  adapter, and every adapter is kept (eight trainings and two averaged ones).
+- **What is called, not copied.** L5's finished search and every stored run its task read: L5d's own first-step
+  reading (`ladder_l5_draws.drawn_by_the_seed`). `second_full`: L5f's reading (`ladder_l5_full.read_second_full`).
+  B, in L5f's run of the seed: L5c's own reading and start (`ladder_l5_cont.read_l5fs_run`, `the_bar`), so what L5c's
+  first step refuses about L5f's run is refused here in the same words under this stage's; this module holds no run
+  name of another stage and no adapter path. L5d's run of the seed: L5f's reading of it
+  (`ladder_l5_full.read_l5ds_run`). THE SEARCH'S PROBLEMS: L6's own rule, by two functions CUT OUT of L6's first step
+  for this stage and called by that step too (`ladder_l6.solved_by_search_one`, `the_second_search`; L6 writes what
+  it wrote and its tests pass unchanged), with L6's sampling seed (`ladder_l6.search_seed`). The search's body: L5's
+  `search_deep`, handed B's adapter. A new solve's row: `l5.solve_rows`. The trainings: L4t's body with `start_from`,
+  as L5c's `again` uses it. The averaged adapters: L5n's `the_mean_adapter`. The measurements: `measure_model` with
+  `rungs=False`. The checks of the trainings and models and their lines: L5d's. The reads against a stored model:
+  `l5_stock.against_the_start`. Earlier stages' tests pass unchanged, but for the lists of stages that name a
+  variable.
+- **K, where the section says "the smaller of 400 and N".** `l6b.the_dose`: the smaller of HALF THE ROWS OF A SET,
+  THE OLD OWN ROWS L5d's `deep` set of the seed holds, and N. At the real sizes this is the section's number (half
+  of 800 is 400, and L5d's set holds 400 own rows); written so, both models always hold the same K. A set's size is
+  the number of rows L5f's `published` set holds (800), read from that run.
+- **The published rows.** "Rows 801 to 1,600 - K of seed 3's order" is taken as: the NEXT rows of the seed's order
+  of the pretraining file after the ones L5f's `published` set holds, which are L5c's `again` set; the first step
+  holds them to the set L5c's run stores as `again`, ID FOR ID AND PLACE FOR PLACE, and refuses otherwise; each model
+  takes the first 800 - K of them, the SAME ones. A published row is stored by id and place, never with text.
+- **The old own rows.** The 400 own rows of the `deep` set that L5d's run of the seed stores, in its stored order
+  (`l6b_old_solves.jsonl`); the first step makes L5d's rule again for the seed and refuses a stored set that is not
+  it. `old_own` takes the first K.
+- **The search.** Model `published`, served from B's adapter in L5F'S run; the 865 problems are whatever L6's rule
+  gives on the stored runs (the first step records the partition: attempted by search 1, solved by it, part a, part
+  b, held aside); the sampling seed is L6's (the seed of the search 0, place 52: 1052), so if L6 itself ever runs,
+  its search 2 samples the same problems at the same seed with another model. A NEW SOLVE is a problem with at least
+  one verified attempt; its row is ONE verified attempt, drawn by the TASK's seed; when N is above K the K of the set
+  are drawn by the task's seed too (`l5.capped`). "Line counts beside round 1's" is taken as: the line counts of the
+  new solves beside those of the old own rows.
+- **"Fewer than 150 new solves" is not a check.** The minimum is L6's setting (`ladder_loop.l6.search.minimum`).
+  Below it the sets step builds no set and records why, the twelve training, averaging and measuring steps make and
+  mark nothing, and the report (not INCONCLUSIVE for that) reads the primary and whose proofs as NOT READ, says what
+  the search found, and what follows is THE SEARCH IS THE FINDING.
+- **The bar.** L5c's stored `again`: its report, the markers of its four trainings and of its averaged adapter, its
+  stored set and its rows on G's first sampling, copied to `l4_stored_l5c_again_reach.jsonl`. ITS ADAPTERS ARE NOT
+  READ. The first step refuses L5c's run when it is not there, not finished, of another seed, start or recipe,
+  INCONCLUSIVE, not to be read or measured otherwise; when a marker, its stored set or its rows are missing; when its
+  first step recorded that `again` was trained from another adapter than B's; when its rows on the sampling would
+  not pair (other problems, attempts or sampling seed). The stored first samplings of `pre_r64`, `second_full` and B
+  are copied beside it and shown, naming nothing.
+- **The checks of the report,** each read on what is stored THEN: B is L5f's averaged `published` (L5c's own check
+  of L5f's run, and: the search was served from B's adapter, every training started from it); L5c's run of the seed
+  holds the bar (its report read again; the next rows are still its `again` set); THE SEARCHED SET IS L6's SEARCH 2
+  (the rule made again gives the stored problems in their order and parts; none is held out, of G, held aside or
+  solved by round 1; the search sampled exactly those, each once, with its attempts; the new solves made again from
+  the stored search are the stored ones); the stored first sampling of the start models and of the bar are the
+  setting's; Lean answered the search; each set is its rule made again (K, the same published rows in both, none
+  with text, the next rows L5c's, each of the four orders its order seed's); then L5d's checks of each training and
+  each model. Two order seeds that give one order of a set are refused outside a smoke run.
+- **The reads.** On whole numbers of successes and attempts over all of G's first sampling, with L5f's line
+  (`l5_cont.A_LINE`, 8.5 per 1,000): at or above plus the line, below minus the line, or between. Beside, naming
+  nothing: `old_own` minus the bar, and timeouts by model. WHAT FOLLOWS reads the primary alone, with WHOSE PROOFS
+  said beside it.
+- **NOT built.** A further seed and the read over seeds (What follows names "two further seeds of `new_own` and of
+  the bar"; no run holds B or the bar at another seed, and the settings reader refuses one). The check again in
+  Lean of timed-out attempts. A measurement in full of either model (the rungs, G's second sampling, the held-aside
+  set). A second seed of the search. Any deletion of adapters.
+- **The smoke stage.** `ladder_l6b_smoke` alone sets `RLVR_LEAN_LADDER_L6B_SMOKE_PROBLEMS=2`, refused unless the run
+  directory is one the task names and the map is the fixtures': L5's smoke run reads INCONCLUSIVE and is read all the
+  same (recorded); the fixture's map leaves search 2 no problem, so the search attempts the two map problems no
+  search took, each marked as NOT the rule's; one new solve is enough; K is 1 (half of L5f's smoke set of two rows),
+  so a set is one row of the model's own and one published row; orders of those two rows that are alike are trained
+  all the same; an averaged adapter that is one of its members is kept and said. ON THE BOX IT NEEDS EIGHT SMOKE
+  RUNS AND NO OTHER: `ladder_l5_full_smoke`, `ladder_l5_cont_smoke`, `ladder_l5_draws_smoke_mean_constant`,
+  `ladder_l4_dose_r64_smoke`, `ladder_l5_deep_smoke`, `ladder_l4b_map_smoke`, `ladder_l4_rows2_r64_smoke`,
+  `ladder_l4_rank_smoke`. L6's smoke run (`ladder_l6_cycle_smoke`) is not read. THE TEST OF THE BOX'S SMOKE WORLD
+  builds that world as it is, every run by its own smoke stage in its own environment and in the box's order (L1's;
+  the pretraining's, the arm's, the rank check's, L4t's, L4t2's; L4p's; L5's; L5d's; L5f's; L5c's), moves every run
+  but those eight away, and runs this stage's smoke task: all sixteen steps run, the eight runs are left file for
+  file, and a real run is refused for such a round 1. The stage reads G's FIRST sampling alone, so the smoke world's
+  one sampling is all it asks for.
+- **What the smoke run does NOT exercise.** K above 1; a set of 800 rows and a training of 100 optimizer steps from
+  an averaged adapter; a search of 865 problems; the too-few-solves path, unless B solves neither of its two
+  problems on the box, in which case NOTHING IS TRAINED there and the trainings are not exercised (the scripted
+  tests alone then); the reads at their lines (the stand-in sizes say nothing).
+- **What is fragile.** L5c's real run did not exist when this was built: the first step's reading of it is
+  exercised on its smoke run and on scripted runs alone, and it refuses until that run has finished with a report
+  that is not INCONCLUSIVE. The first step refuses for one missing file of L5f's, L5c's or L5d's run. One failed
+  check makes the run INCONCLUSIVE. The bar is ONE stored sampling of one averaged model, measured by another task
+  at another hour of the pool; nothing here measures it again. The search is 55,360 attempts through the pool, the
+  longest single step of the run. In the scripted world the real-shaped run has ONE new solve (with two, the four
+  rows of `old_own` give one order at two order seeds, which the stage refuses): the seeded draw of K among more new
+  solves is exercised by the rules' tests and by the smoke-world test alone. One seed, one search, one draw: every
+  read is a scout's.
+
 ## Fixtures (these become the tests)
 
 1. An episode that proves the statement resolves the problem; so does one that proves the exact negation; one

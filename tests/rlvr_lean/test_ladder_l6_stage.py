@@ -872,7 +872,8 @@ def test_the_stage_is_registered_with_a_guard_before_every_gpu_step_and_the_smok
     assert sorted(name for name in entry.STAGES if any(entry.step_fields(step)[1] in ladder_l6.STEPS for step in entry.STAGES[name])) == ["ladder_l6_cycle", "ladder_l6_cycle_smoke"]
     # ITS VARIABLES are named by its smoke stage alone, and no other module reads them.
     names = lambda variable: sorted(name for name, own_ in entry.STAGES.items() if any(variable in entry.step_fields(step)[2].get("environment", {}) for step in own_))      # noqa: E731
-    assert names(RUN) == names(L4P_RUN) == names(SMOKE) == ["ladder_l6_cycle_smoke"] and SMOKE == "RLVR_LEAN_LADDER_L6_SMOKE_PROBLEMS"
+    # (L5f's smoke stage names L4p's run by this stage's variable for it too: its start adapter is that run's `second_full`, found by `l4p_directory`.)
+    assert names(RUN) == names(SMOKE) == ["ladder_l6_cycle_smoke"] and names(L4P_RUN) == ["ladder_l5_cont_smoke", "ladder_l5_full_smoke", "ladder_l5_measure_smoke", "ladder_l6_cycle_smoke", "ladder_l6b_smoke"] and SMOKE == "RLVR_LEAN_LADDER_L6_SMOKE_PROBLEMS"
     assert sorted(str(path.relative_to(PACKAGE)) for path in PACKAGE.rglob("*.py") if SMOKE in path.read_text()) == ["gpu/ladder_l6.py", "runner/entry.py"]
     # ONE BODY EACH: its train and measure steps are L4t's own two bodies, its search and its held-aside measurements L5's own, its report reads its models by L4t's own reader.
     assert ladder_l6.train_a_model is ladder_l4_rows.train_a_model and ladder_l6.measure_a_model is ladder_l4_rows.measure_a_model and ladder_l6.read_the_trained is ladder_l4_rows.read_the_trained

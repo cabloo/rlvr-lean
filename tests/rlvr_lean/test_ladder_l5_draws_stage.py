@@ -1074,7 +1074,9 @@ def test_the_stage_is_registered_with_a_guard_before_every_gpu_step_and_the_smok
     assert sorted(name for name in entry.STAGES if any(entry.step_fields(step)[1] in ladder_l5_draws.STEPS for step in entry.STAGES[name])) == ["ladder_l5_draws", "ladder_l5_draws_smoke"]
     # ITS VARIABLES are named by its smoke stage alone, and no other module reads them.
     names = lambda variable: sorted(name for name, own_ in entry.STAGES.items() if any(variable in entry.step_fields(step)[2].get("environment", {}) for step in own_))      # noqa: E731
-    assert names(RUN) == names(SMOKE) == ["ladder_l5_draws_smoke"] and SMOKE == "RLVR_LEAN_LADDER_L5_DRAWS_SMOKE" and RUN == "RLVR_LEAN_LADDER_L5_DRAWS_RUN"
+    # (L5s's smoke stage names this stage's RUN too, and not its smoke-only variable: its dose is read against this stage's smoke run, by `own_run`.)
+    # (L5f's smoke stage names it too: its sets are held to this stage's smoke run of the seed.)
+    assert names(RUN) == ["ladder_l5_draws_smoke", "ladder_l5_full_smoke", "ladder_l5_stock_smoke", "ladder_l6b_smoke"] and names(SMOKE) == ["ladder_l5_draws_smoke"] and SMOKE == "RLVR_LEAN_LADDER_L5_DRAWS_SMOKE" and RUN == "RLVR_LEAN_LADDER_L5_DRAWS_RUN"
     assert sorted(str(path.relative_to(PACKAGE)) for path in PACKAGE.rglob("*.py") if SMOKE in path.read_text()) == ["gpu/ladder_l5_draws.py", "runner/entry.py"]
     # ONE BODY EACH: its trainings are L4t's own training body, its measurements the ceiling's own measuring body with no rung, its averaged adapters L5n's own function, and
     # L5's run is read, and the three sets are drawn, by L5's own functions.

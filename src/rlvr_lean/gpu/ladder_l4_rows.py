@@ -565,7 +565,8 @@ def ladder_l4_rows_prepare(config: dict) -> dict:
 
 
 # --------------------------------------------------------------------------------------------------- train
-def train_a_model(config: dict, store: ArtifactStore, model: str, start_model: str, run: str, one: Stage = THE_STAGE, schedule: Schedule | None = None) -> dict:
+def train_a_model(config: dict, store: ArtifactStore, model: str, start_model: str, run: str, one: Stage = THE_STAGE, schedule: Schedule | None = None,
+                  start_from: Start | None = None) -> dict:
     """One trained model: from the start adapter, one pass over its stored training set in its order, the arm's recipe
     (`one_pass(start=...)`, as the arm's twin is trained). The adapter is kept under `adapters/<model>`. From another
     start than `pre` the adapter attached has the START ADAPTER's rank and alpha (`config_from`), and the one saved is
@@ -574,13 +575,16 @@ def train_a_model(config: dict, store: ArtifactStore, model: str, start_model: s
     TensorBoard run. `one`: the stage, as it names its steps and files. `schedule` (L5n; None for every other caller,
     whose training, files and summary are what they were): the training's learning rate is recorded step by step, put
     beside each step's row in the loss file and HELD to the schedule asked for (`dose.held_to_the_schedule`: refused,
-    and the step not marked done, when a step's is another), with the decay when the schedule says so."""
+    and the step not marked done, when a step's is another), with the decay when the schedule says so. `start_from`
+    (L5f, `gpu/ladder_l5_full.py`; None for every other caller, whose start is the one `ladder_l4_start.the_start`
+    finds by `start_model`): the start model as its stage found it, a STORED model that is no model of the rank check
+    (its adapter, and the check whose rank and alpha it is held at)."""
     marker = one.train_marker(model)
     if store.is_done(marker):
         return store.done_summary(marker)
     _need(store, one.prepare, f"the training of `{model}`", one.name)
     prepared, seed, batch = store.done_summary(one.prepare), training_seed(config), config["training"]["effective_batch"]
-    of_the_start = ladder_l4_start.the_start(config, start_model, one.start_said_by)
+    of_the_start = start_from or ladder_l4_start.the_start(config, start_model, one.start_said_by)
     start = of_the_start.adapter
     if not ladder_ceiling._stand_in() and not start.is_dir():
         raise RuntimeError(f"{start} is not there: the adapter `{start_model}` is what `{model}` is trained from. Nothing was trained")

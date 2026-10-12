@@ -135,9 +135,20 @@ averaged over four orders: draws at both levels there say the rows; all three hi
 **Lean timeouts.** Between 1.3% and 2.6% of a model's attempts timed out in Lean and count as failures (`constant_1`
 1.3%, the others 1.7% to 2.6%). On L5's seed 2, attempts that timed out and were checked again verified at 2% to 3%
 (13 of 676; 44 of 1,510): under 1 per 1,000 on a model's figure, and less on a difference between two models, against
-a spread of 5. The second check of this run's timed-out attempts is running (Lean only, at background priority) for
-the seven models whose stored attempts have been pulled; the three measured by the first task (`constant_1`,
-`decay_1`, `constant_2`) are stored on the GPU box only. Its counts are added below when it ends.
+a spread of 5. This run's timed-out attempts were checked again (Lean only, at background priority, 2026-10-11
+23:19 to 2026-10-12 00:02 UTC) for four of the ten models, and the same holds:
+
+| model | attempts that had timed out | verify when checked again | on its figure, per 1,000 |
+|---|---|---|---|
+| `decay_2` | 327 | 11 | 0.9 |
+| `constant_3` | 254 | 7 | 0.6 |
+| `decay_3` | 294 | 6 | 0.5 |
+| `constant_4` | 263 | 7 | 0.6 |
+
+So a model's figure is under 1 per 1,000 too low, and two models differ by at most 0.4 from it. The check stopped
+there, as set, when the next measurement was queued (L5d's seed 3): `decay_4`, `mean_constant` and `mean_decay` are
+not checked again yet, and the three measured by the first task (`constant_1`, `decay_1`, `constant_2`) cannot be
+from here, their attempts being stored on the GPU box only.
 
 ## What follows
 

@@ -96,12 +96,22 @@ def the_checks(prepare: Mapping, trains: Mapping[str, Mapping], trained: Mapping
                goal_ids: Sequence[str], aside: Sequence[str], heldout: Sequence[str], half_seed: int, base_map: Sequence[str], of_the_setting: Mapping) -> dict[str, dict]:
     """The checks the spec reads FIRST: the run's two (`THE_RUN`), then by trained model its adapter and its rows, and
     by measured model its averaged adapter (the averaged recipe) and whether Lean answered its set."""
+    in_orders = {name: sets[name] for name in prepare["trained"] if name not in MODELS}
+    return {THE_RUN: {
+        THE_SETS: the_sets_are_the_rules({model: sets[model] for model in MODELS}, pretraining, prepare["seed"], in_orders),
+        THE_START: the_start_is_the_settings(start_rows, goal_ids, prepare["the_sampling"], of_the_setting["sampling"], of_the_setting["attempts"])},
+        **checks_of_the_models(prepare, trains, trained, averaged, measured, rows, sets, goal_ids, aside, heldout, half_seed, base_map)}
+
+
+def checks_of_the_models(prepare: Mapping, trains: Mapping[str, Mapping], trained: Mapping[str, Sequence[Mapping]], averaged: Mapping[str, Mapping], measured: Mapping[str, Mapping],
+                         rows: Mapping[str, Sequence[Mapping]], sets: Mapping[str, Sequence[Mapping]], goal_ids: Sequence[str], aside: Sequence[str], heldout: Sequence[str],
+                         half_seed: int, base_map: Sequence[str]) -> dict[str, dict]:
+    """The checks that are of a model: by trained model its adapter and its rows, and by measured model its averaged
+    adapter (the averaged recipe) and whether Lean answered its set. TWO REPORTS CALL IT (this one's `the_checks`;
+    L5s's, `reporting/ladder_l5_stock.py`): change it and both change."""
     recipe = prepare.get("start_recipe") or {}
     rank, alpha = recipe.get("rank"), recipe.get("alpha")
-    in_orders = {name: sets[name] for name in prepare["trained"] if name not in MODELS}
-    checks: dict[str, dict] = {THE_RUN: {
-        THE_SETS: the_sets_are_the_rules({model: sets[model] for model in MODELS}, pretraining, prepare["seed"], in_orders),
-        THE_START: the_start_is_the_settings(start_rows, goal_ids, prepare["the_sampling"], of_the_setting["sampling"], of_the_setting["attempts"])}}
+    checks: dict[str, dict] = {}
     for name in prepare["trained"]:
         differs, saved = the_adapter_differs(adapter_against_the_start(trains[name])), trains[name].get("adapter_saved")
         at_rank = _at_its_rank(saved, rank, alpha)
@@ -119,6 +129,43 @@ def the_checks(prepare: Mapping, trains: Mapping[str, Mapping], trained: Mapping
                                       "a set again", "maximum": MAXIMUM_SHARE_WITHOUT_AN_ANSWER, "share_without_an_answer": health["share_without_an_answer"],
                               "passes": not lean_did_not_answer(rows[name])}
     return checks
+
+
+def lines_of_the_checks(prepare: Mapping, checks: Mapping[str, Mapping], rank: int | None, attempts: int, not_to_be_read: Sequence[str],
+                        mean_of: str = "its four's") -> list[str]:
+    """The printed lines of the checks that come after the sets' own: the start model's stored first sampling, each
+    trained adapter, each model's rows, each averaged adapter (the averaged recipe), Lean. `checks`: by `THE_RUN` and by
+    model, as `the_checks` gives them. TWO REPORTS CALL IT, as `checks_of_the_models`. `mean_of` (L5c's report, whose
+    `wide` is the mean of eight; every other caller leaves it): what an averaged adapter is said to be the mean of."""
+    start, models, of_the_start = prepare["start"], list(prepare["models"]), checks[THE_RUN][THE_START]
+
+    def adapter_said(name: str) -> str:
+        entry = checks[name][THE_ADAPTER]
+        changed = (f"{entry['elements_changed']:,} of the {entry['elements']:,} numbers of its adapter are not the start adapter's" if entry["compared"]
+                   else "its adapter was not compared with the start adapter's")
+        saved = entry["read_back"]
+        return f"`{name}`: {changed}; " + (f"read back at rank {saved['rank']} and alpha {saved['alpha']}" if saved else "not read back")
+
+    lines = [
+        f"{SAY}: CHECK, the stored first sampling of `{start}` is the setting's ({of_the_start['problems']} problems of {of_the_start['goal_problems']}, sampling seed "
+        f"{of_the_start['sampling_seed']}, attempts a problem that are not {attempts}: {of_the_start['attempts_a_problem_that_are_not_the_settings']}): {_verdict(of_the_start)}",
+        f"{SAY}: CHECK, each trained adapter is not the start adapter's and is read back at its rank ({rank}): " + "; ".join(adapter_said(name) for name in prepare["trained"])
+        + f": {_verdict({'passes': all(checks[name][THE_ADAPTER]['passes'] for name in prepare['trained'])})}",
+        f"{SAY}: CHECK, each model was trained on its set and on nothing else, with no barred row (no held-out problem; its published rows of the `pretrain` half; its own "
+        "rows base-map problems) and no problem of G or of the held-aside set (the training loop's own record): "
+        + "; ".join(f"`{name}` {checks[name][THE_ROWS]['rows']:,} rows of {checks[name][THE_ROWS]['rows_of_its_set']:,}, {checks[name][NO_BARRED_ROW]['held_out_problems']} held "
+                    f"out, {checks[name][NO_PROBLEM]['problems_of_the_goal_set']} of G, {checks[name][NO_PROBLEM]['problems_of_the_held_aside_set']} held aside"
+                    for name in prepare["trained"])
+        + f": {_verdict({'passes': all(checks[name][check]['passes'] for name in prepare['trained'] for check in (THE_ROWS, NO_BARRED_ROW, NO_PROBLEM))})}"]
+    if prepare["averaged"]:
+        lines.append(f"{SAY}: CHECK, each averaged adapter's numbers ARE the mean of {mean_of} (read back), it is none of them, and it is the one served: "
+                     + "; ".join(f"`{name}` (the mean of {', '.join(f'`{of}`' for of in checks[name][THE_MEAN]['of'] or [])}): {checks[name][THE_MEAN]['elements_not_the_mean']} of "
+                                 f"{checks[name][THE_MEAN]['elements']} numbers are not the mean" + ("" if checks[name][THE_MEAN]["served"] else "; it was NOT served")
+                                 for name in prepare["averaged"])
+                     + f": {_verdict({'passes': all(checks[name][THE_MEAN]['passes'] for name in prepare['averaged'])})}")
+    lines.append(f"{SAY}: CHECK, Lean answered (at most {MAXIMUM_SHARE_WITHOUT_AN_ANSWER} of a set without an answer): "
+                 + "; ".join(f"`{name}` {checks[name][LEAN_ANSWERED]['share_without_an_answer']}" for name in models) + f": {_verdict({'passes': not not_to_be_read})}")
+    return lines
 
 
 # ------------------------------------------------------------------------------------- the read over the seeds
@@ -231,14 +278,7 @@ def build_l5_draws_report(prepare: Mapping, trains: Mapping[str, Mapping], train
     def figure_said(part: str) -> str:
         return ", ".join(f"`{name}` {_per_1000(figures[name][part]['per_attempt'])} ({_per_1000(figures[name][part]['sampling_noise'])})" for name in models)
 
-    def adapter_said(name: str) -> str:
-        entry = checks[name][THE_ADAPTER]
-        changed = (f"{entry['elements_changed']:,} of the {entry['elements']:,} numbers of its adapter are not the start adapter's" if entry["compared"]
-                   else "its adapter was not compared with the start adapter's")
-        saved = entry["read_back"]
-        return f"`{name}`: {changed}; " + (f"read back at rank {saved['rank']} and alpha {saved['alpha']}" if saved else "not read back")
-
-    of_the_sets, of_the_start, smoke = checks[THE_RUN][THE_SETS], checks[THE_RUN][THE_START], prepare.get("smoke")
+    of_the_sets, smoke = checks[THE_RUN][THE_SETS], prepare.get("smoke")
     lines = [
         f"{SAY}: L5d, {QUESTION.upper()}. Seed {seed}, a further seed of L5: its three sets by L5's own rule for this seed, from the ONE search ({prepare['the_search']['run']}: "
         f"{prepare['the_search']['deep_solves']:,} deep solves, D = {prepare['the_search']['rows_of_each_kind']:,}). From `{start}` at rank {rank}, one pass: "
@@ -253,25 +293,7 @@ def build_l5_draws_report(prepare: Mapping, trains: Mapping[str, Mapping], train
         f"{SAY}: CHECK, each set is L5's rule for its seed, made again and held, and no published row carries text: "
         + (f"D = {of_the_sets['rows_of_each_kind']}" if of_the_sets["refused"] is None else f"REFUSED ({of_the_sets['refused']})")
         + f"; {of_the_sets['published_rows_with_text']} published rows with text; sets not in their order seed's order: {of_the_sets['sets_not_in_their_order_seeds_order']}: "
-        f"{_verdict(of_the_sets)}",
-        f"{SAY}: CHECK, the stored first sampling of `{start}` is the setting's ({of_the_start['problems']} problems of {of_the_start['goal_problems']}, sampling seed "
-        f"{of_the_start['sampling_seed']}, attempts a problem that are not {attempts}: {of_the_start['attempts_a_problem_that_are_not_the_settings']}): {_verdict(of_the_start)}",
-        f"{SAY}: CHECK, each trained adapter is not the start adapter's and is read back at its rank ({rank}): " + "; ".join(adapter_said(name) for name in prepare["trained"])
-        + f": {_verdict({'passes': all(checks[name][THE_ADAPTER]['passes'] for name in prepare['trained'])})}",
-        f"{SAY}: CHECK, each model was trained on its set and on nothing else, with no barred row (no held-out problem; its published rows of the `pretrain` half; its own "
-        "rows base-map problems) and no problem of G or of the held-aside set (the training loop's own record): "
-        + "; ".join(f"`{name}` {checks[name][THE_ROWS]['rows']:,} rows of {checks[name][THE_ROWS]['rows_of_its_set']:,}, {checks[name][NO_BARRED_ROW]['held_out_problems']} held "
-                    f"out, {checks[name][NO_PROBLEM]['problems_of_the_goal_set']} of G, {checks[name][NO_PROBLEM]['problems_of_the_held_aside_set']} held aside"
-                    for name in prepare["trained"])
-        + f": {_verdict({'passes': all(checks[name][check]['passes'] for name in prepare['trained'] for check in (THE_ROWS, NO_BARRED_ROW, NO_PROBLEM))})}"]
-    if prepare["averaged"]:
-        lines.append(f"{SAY}: CHECK, each averaged adapter's numbers ARE the mean of its four's (read back), it is none of them, and it is the one served: "
-                     + "; ".join(f"`{name}` (the mean of {', '.join(f'`{of}`' for of in checks[name][THE_MEAN]['of'] or [])}): {checks[name][THE_MEAN]['elements_not_the_mean']} of "
-                                 f"{checks[name][THE_MEAN]['elements']} numbers are not the mean" + ("" if checks[name][THE_MEAN]["served"] else "; it was NOT served")
-                                 for name in prepare["averaged"])
-                     + f": {_verdict({'passes': all(checks[name][THE_MEAN]['passes'] for name in prepare['averaged'])})}")
-    lines.append(f"{SAY}: CHECK, Lean answered (at most {MAXIMUM_SHARE_WITHOUT_AN_ANSWER} of a set without an answer): "
-                 + "; ".join(f"`{name}` {checks[name][LEAN_ANSWERED]['share_without_an_answer']}" for name in models) + f": {_verdict({'passes': not not_to_be_read})}")
+        f"{_verdict(of_the_sets)}", *lines_of_the_checks(prepare, checks, rank, attempts, not_to_be_read)]
     if inconclusive:
         lines.append(f"{SAY}: THIS SEED IS {INCONCLUSIVE}: {'; '.join(failed)}. Nothing else is said of it; it is left out of the read over the seeds, which is {INCONCLUSIVE} "
                      "until this seed is run again")

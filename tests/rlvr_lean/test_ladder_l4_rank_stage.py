@@ -723,7 +723,8 @@ def test_the_stages_are_registered_with_a_guard_before_every_gpu_step_and_only_t
     # smoke stages of L4b's arm (one a training rule; L4c added a fourth), which starts from `pre_r64`, L5's smoke (whose deep search is the same model's), L6's
     # smoke (whose four models are trained from it), and L5n's smoke and L5d's (whose models are trained from it too).
     assert of(RUN) == ["ladder_l4_dose_r64_smoke", "ladder_l4_rank_smoke", "ladder_l4_rows2_r64_smoke", "ladder_l4_rows_r64_smoke", "ladder_l4b_old_smoke", "ladder_l4b_rehearse_smoke",
-                       "ladder_l4b_reward_rehearse_smoke", "ladder_l4b_reward_rows_smoke", "ladder_l5_deep_smoke", "ladder_l5_draws_smoke", "ladder_l5_noise_smoke", "ladder_l6_cycle_smoke"]
+                       "ladder_l4b_reward_rehearse_smoke", "ladder_l4b_reward_rows_smoke", "ladder_l5_cont_smoke", "ladder_l5_deep_smoke", "ladder_l5_draws_smoke", "ladder_l5_full_smoke", "ladder_l5_measure_smoke", "ladder_l5_noise_smoke", "ladder_l5_stock_smoke",
+                       "ladder_l6_cycle_smoke", "ladder_l6b_smoke"]
     # The setting: rank 64 with alpha 128, the fallback 32 with 64; alpha / rank is `pre`'s 2 in both.
     settings, lora = milestone2.load_config(PACKAGE / "config" / "experiment.yaml")["ladder_loop"]["l4"]["rank_check"], milestone2.load_config(PACKAGE / "config" / "experiment.yaml")["lora"]
     assert settings == {"rank": 64, "alpha": 128, "fallback_rank": 32, "fallback_alpha": 64} and (lora["rank"], lora["alpha"]) == (16, 32)

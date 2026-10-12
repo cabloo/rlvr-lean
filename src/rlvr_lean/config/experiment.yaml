@@ -725,6 +725,69 @@ ladder_loop:                       # docs/spec/ladder-loop.spec.md, L0: the pool
                                    #   decay           one training a model with l5_noise's decay: when it names EVERY LATER STAGE TRAINS WITH THE DECAY
                                    #   mean_constant   each set trained in four orders (order seeds 1 to 4 of its own rows) with the recipe as it is, and the
                                    #                   AVERAGED adapter measured: when it names A LATER STAGE TRAINS EACH MODEL FOUR TIMES ...
+  # ---- L5s: the dose. Every own solve in stock that the model finds less than half the time, against the same number of published
+  # proofs (spec "L5s: the dose. Every own solve in stock that the model finds less than half the time, against the same number of
+  # published proofs"; stage ladder_l5_stock: gpu/ladder_l5_stock.py; rules in domain/ladder_round/l5_stock.py; report in
+  # reporting/ladder_l5_stock.py.) Labelled pretrained on published proofs. NO ROUND and no search: from the finished search of
+  # l5.search_seed and l5.start's map, `stock` is EVERY deep solve, EVERY ordinary solve (l5.shallow: solved_at_least to
+  # solved_at_most of the map's attempts) and as many published rows of the seed's order; `published_stock` twice as many published
+  # rows. The recipe, the sampling and its attempts are l5_draws' own (recipe mean_constant: another is refused), and each seed
+  # below is one of l5_draws' seeds, whose own run of that seed the two models stand beside. THE one reader is
+  # gpu/ladder_l5_stock.py, the_settings.
+  l5_stock:
+    seeds: [3]                     # the scout's seed: one task
+    more_seeds: [4, 5]             # the further seeds, which run ONLY once the scout's read names the escalation: a task of one is refused until ...
+    escalated: false               # ... this is true (set it when the report of the scout's seed reads ESCALATE, and not before)
+  # ---- L5f: the three kinds again, from the twice-pretrained model (spec "L5f: the three kinds again, from the twice-pretrained
+  # model"; stage ladder_l5_full: gpu/ladder_l5_full.py; rules in domain/ladder_round/l5_full.py; report in
+  # reporting/ladder_l5_full.py.) Labelled pretrained on published proofs. L5d's stage with ONE change, the start adapter: every
+  # model is trained from `start` below, the adapter L4p's run keeps (found by gpu/ladder_l6.py, l4p_directory; only read), at
+  # l5.start's rank. The sets are l5_draws' own for the seed, HELD to the ones l5_draws' run of that seed stored and trained; the
+  # recipe, the sampling and its attempts are l5_draws' own (recipe mean_constant: another is refused), and each seed below is one
+  # of l5_draws' seeds. THE one reader is gpu/ladder_l5_full.py, the_settings.
+  l5_full:
+    start: second_full             # the ONE start this stage is specified from: L4p's whole second pass over the published rows from l5.start
+    seeds: [3]                     # the scout's seed: one task
+    more_seeds: [4, 5]             # the further seeds, which run ONLY once the scout's read names the escalation: a task of one is refused until ...
+    escalated: false               # ... this is true (set it when the report of the scout's seed reads ESCALATE, and not before)
+  # ---- L5c: the continuation (spec "L5c: the continuation"; stage ladder_l5_cont: gpu/ladder_l5_cont.py; rules in
+  # domain/ladder_round/l5_cont.py; report in reporting/ladder_l5_cont.py.) Labelled pretrained on published proofs. NO ROW IS ONE
+  # OF THE MODEL'S OWN PROOFS. Four models, each read against the `published` model l5_full's run of the seed STORED (only read):
+  # `single` (that run's first training of it, measured alone), `wide` (the mean of that run's four trainings and four more orders
+  # of the same rows from `start`), `again` (the next rows of the seed's order, from that run's averaged `published`), `more`
+  # (l5_stock's rule's rows, from `start`). The sampling, its attempts and the recipe are l5_draws' own; each seed below is one of
+  # l5_full's seeds, whose run of that seed must be finished. THE one reader is gpu/ladder_l5_cont.py, the_settings.
+  l5_cont:
+    start: second_full             # the ONE start this stage is specified from: the start of l5_full's models
+    seeds: [3]                     # the scout's seed: one task
+    more_seeds: [4, 5]             # the further seeds, which run ONLY once the scout's read names the escalation: a task of one is refused until ...
+    escalated: false               # ... this is true (and each needs l5_full's own run of that seed, which no job file is written for)
+
+  # ---- L5m: the best model, measured in full (spec "L5m: the best model, measured in full"; stage ladder_l5_measure:
+  # gpu/ladder_l5_measure.py; rules in domain/ladder_round/l5_measure.py; report in reporting/ladder_l5_measure.py.) Labelled
+  # pretrained on published proofs. NO TRAINING: ONE stored averaged adapter (the candidate) is measured in full (the rungs, G's two
+  # samplings, the held-aside set) against `bar`, the model it was trained from. THE CANDIDATE is the model that reads highest on
+  # G's first sampling among l5_full's three and l5_cont's four, set here by hand after l5_cont's report (a tie: the earlier made).
+  # A run keeps its candidate: its run directory is named by it. THE one reader is gpu/ladder_l5_measure.py, the_settings.
+  l5_measure:
+    candidate:
+      of: l5_full                  # the stage that made it: l5_full or l5_cont (anything else is refused)
+      seed: 3                      # its seed in that stage, and this task's (--seeds)
+      model: published             # its name there. l5_full: published, shallow, deep. l5_cont: wide, again, more (`single` is one training, not an averaged adapter)
+    bar: second_full               # the model the candidate was trained from: the start of l5_full's and of l5_cont's models
+
+  # ---- L6b: a second round, from the best model (spec "L6b: a second round, from the best model"; stage ladder_l6b:
+  # gpu/ladder_l6b.py; rules in domain/ladder_round/l6b.py; report in reporting/ladder_l6b.py.) Labelled pretrained on published
+  # proofs. B, l5_full's stored averaged `published` of the seed, makes l6.search.attempts attempts at each problem of l6's search 2
+  # (the set, the sampling place and the minimum of new solves are l6's own settings). Two models are trained FROM B with the
+  # averaged recipe, each on as many rows as l5_full's `published` set holds: `new_own` (K of B's new solves and the first rows of
+  # the NEXT ones of the seed's order of the pretraining file) and `old_own` (the first K own rows of l5_draws' `deep` set of the
+  # seed and the same published rows); K is the smaller of half a set, those old own rows and the new solves. THE BAR is l5_cont's
+  # stored `again` of the seed. One task, one seed. THE one reader is gpu/ladder_l6b.py, the_settings.
+  l6b:
+    start: published               # l5_full's stored averaged `published` of the seed: it makes the search, and both models are trained from it (anything else is refused)
+    bar: again                     # l5_cont's stored `again` of the seed: the bar of the primary read (anything else is refused)
+    seeds: [3]                     # the ONE seed: l5_full's and l5_cont's runs of it hold the start and the bar (a seed of neither is refused)
 
 evaluation:
   conjecture_holdout_samples: 12
